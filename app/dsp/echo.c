@@ -1,8 +1,10 @@
 /* SPDX-License-Identifier: MPL-2.0
- * Copyright (C) 2026 Charles Vestal */
-/* The tape echo and the Echoplex, taken from AMB-1 (charlesvestal/fm1-amb, app/dsp/amb.c, MPL-2.0). Changed only
- * where it reached into AMB-1's engine: the echo's length, feedback, Motion and slow modulators are now given
- * (echo_time(), echo_fb, echo_control()'s arguments), not read from AMB-1's parameters. #included by lagoon.c
+ * Copyright (C) 2026 Charles Vestal
+ * Changes Copyright (C) 2026 hacha */
+/* The tape echo and the Echoplex, taken from AMB-1 (charlesvestal/fm1-amb, app/dsp/amb.c, MPL-2.0). Changed where
+ * it reached into AMB-1's engine: the echo's length, feedback, Motion and slow modulators are now given
+ * (echo_time(), echo_fb, echo_control()'s arguments), not read from AMB-1's parameters. PaperLagoon added the
+ * tape's wear (echo_wear: a deeper wow, a flutter, a darker loop). #included by lagoon.c
  * (one -O2 unit): it needs fastmath.h, EN_SR, EN_POOL and frand() before it.
  *
  * AMB-1's note: after Discreet Music's chain, an Echoplex (a short, smearing echo, ~160 ms, fed back) and a tape
@@ -27,6 +29,7 @@ static int16_t plex[PLEX_N];
 static int plex_w;
 static float plex_lp, plex_lp2;
 static float echo_len, echo_len_t, echo_fb = 0.55f, echo_motion, echo_wow;
+static float echo_wear = 0.2f, flut_ph;               /* (PaperLagoon) the tape's age, 0..1; a flutter's phase */
 
 static inline float tape_read(float d)           /* d quarter-rate samples ago */
 {
@@ -121,12 +124,17 @@ static inline void echoes(float in, float *el, float *er, float *xl, float *xr)
         tape_ph = 0;
         echo_len += (echo_len_t - echo_len) * 0.001f;
         head2 += head2_v;
-        d = echo_len * (1.0f + 0.003f * echo_motion * echo_wow);   /* wow */
+        flut_ph += 6.3f / TAPE_SR;               /* (PaperLagoon) wear: a deeper wow, a flutter at ~6 Hz */
+        if (flut_ph >= 1.0f)
+            flut_ph -= 1.0f;
+        d = echo_len * (1.0f + (0.003f * echo_motion + 0.012f * echo_wear) * echo_wow +
+                        0.0015f * echo_wear * sine(flut_ph));   /* wow */
         if (d > (float)(TAPE_N - 4))
             d = (float)(TAPE_N - 4);
         h1 = tape_read(d);
         h2 = tape_read(d * head2);
-        tape_lp += 0.55f * (h1 + fb_lean * (h2 - h1) - tape_lp);   /* each time round: darker, thinner */
+        tape_lp += (0.55f - 0.35f * echo_wear) * (h1 + fb_lean * (h2 - h1) - tape_lp);   /* each time round: darker,
+                                                 * thinner (and, worn, darker still: PaperLagoon) */
         tape_hp += 0.03f * (tape_lp - tape_hp);
         fb = tape_lp - tape_hp;
         if (++tape_w >= TAPE_N)

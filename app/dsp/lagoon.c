@@ -17,10 +17,12 @@
 
 static const en_param_t PARAMS[P_NPARAMS] = {
     {"Density", 0, 100, 45}, {"Bright", 0, 100, 40}, {"Space", 0, 100, 60}, {"Echo", 0, 100, 40},
+    {"Time", 0, 100, 42}, {"Feedback", 0, 100, 68}, {"Size", 0, 100, 69}, {"Wear", 0, 100, 20},
+    {"Repeat", 0, 100, 50}, {"Change", 0, 100, 50}, {"Length", 0, 100, 50}, {"Memory", 0, 100, 50},
 };
 const en_param_t *en_param_info(int i) { return (i >= 0 && i < P_NPARAMS) ? &PARAMS[i] : &PARAMS[0]; }
 
-enum { C_SET, C_PLAY, C_SEED, C_PANIC, C_AUDITION, C_OFFER, C_WORLD };
+enum { C_SET, C_PLAY, C_SEED, C_PANIC, C_AUDITION, C_OFFER, C_WORLD, C_HOLD };
 void en_set(int p, int v) { post(C_SET, p, v); }
 void en_play(int on) { post(C_PLAY, on, 0); }
 void en_seed(uint32_t s) { post(C_SEED, 0, (int)(s & 0xFFFFu)); }
@@ -28,6 +30,7 @@ void en_panic(void) { post(C_PANIC, 0, 0); }
 void en_audition(int role) { post(C_AUDITION, role, 0); }
 void en_offer(int key, int strength) { post(C_OFFER, key, strength); }
 void en_set_world(int w) { post(C_WORLD, w, 0); }
+void en_hold(int on) { post(C_HOLD, on, 0); }
 
 /* state for the screen (UI) */
 volatile uint8_t en_playing;
@@ -39,6 +42,13 @@ volatile float en_cycle;
 static int16_t par[P_NPARAMS];
 static float density, bright;                    /* 0..1 */
 static float echo_send, rev_send, pl_target = 0.8f;
+static float repeat = 0.5f, change = 0.5f, length = 0.5f, memory = 0.5f;   /* SEQ: 0..1 */
+static float echo_secs = 2.4f;
+volatile uint8_t en_held;
+volatile int8_t en_fig_deg[EN_FIG], en_fig_dur[EN_FIG];
+volatile uint8_t en_fig_len, en_fig_pos, en_fig_scale;
+volatile int8_t en_mem_deg[4][EN_FIG], en_mem_dur[4][EN_FIG];
+volatile uint8_t en_mem_len[4];
 
 /* ------------------------------------------------------------ tones --- */
 /* the modulator's ratios, T_COLOR's steps: whole numbers (clear, as a reed or a tine), then between (bells, metal) */
@@ -285,7 +295,7 @@ static const int8_t SCALE[NSCALE][8] = {         /* the length first, then the s
     {6, 0, 2, 4, 7, 9, 11},                      /* with the seventh */
     {7, 0, 2, 4, 6, 7, 9, 11},                   /* lydian: the brightest, the most folded */
 };
-#define MOT_MAX 5
+#define MOT_MAX 7
 static int8_t mot_deg[MOT_MAX], mot_dur[MOT_MAX];
 static int mot_len, mot_i, mot_reps, scale_i = 2, root = 65, root_wait;
 static float beat_len = 0.8f * EN_SR;            /* the world's beat (S_MARGIN: up to 15 % either way) */
@@ -329,9 +339,32 @@ static void motif_keep(void)                     /* the motif ending, into the m
         mem[mem_w].dur[i] = mot_dur[i];
     }
     mem[mem_w].len = (uint8_t)mot_len;
+    for (i = 0; i < mot_len && i < EN_FIG; i++) {   /* for the screen */
+        en_mem_deg[mem_w][i] = mot_deg[i];
+        en_mem_dur[mem_w][i] = mot_dur[i];
+    }
+    en_mem_len[mem_w] = (uint8_t)mot_len;
     mem_w = (mem_w + 1) % MEM;
     if (mem_n < MEM)
         mem_n++;
+}
+
+static uint8_t fig_vary_pending;
+static int reps_new(void)                        /* passes of a motif: Repeat 50: 2..4 */
+{
+    int r = (int)(repeat * 4.0f) + irand(3);
+    return r < 1 ? 1 : r;
+}
+
+static void fig_motif(void)                      /* the motif, for the screen */
+{
+    int i;
+    for (i = 0; i < mot_len && i < EN_FIG; i++) {
+        en_fig_deg[i] = mot_deg[i];
+        en_fig_dur[i] = mot_dur[i];
+    }
+    en_fig_len = (uint8_t)mot_len;
+    en_fig_scale = (uint8_t)SCALE[scale_i][0];
 }
 
 static int margin_cut(void)                      /* notes a motif loses to the margin */
@@ -369,7 +402,7 @@ static void motif_new(void)
     if (gift_pc >= 0 && frand() < 0.6f) {        /* the offering, come back changed */
         d = pc_degree(gift_pc) + n * (1 + irand(2));
         gift_pc = -1;
-    } else if (mem_n >= 2 && frand() < 0.12f + 0.6f * fm_maxf(st[S_FOLD], 0.0f)) {   /* an older one folds back */
+    } else if (mem_n >= 2 && frand() < 0.24f * memory + 0.6f * fm_maxf(st[S_FOLD], 0.0f)) {   /* an older one folds back */
         int m = (mem_w - 2 - irand(mem_n - 1) + 2 * MEM) % MEM;   /* not the one just ended */
         mot_len = mem[m].len - margin_cut();
         mot_len = mot_len < 2 ? 2 : mot_len;
@@ -377,13 +410,14 @@ static void motif_new(void)
             mot_deg[i] = (int8_t)(mem[m].deg[i] < lo ? lo : mem[m].deg[i] > hi ? hi : mem[m].deg[i]);
             mot_dur[i] = mem[m].dur[i];
         }
-        mot_reps = 2 + irand(2);
+        mot_reps = reps_new();
         mot_i = 0;
         en_recalls++;
+        fig_motif();
         return;
     }
-    mot_len = 3 + irand(3) - margin_cut();
-    mot_len = mot_len < 2 ? 2 : mot_len;
+    mot_len = 1 + (int)(length * 4.0f) + irand(3) - margin_cut();   /* Length 50: 3..5 */
+    mot_len = mot_len < 2 ? 2 : mot_len > MOT_MAX ? MOT_MAX : mot_len;
     for (i = 0; i < mot_len; i++) {
         int k = irand(6);
         d = d < lo ? lo : d > hi ? hi : d;
@@ -393,12 +427,15 @@ static void motif_new(void)
         mot_dur[i] = DUR[k];
         d += irand(2) ? 1 + irand(step) : -(1 + irand(step));
     }
-    mot_reps = 2 + irand(3) - (st[S_FOLD] > 0.5f ? 1 : 0);
+    mot_reps = reps_new() - (st[S_FOLD] > 0.5f ? 1 : 0);
+    mot_reps = mot_reps < 1 ? 1 : mot_reps;
     mot_i = 0;
+    fig_motif();
 }
 
 static void motif_vary(void)
 {
+    fig_vary_pending = 1;
     int n = SCALE[scale_i][0], i = irand(mot_len), d = mot_deg[i] + (irand(2) ? 1 : -1);
     mot_deg[i] = (int8_t)(d < n / 5 ? n / 5 : d > 2 * n ? 2 * n : d);
     if (frand() < 0.3f) {                        /* or two notes trade places in time */
@@ -423,6 +460,7 @@ static void motif_event(void)
         if (frand() < 0.08f + 0.3f * density + 0.12f * st[S_BLEED])   /* the answer, an octave up, a little later */
             play(R_ANSWER, ans, vel * 0.5f, 0.6f * (frand() * 2.0f - 1.0f), (int32_t)(beat_len * (0.5f + frand())));
         gen_left += beat_len * (float)mot_dur[mot_i];
+        en_fig_pos = (uint8_t)mot_i;
         mot_i++;
         return;
     }
@@ -432,10 +470,14 @@ static void motif_event(void)
         beat_len = WORLDS[world].beat * EN_SR * (1.0f + 0.15f * st[S_MARGIN]);
     }
     mot_i = 0;
-    if (--mot_reps <= 0)
+    if (--mot_reps <= 0 && !en_held)
         motif_new();
-    else if (frand() < 0.35f + 0.3f * fm_maxf(st[S_FOLD], 0.0f))
+    else if (frand() < 0.7f * change + 0.3f * fm_maxf(st[S_FOLD], 0.0f))
         motif_vary();
+    if (fig_vary_pending) {
+        fig_vary_pending = 0;
+        fig_motif();
+    }
 }
 
 /* -------------------------------------------------------- the drone --- */
@@ -459,28 +501,34 @@ static void drone_event(void)
             d = pc_degree(gift_pc) + n;
             gift_pc = -1;
         }
+        en_fig_deg[i] = (int8_t)d;               /* for the screen */
+        en_fig_dur[i] = 4;
         note = deg_note(d);
         while (note > 84)
             note -= 12;
         play_shaped(i ? R_ANSWER : R_LEAD, note, 0.45f + 0.15f * frand(), 0.7f * (frand() * 2.0f - 1.0f),
                     irand((int)(1.5f * EN_SR)), 3.0f, 900.0f);
     }
+    en_fig_len = (uint8_t)tones;
+    en_fig_pos = 0;
+    en_fig_scale = (uint8_t)n;
     if (frand() < 0.18f + 0.2f * fm_maxf(st[S_FOLD], 0.0f)) {   /* one note of a melody, plain */
         int note = deg_note(base + n + irand(n));
         while (note > 89)
             note -= 12;
         play(R_LEAD, note, 0.4f, 0.4f * (frand() * 2.0f - 1.0f), (int32_t)(beat_len * (2.0f + 3.0f * frand())));
     }
-    if (frand() < 0.25f + 0.3f * fm_maxf(st[S_FOLD], 0.0f)) {   /* the chord moves */
+    if (!en_held && frand() < (0.25f + 0.3f * fm_maxf(st[S_FOLD], 0.0f)) * 2.0f * change) {   /* the chord moves */
         drone_deg += STEP[irand(4)];
         drone_deg = drone_deg < 0 ? 0 : drone_deg > n ? n : drone_deg;
     }
-    if (drone_k % 4 == 3) {                      /* now and then, a new colour and root */
+    if (drone_k % 4 == 3 && !en_held) {          /* now and then, a new colour and root */
         scale_pick();
         root_wander();
     }
     drone_k++;
-    gap = (6.0f + 8.0f * frand()) * (1.0f + 0.6f * st[S_MARGIN]) * (1.0f - 0.3f * st[S_BLEED]) * (1.6f - density);
+    gap = (6.0f + 8.0f * frand()) * (1.0f + 0.6f * st[S_MARGIN]) * (1.0f - 0.3f * st[S_BLEED]) * (1.6f - density) *
+          (0.5f + length);                       /* Length: the swells' length */
     gen_left += beat_len * gap;
 }
 
@@ -501,7 +549,7 @@ volatile float en_loop_ph[NLOOP];
 
 static float loop_len(int i)
 {
-    return LOOP_S[i] * (1.0f + 0.35f * st[S_MARGIN]) * (1.3f - 0.6f * density) * EN_SR;
+    return LOOP_S[i] * (1.0f + 0.35f * st[S_MARGIN]) * (1.3f - 0.6f * density) * (0.5f + length) * EN_SR;
 }
 
 static void loops_begin(void)
@@ -547,7 +595,7 @@ static void loops_event(void)
             loop[i].deg[1] = (int8_t)(pc_degree(gift_pc) + n);
             loop[i].two = 1;
             gift_pc = -1;
-        } else if (frand() < 0.04f + 0.12f * fm_maxf(st[S_FOLD], 0.0f)) {   /* a note moves, or a second wakes */
+        } else if (frand() < (0.04f + 0.12f * fm_maxf(st[S_FOLD], 0.0f)) * 2.0f * change) {   /* a note moves, or a second wakes */
             if (irand(2))
                 loop[i].deg[irand(2)] += (int8_t)(irand(2) ? 1 : -1);
             else
@@ -558,10 +606,15 @@ static void loops_event(void)
         if (loop[i].left < 1.0f)                 /* (long behind: start its round afresh) */
             loop[i].left = loop[i].len * (0.2f + 0.8f * frand());
     }
-    for (i = 0; i < NLOOP; i++)
+    for (i = 0; i < NLOOP; i++) {
         next = fm_minf(next, loop[i].left);
+        en_fig_deg[i] = loop[i].deg[0];          /* for the screen: each loop's note, its length (s) */
+        en_fig_dur[i] = (int8_t)(loop[i].len * (1.0f / EN_SR) + 0.5f);
+    }
+    en_fig_len = NLOOP;
+    en_fig_scale = (uint8_t)n;
     gen_left = fm_maxf(next, 1.0f);
-    if (frand() < 0.03f) {                       /* rarely, the colour turns under them */
+    if (!en_held && frand() < 0.03f) {           /* rarely, the colour turns under them */
         scale_pick();
         root_wander();
     }
@@ -609,12 +662,19 @@ static void apply(int p, int v)
     switch (p) {
     case P_DENSITY: density = (float)v * 0.01f; break;
     case P_BRIGHT: bright = (float)v * 0.01f; break;
-    case P_SPACE:                                /* the plate's send and size, the echo's feedback */
-        rev_send = 0.15f + (float)(v * v) * 0.0001f;
-        pl_target = 0.6f + 0.375f * (float)v * 0.01f;
-        echo_fb = 0.5f + 0.32f * (float)v * 0.01f;
-        break;
+    case P_SPACE: rev_send = 0.15f + (float)(v * v) * 0.0001f; break;   /* the plate's send */
     case P_ECHO: echo_send = (float)(v * v) * 0.0001f; break;
+    case P_TIME:                                 /* the tape's loop: 0.3 .. 5.3 s; the tape glides there */
+        echo_secs = 0.3f + 0.05f * (float)v;
+        echo_time(echo_secs);
+        break;
+    case P_FEEDBACK: echo_fb = 0.2f + 0.0072f * (float)v; break;      /* 0.2 .. 0.92 */
+    case P_SIZE: pl_target = 0.5f + 0.0047f * (float)v; break;        /* the plate's decay */
+    case P_WEAR: echo_wear = (float)v * 0.01f; break;                 /* the tape's age: wow, flutter, dark */
+    case P_REPEAT: repeat = (float)v * 0.01f; break;
+    case P_CHANGE: change = (float)v * 0.01f; break;
+    case P_LENGTH: length = (float)v * 0.01f; break;
+    case P_MEMORY: memory = (float)v * 0.01f; break;
     }
 }
 
@@ -647,6 +707,7 @@ static void drain(void)
                 world_begin();
             }
             break;
+        case C_HOLD: en_held = (uint8_t)(a != 0); break;
         case C_OFFER:
             if (a < 27)
                 offer((int)a, b);
@@ -676,7 +737,6 @@ void en_init(void)
             (int8_t)en_tone_default(i / (EN_NROLE * EN_NTONE), i / EN_NTONE % EN_NROLE, i % EN_NTONE);
     kit = 0;
     pl_decay = pl_target;
-    echo_time(beat_len * 3.0f / EN_SR);          /* three beats */
     for (i = 0; i < EN_NSTATE; i++)
         pend[i] = off[i] = st[i] = 0.0f;
     cyc[0] = cyc[1] = cyc[2] = 0.0f;
@@ -703,7 +763,7 @@ static void control(uint32_t n)                  /* once a chunk: the slow thing
 {
     int i;
     mods_step(n);
-    echo_control(n, 0.5f, modv, en_playing);
+    echo_control(n, 0.5f, modv, en_playing);   /* (and echo_wear: P_WEAR) */
     plate_tick(pl_target);
     state_step(n);
     en_cycle = cyc[0];

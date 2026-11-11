@@ -10,14 +10,18 @@ hidden state leans. Tested in the host simulator; runs on an FM-1 (installed wit
 
 | Control | Does |
 |---|---|
-| SELECT | turns through the pages: 1 the lagoon, 2..4 the kit's voices (the header shows n/4) |
+| SELECT | turns through the pages: 1 the lagoon, 2..4 the kit's voices, 5 the effects, 6 the memory (the header shows n/6) |
 | HOME | the lagoon (lit there) |
 | EDIT | the voices (lit there); again: the next voice; held: the voice as the kit has it |
+| FX | the effects: K1..K4 Time (the tape's loop), Feedback, Size (the plate), Wear (the tape's age) |
+| SEQ | the memory: what the music holds (the motif and the ones remembered, the chord, the loops); K1..K4 Repeat, Change, Length, Memory. Held: hold it (no new motif, chord or colour), held again: let go |
 | PRESETS | the kit: six sets of three voices (lead, answer, low); edits are kept per kit |
 | ALGORITHM | the world: five places that exist nowhere, each its own way of making music (never the knobs nor the kit) |
 | K1..K4 | the lagoon: Density, Bright, Space, Echo. A voice: Color (the FM ratio), Bright, Decay, Soft (the attack) |
 | PLAY | plays or rests |
 | SAVE | keeps all of it (lit when something is not saved) |
+
+Buttons that do something glow dim; the one whose page shows is lit.
 
 | Keys | play no notes: a press *offers* something to a hidden state (held: a little more, again and again) |
 
@@ -40,7 +44,7 @@ The water's line is the state: higher in light, rougher when folded.
 ```sh
 git submodule update --init --recursive
 ./build.sh --host                     # host simulator (a C compiler is enough)
-app/build/host/paperlagoon_host app/tests/basic.txt app/build/host   # and tones.txt, offerings.txt, worlds.txt
+app/build/host/paperlagoon_host app/tests/basic.txt app/build/host   # and tones, offerings, worlds, pages
 ./build.sh --web                      # browser emulator (Emscripten)
 ./serve.sh [port]                     # serve it on http://localhost:8000/
 ./build.sh                            # device package (JieLi toolchain + AC79 SDK)

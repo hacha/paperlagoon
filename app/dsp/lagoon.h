@@ -14,8 +14,10 @@
 #define EN_SR 44100.0f
 #define EN_NVOICE 8                    /* FM voices */
 
-/* parameters (the four knobs, for now; placeholders too) */
-enum { P_DENSITY, P_BRIGHT, P_SPACE, P_ECHO, P_NPARAMS };
+/* parameters, four to a page: the lagoon's, the effects' (FX), the memory's (SEQ) */
+enum { P_DENSITY, P_BRIGHT, P_SPACE, P_ECHO,
+       P_TIME, P_FEEDBACK, P_SIZE, P_WEAR,
+       P_REPEAT, P_CHANGE, P_LENGTH, P_MEMORY, P_NPARAMS };
 typedef struct {
     const char *name;
     int16_t lo, hi, def;
@@ -37,7 +39,8 @@ float en_ratio(int color);
 void en_set_kit(int kit);
 void en_set_tone(int kit, int role, int field, int value);
 void en_voice_shape(int kit, int role, float *ratio, float *att_ms, float *t60);   /* for the screen */
-void en_audition(int role);            /* one note of a voice, now (playing or resting) */
+void en_audition(int role);
+void en_hold(int on);                  /* hold what the music holds now (a motif, a chord, the loops' colour) */            /* one note of a voice, now (playing or resting) */
 
 /* the hidden state (lagoon.c: what each leans) and the keys' offerings into it */
 enum { S_LIGHT, S_BLEED, S_FOLD, S_MARGIN, EN_NSTATE };
@@ -47,6 +50,15 @@ void en_offer(int key, int strength);
 #define EN_NWORLD 5
 const char *en_world_name(int world);
 void en_set_world(int world);           /* there at once; only the state's lean glides */  /* key 0..26 (F3..G5); strength 100 a press, less while it is held */
+extern volatile uint8_t en_held;               /* en_hold: held */
+/* what the music holds now, for the screen (SEQ): a figure of up to 8 notes (scale degrees, lengths in beats; for
+ * the loops each loop's note and its length in seconds, for the drone the chord's tones), the note sounding, and the
+ * motifs remembered (memory) */
+#define EN_FIG 8
+extern volatile int8_t en_fig_deg[EN_FIG], en_fig_dur[EN_FIG];
+extern volatile uint8_t en_fig_len, en_fig_pos, en_fig_scale;
+extern volatile int8_t en_mem_deg[4][EN_FIG], en_mem_dur[4][EN_FIG];
+extern volatile uint8_t en_mem_len[4];
 extern volatile uint8_t en_alg;                /* the world's way of making music: 0 motifs, 1 a drone, 2 loops */
 extern volatile float en_loop_ph[4];           /* the loops (en_alg 2): each one's way round, 0..1 */
 
