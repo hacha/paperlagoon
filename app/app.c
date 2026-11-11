@@ -68,24 +68,21 @@ static uint32_t str_put(char *d, uint32_t cap, const char *s)
     return k;
 }
 
-/* a whole number in decimal, a minus sign when below zero (b: 12 bytes) */
+/* a whole number in decimal, a minus sign when below zero (b: 12 bytes). 32-bit only: no 64-bit multiply
+ * (felucca-bsp docs/CPU.md, which build.py checks for) */
 static void int_text(int32_t v, char *b)
 {
-    static const int32_t P10[10] = {1000000000, 100000000, 10000000, 1000000, 100000, 10000, 1000, 100, 10, 1};
-    int64_t x = v;
-    int i, any = 0;
-    if (x < 0) {
+    char t[10];
+    uint32_t x = v < 0 ? 0u - (uint32_t)v : (uint32_t)v;
+    int n = 0;
+    if (v < 0)
         *b++ = '-';
-        x = -x;
-    }
-    for (i = 0; i < 10; i++) {
-        int dgt = (int)(x / P10[i]);
-        x -= (int64_t)dgt * P10[i];
-        if (dgt || any || i == 9) {
-            *b++ = (char)('0' + dgt);
-            any = 1;
-        }
-    }
+    do {
+        t[n++] = (char)('0' + x % 10u);
+        x /= 10u;
+    } while (x);
+    while (n)
+        *b++ = t[--n];
     *b = 0;
 }
 
