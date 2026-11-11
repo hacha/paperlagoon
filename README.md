@@ -42,6 +42,7 @@ app/build/host/paperlagoon_host app/tests/basic.txt app/build/host   # and tones
 ./build.sh --web                      # browser emulator (Emscripten)
 ./serve.sh [port]                     # serve it on http://localhost:8000/
 ./build.sh                            # device package (JieLi toolchain + AC79 SDK)
+./install.sh [--build]                # install it on an FM-1 over USB (needs mido, python-rtmidi)
 ```
 
 ## Licence
