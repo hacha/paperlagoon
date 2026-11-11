@@ -142,12 +142,12 @@ static void play(int role, int note, float vel, float pan, int32_t wait)
 }
 
 /* -------------------------------------------------- the hidden state --- */
-/* Four quantities nobody sees, each -1..1, 0 neutral. They lean the generator, never the knobs (the knobs adjust,
- * plainly; these only bend what the generator chooses, within bounds):
- *   S_WARM   up: a brighter mode, a higher register, the low voice less often
- *   S_WET    up: longer notes, the answer more often
- *   S_LOOSE  up: wider steps, more changes, new motifs sooner, the root may wander
- *   S_STILL  up: longer rests, a slower beat
+/* Four quantities nobody sees (named for paper: they are never shown), each -1..1, 0 neutral. They lean the
+ * generator, never the knobs (the knobs adjust, plainly; these only bend what the generator chooses, within bounds):
+ *   S_LIGHT   light:  a brighter mode, a higher register, the low voice less often
+ *   S_BLEED   bleed:  longer notes, the answer more often
+ *   S_FOLD    fold:   wider steps, more changes, the root may wander, and an older motif folds back
+ *   S_MARGIN  margin: longer rests, a slower beat, fewer notes to a motif
  * Three slow cycles of unequal length move their resting point (nothing done, the place still turns), and the
  * keys' offerings move them further: an offering falls into a reservoir, which seeps into the state over seconds
  * (one quantity bleeding a little into the next), and what it moved relaxes back over minutes. A key gives a mix
@@ -164,7 +164,7 @@ static float pend[EN_NSTATE], off[EN_NSTATE], st[EN_NSTATE];
 static float cyc[3];                             /* the cycles' phases, in turns */
 static int8_t gift_pc = -1;                      /* the last offered key's pitch class (-1 none), for a motif */
 
-/* each pitch class's lean across WARM, WET, LOOSE, STILL: a fixed, uneven mix */
+/* each pitch class's lean across LIGHT, BLEED, FOLD, MARGIN: a fixed, uneven mix */
 static const int8_t PC_MIX[12][EN_NSTATE] = {
     {3, 2, -1, 2}, {-1, 3, 3, -2}, {2, -1, 1, 3}, {1, 3, 2, -1}, {3, -1, -2, 2}, {-2, 2, 1, 3},
     {1, -2, 3, 1}, {3, 1, -1, -1}, {-1, 3, -2, 2}, {2, 2, 1, -2}, {1, -1, 3, 2}, {2, 1, -2, 3},
@@ -175,10 +175,10 @@ static void offer(int key, int strength)         /* key 0..26 (F3..G5), strength
     int i, pc = (key + 5) % 12;
     int black = (0x54A >> pc) & 1;               /* C# D# F# G# A# */
     float m = 0.17f * (float)strength * 0.01f, q[EN_NSTATE];
-    q[S_WARM] = (float)(key - 13) * (1.0f / 13.0f) * 1.4f;     /* high keys warm, low keys cool */
-    q[S_WET] = 0.0f;
-    q[S_LOOSE] = black ? 0.8f : -0.2f;          /* black keys loosen */
-    q[S_STILL] = black ? -0.3f : 0.4f;
+    q[S_LIGHT] = (float)(key - 13) * (1.0f / 13.0f) * 1.4f;     /* high keys lighten, low keys darken */
+    q[S_BLEED] = 0.0f;
+    q[S_FOLD] = black ? 0.8f : -0.2f;          /* black keys fold */
+    q[S_MARGIN] = black ? -0.3f : 0.4f;
     for (i = 0; i < EN_NSTATE; i++)
         pend[i] += m * (q[i] + (float)PC_MIX[pc][i] * 0.25f + 0.5f * (frand() * 2.0f - 1.0f));
     if (strength >= 100) {
@@ -199,10 +199,10 @@ static void state_step(uint32_t n)
     for (i = 0; i < 3; i++)
         if (cyc[i] >= 1.0f)
             cyc[i] -= 1.0f;
-    base[S_STILL] = fm_sinf(cyc[0] * FM_TWO_PI);                     /* the breath: rests long and short */
-    base[S_WARM] = fm_sinf(cyc[1] * FM_TWO_PI);                      /* the tide */
-    base[S_WET] = fm_sinf((cyc[1] + cyc[2]) * FM_TWO_PI);
-    base[S_LOOSE] = fm_sinf(cyc[2] * FM_TWO_PI);                     /* the long turn */
+    base[S_MARGIN] = fm_sinf(cyc[0] * FM_TWO_PI);                     /* the breath: rests long and short */
+    base[S_LIGHT] = fm_sinf(cyc[1] * FM_TWO_PI);                      /* the tide */
+    base[S_BLEED] = fm_sinf((cyc[1] + cyc[2]) * FM_TWO_PI);
+    base[S_FOLD] = fm_sinf(cyc[2] * FM_TWO_PI);                     /* the long turn */
     for (i = 0; i < EN_NSTATE; i++) {
         float f = pend[i] * seep;
         pend[i] -= f;
@@ -218,22 +218,23 @@ static void state_step(uint32_t n)
 
 /* -------------------------------------------------- the generator --- */
 /* A motif of 3..5 notes on a scale over a root, each a beat or a few long, played a few times with small changes,
- * a rest after each pass (Density shortens it, S_STILL lengthens it), a low tone under a pass now and then, the
- * answer an octave up now and then. A new motif takes its scale from the state (S_WARM: darker .. brighter; S_LOOSE
- * lets in the fourth and seventh), and sometimes the pitch of the last offering, changed into the scale. */
+ * a rest after each pass (Density shortens it, S_MARGIN lengthens it), a low tone under a pass now and then, the
+ * answer an octave up now and then. A new motif takes its scale from the state (S_LIGHT: darker .. brighter; S_FOLD
+ * lets in the fourth and seventh), and sometimes the pitch of the last offering, changed into the scale; or, the
+ * deeper the fold, one of the last few motifs comes back (its degrees read in the scale of now). */
 #define NSCALE 5
 static const int8_t SCALE[NSCALE][8] = {         /* the length first, then the steps over the root */
     {5, 0, 3, 5, 7, 10},                         /* minor pentatonic: the coolest */
     {5, 0, 2, 5, 7, 9},                          /* the yo scale */
     {5, 0, 2, 4, 7, 9},                          /* major pentatonic */
     {6, 0, 2, 4, 7, 9, 11},                      /* with the seventh */
-    {7, 0, 2, 4, 6, 7, 9, 11},                   /* lydian: the brightest, the loosest */
+    {7, 0, 2, 4, 6, 7, 9, 11},                   /* lydian: the brightest, the most folded */
 };
 static const int8_t ROOTS[4] = {65, 60, 70, 67};   /* F4, then C, B flat, G: a fourth or a fifth away */
 #define MOT_MAX 5
 static int8_t mot_deg[MOT_MAX], mot_dur[MOT_MAX];
 static int mot_len, mot_i, mot_reps, scale_i = 2, root = 65, root_wait;
-static float beat_len = 0.8f * EN_SR;            /* 75 a minute (S_STILL: up to 15 % either way) */
+static float beat_len = 0.8f * EN_SR;            /* 75 a minute (S_MARGIN: up to 15 % either way) */
 static float gen_left;                           /* samples to the next event */
 volatile uint8_t en_scale;
 
@@ -258,36 +259,77 @@ static int pc_degree(int pc)                     /* a pitch class to the nearest
     return best;
 }
 
+#define MEM 4                                    /* motifs remembered, to fold back */
+static struct {
+    int8_t deg[MOT_MAX], dur[MOT_MAX];
+    uint8_t len;
+} mem[MEM];
+static int mem_n, mem_w;
+volatile uint32_t en_recalls;
+
+static void motif_keep(void)                     /* the motif ending, into the memory */
+{
+    int i;
+    for (i = 0; i < mot_len; i++) {
+        mem[mem_w].deg[i] = mot_deg[i];
+        mem[mem_w].dur[i] = mot_dur[i];
+    }
+    mem[mem_w].len = (uint8_t)mot_len;
+    mem_w = (mem_w + 1) % MEM;
+    if (mem_n < MEM)
+        mem_n++;
+}
+
+static int margin_cut(void)                      /* notes a motif loses to the margin */
+{
+    return st[S_MARGIN] > 0.3f && frand() < st[S_MARGIN] ? 1 + irand(2) : 0;
+}
+
 static void motif_new(void)
 {
     static const int8_t DUR[6] = {1, 1, 2, 2, 3, 4};
-    int i, n, d, lo, hi, step = st[S_LOOSE] > 0.3f ? 3 : 2;
-    float x = 2.0f + 2.4f * st[S_WARM] + (st[S_LOOSE] > 0.4f ? 0.7f : 0.0f) + 0.6f * (frand() - 0.5f);
+    int i, n, d, lo, hi, step = st[S_FOLD] > 0.3f ? 3 : 2;
+    float x = 2.0f + 2.4f * st[S_LIGHT] + (st[S_FOLD] > 0.4f ? 0.7f : 0.0f) + 0.6f * (frand() - 0.5f);
     scale_i = x < 0.0f ? 0 : x > (float)(NSCALE - 1) ? NSCALE - 1 : (int)(x + 0.5f);
     en_scale = (uint8_t)scale_i;
-    if (--root_wait <= 0 && frand() < 0.12f + 0.25f * fm_maxf(st[S_LOOSE], 0.0f)) {   /* the root wanders */
+    if (--root_wait <= 0 && frand() < 0.12f + 0.25f * fm_maxf(st[S_FOLD], 0.0f)) {   /* the root wanders */
         root = ROOTS[irand(4)];
         root_wait = 3;
     }
     n = SCALE[scale_i][0];
-    lo = n / 5;                                  /* the register: a degree range of two octaves, raised by warmth */
+    lo = n / 5;                                  /* the register: a degree range of two octaves, raised by light */
     hi = 2 * n;
-    d = (int)((float)n * (0.6f + 0.35f * st[S_WARM])) + irand(n * 4 / 5 + 1);
+    d = (int)((float)n * (0.6f + 0.35f * st[S_LIGHT])) + irand(n * 4 / 5 + 1);
+    if (mot_len)
+        motif_keep();
     if (gift_pc >= 0 && frand() < 0.6f) {        /* the offering, come back changed */
         d = pc_degree(gift_pc) + n * (1 + irand(2));
         gift_pc = -1;
+    } else if (mem_n >= 2 && frand() < 0.12f + 0.6f * fm_maxf(st[S_FOLD], 0.0f)) {   /* an older one folds back */
+        int m = (mem_w - 2 - irand(mem_n - 1) + 2 * MEM) % MEM;   /* not the one just ended */
+        mot_len = mem[m].len - margin_cut();
+        mot_len = mot_len < 2 ? 2 : mot_len;
+        for (i = 0; i < mot_len; i++) {
+            mot_deg[i] = (int8_t)(mem[m].deg[i] < lo ? lo : mem[m].deg[i] > hi ? hi : mem[m].deg[i]);
+            mot_dur[i] = mem[m].dur[i];
+        }
+        mot_reps = 2 + irand(2);
+        mot_i = 0;
+        en_recalls++;
+        return;
     }
-    mot_len = 3 + irand(3);
+    mot_len = 3 + irand(3) - margin_cut();
+    mot_len = mot_len < 2 ? 2 : mot_len;
     for (i = 0; i < mot_len; i++) {
         int k = irand(6);
         d = d < lo ? lo : d > hi ? hi : d;
         mot_deg[i] = (int8_t)d;
-        if (st[S_WET] > 0.2f && frand() < st[S_WET])
-            k = k < 5 ? k + 1 : 5;               /* wet: longer notes */
+        if (st[S_BLEED] > 0.2f && frand() < st[S_BLEED])
+            k = k < 5 ? k + 1 : 5;               /* bleed: longer notes */
         mot_dur[i] = DUR[k];
         d += irand(2) ? 1 + irand(step) : -(1 + irand(step));
     }
-    mot_reps = 2 + irand(3) - (st[S_LOOSE] > 0.5f ? 1 : 0);
+    mot_reps = 2 + irand(3) - (st[S_FOLD] > 0.5f ? 1 : 0);
     mot_i = 0;
 }
 
@@ -311,24 +353,24 @@ static void gen_event(void)
             note -= 12;
         for (ans = note + 12; ans > 93; ans -= 12)
             ;
-        if (mot_i == 0 && frand() < 0.5f - 0.25f * st[S_WARM])   /* a low tone under the pass: root or fifth */
+        if (mot_i == 0 && frand() < 0.5f - 0.25f * st[S_LIGHT])   /* a low tone under the pass: root or fifth */
             play(R_LOW, root - 24 + (irand(3) ? 0 : 7), 0.5f, 0.0f, 0);
         play(R_LEAD, note, vel, -0.3f + 0.6f * frand(), irand(1500));   /* a hand: up to 34 ms late */
-        if (frand() < 0.08f + 0.3f * density + 0.12f * st[S_WET])   /* the answer, an octave up, a little later */
+        if (frand() < 0.08f + 0.3f * density + 0.12f * st[S_BLEED])   /* the answer, an octave up, a little later */
             play(R_ANSWER, ans, vel * 0.5f, 0.6f * (frand() * 2.0f - 1.0f), (int32_t)(beat_len * (0.5f + frand())));
         gen_left += beat_len * (float)mot_dur[mot_i];
         mot_i++;
         return;
     }
     {   /* the pass is over: a rest, then the motif again (perhaps changed) or a new one */
-        float lean = 0.5f + 0.5f * st[S_STILL];  /* 0 short rests .. 1 long */
+        float lean = 0.5f + 0.5f * st[S_MARGIN];  /* 0 short rests .. 1 long */
         gen_left += beat_len * (2.0f + (1.0f - density) * 8.0f * (0.5f + lean) + 3.0f * frand());
-        beat_len = 0.8f * EN_SR * (1.0f + 0.15f * st[S_STILL]);
+        beat_len = 0.8f * EN_SR * (1.0f + 0.15f * st[S_MARGIN]);
     }
     mot_i = 0;
     if (--mot_reps <= 0)
         motif_new();
-    else if (frand() < 0.35f + 0.3f * fm_maxf(st[S_LOOSE], 0.0f))
+    else if (frand() < 0.35f + 0.3f * fm_maxf(st[S_FOLD], 0.0f))
         motif_vary();
 }
 
@@ -408,6 +450,8 @@ void en_init(void)
         pend[i] = off[i] = st[i] = 0.0f;
     cyc[0] = cyc[1] = cyc[2] = 0.0f;
     gift_pc = -1;
+    mem_n = mem_w = 0;
+    mot_len = 0;
     root = ROOTS[0];
     root_wait = 2;
     motif_new();

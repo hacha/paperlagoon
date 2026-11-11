@@ -40,7 +40,7 @@ void en_voice_shape(int kit, int role, float *ratio, float *att_ms, float *t60);
 void en_audition(int role);            /* one note of a voice, now (playing or resting) */
 
 /* the hidden state (lagoon.c: what each leans) and the keys' offerings into it */
-enum { S_WARM, S_WET, S_LOOSE, S_STILL, EN_NSTATE };
+enum { S_LIGHT, S_BLEED, S_FOLD, S_MARGIN, EN_NSTATE };
 void en_offer(int key, int strength);  /* key 0..26 (F3..G5); strength 100 a press, less while it is held */
 
 /* commands (main loop -> render) */
@@ -63,5 +63,6 @@ extern volatile uint8_t en_voice_role[EN_NVOICE];
 extern volatile float en_state[EN_NSTATE];     /* -1..1: the hidden state, as it leans the generator now */
 extern volatile float en_offset[EN_NSTATE];    /* what the offerings have moved it by (the rest: the cycles) */
 extern volatile uint8_t en_note_max;           /* the highest note played since boot */
-extern volatile uint32_t en_offers;            /* offerings since boot (presses) */
+extern volatile uint32_t en_offers;
+extern volatile uint32_t en_recalls;           /* motifs folded back from the memory, since boot */            /* offerings since boot (presses) */
 extern volatile uint8_t en_scale;              /* the scale of the motif now (0 the coolest .. 4) */   /* R_*: which voice of the kit each FM voice plays */

@@ -390,16 +390,16 @@ static void draw_ellipse(int32_t cx, int32_t cy, int32_t rx, uint16_t c)
     }
 }
 
-/* the lagoon. The water's line is the hidden state, slowly: higher when warm, rougher when loose, its dots closer
- * when wet, its waves slower when still. Each sounding voice a ripple, wider as it fades; a slow breath at the
+/* the lagoon. The water's line is the hidden state, slowly: higher in light, rougher when folded, its dots closer
+ * when it bleeds, its waves slower in the margin. Each sounding voice a ripple, wider as it fades; a slow breath at the
  * centre (the shortest cycle). An offering: a drop falls to the water at once, and rings spread */
 static void draw_lagoon(uint32_t now)
 {
     uint32_t i;
-    float warm = en_state[S_WARM], wet = en_state[S_WET], loose = en_state[S_LOOSE], still = en_state[S_STILL];
+    float light = en_state[S_LIGHT], bleed = en_state[S_BLEED], fold = en_state[S_FOLD], margin = en_state[S_MARGIN];
     float b = 0.5f + 0.5f * fm_sinf(en_cycle * FM_TWO_PI), t = (float)now * 0.001f;
-    float amp = 1.5f + 3.5f * (loose + 1.0f), speed = 0.9f - 0.6f * still;
-    int32_t hy = 80 - (int32_t)(warm * 26.0f), x, gap = 6 - (int32_t)(wet * 3.0f);
+    float amp = 1.5f + 3.5f * (fold + 1.0f), speed = 0.9f - 0.6f * margin;
+    int32_t hy = 80 - (int32_t)(light * 26.0f), x, gap = 6 - (int32_t)(bleed * 3.0f);
     cv_begin(240, 144, C_BLACK);
     for (x = 0; x < 240; x += gap < 2 ? 2 : gap) {
         float y = (float)hy + amp * fm_sinf((float)x * 0.045f + t * speed) +
@@ -564,6 +564,8 @@ int app_expect(const char *what, int *got)
         *got = (int)en_offers;
     else if (!strcmp(what, "notemax"))           /* the highest note played since boot */
         *got = en_note_max;
+    else if (!strcmp(what, "recalls"))           /* motifs folded back from the memory */
+        *got = (int)en_recalls;
     else if (!strcmp(what, "scale"))
         *got = en_scale;
     else if (!strncmp(what, "state", 5))         /* stateN: the hidden state N (lagoon.h S_*), times 100 */

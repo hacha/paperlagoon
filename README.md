@@ -22,11 +22,11 @@ hidden state leans. Tested in the host simulator; runs on an FM-1 (installed wit
 
 Kits: PAPER LAGOON, WOODEN RAIN, GLASS ORCHARD, SLOW BREATH, IRON SNOW, HAZE ARCHIVE.
 
-The music leans on four hidden quantities (warm, wet, loose, still), which three slow cycles of unequal length
+The music leans on four hidden quantities, named for paper (light, bleed, fold, margin; never shown), which three slow cycles of unequal length
 (71, 163 and 409 s) keep turning. An offering seeps into them over some seconds and fades over minutes; what it
-changes (the scale, the register, the rests, how often the answer and the low voice come, a motif built on the
-offered pitch) is never one key to one thing. The screen answers at once: a drop falls to the water, rings spread.
-The water's line is the state: higher when warm, rougher when loose.
+changes (the scale, the register, the rests, the motifs' length, how often the answer and the low voice come, an
+older motif folding back, a motif built on the offered pitch) is never one key to one thing. The screen answers at once: a drop falls to the water, rings spread.
+The water's line is the state: higher in light, rougher when folded.
 
 ## Build
 
