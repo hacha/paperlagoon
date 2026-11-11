@@ -20,13 +20,14 @@ static const en_param_t PARAMS[P_NPARAMS] = {
 };
 const en_param_t *en_param_info(int i) { return (i >= 0 && i < P_NPARAMS) ? &PARAMS[i] : &PARAMS[0]; }
 
-enum { C_SET, C_PLAY, C_SEED, C_PANIC, C_AUDITION, C_OFFER };
+enum { C_SET, C_PLAY, C_SEED, C_PANIC, C_AUDITION, C_OFFER, C_WORLD };
 void en_set(int p, int v) { post(C_SET, p, v); }
 void en_play(int on) { post(C_PLAY, on, 0); }
 void en_seed(uint32_t s) { post(C_SEED, 0, (int)(s & 0xFFFFu)); }
 void en_panic(void) { post(C_PANIC, 0, 0); }
 void en_audition(int role) { post(C_AUDITION, role, 0); }
 void en_offer(int key, int strength) { post(C_OFFER, key, strength); }
+void en_set_world(int w) { post(C_WORLD, w, 0); }
 
 /* state for the screen (UI) */
 volatile uint8_t en_playing;
@@ -141,6 +142,32 @@ static void play(int role, int note, float vel, float pan, int32_t wait)
     en_notes++;
 }
 
+/* ------------------------------------------------------------ worlds --- */
+/* Places that exist nowhere (ALGORITHM). A world leans the hidden state from its own resting point, sets the beat,
+ * the roots the music wanders among, how fast the cycles turn and where the answer sounds. It never touches the
+ * knobs nor the kit. A change of world glides: the lean over some seconds, the beat at the end of a pass, the root
+ * at the next motif. World 0 is the music as it was before there were worlds. */
+typedef struct {
+    const char *name;
+    float bias[EN_NSTATE];                       /* the state's resting lean: light, bleed, fold, margin */
+    float beat;                                  /* seconds */
+    int8_t roots[4];                             /* the first is where it starts */
+    float cycles;                                /* the cycles' lengths, times this */
+    int8_t answer;                               /* the answer, this far over the lead (semitones) */
+} world_t;
+static const world_t WORLDS[EN_NWORLD] = {
+    {"SHALLOWS OF MEMORY", {0.0f, 0.0f, 0.0f, 0.0f}, 0.80f, {65, 60, 70, 67}, 1.0f, 12},        /* 記憶の浅瀬 */
+    {"BEHIND THE HORIZON", {-0.35f, 0.2f, 0.0f, 0.3f}, 0.95f, {58, 60, 63, 55}, 1.4f, 7},       /* 水平線の裏側 */
+    {"THE UNREAD LETTER", {0.0f, -0.2f, 0.55f, 0.6f}, 0.85f, {62, 67, 69, 64}, 1.0f, 12},       /* 誰も読まない手紙 */
+    {"SILENT FOUNTAIN", {0.35f, 0.35f, 0.0f, -0.3f}, 0.68f, {67, 72, 65, 70}, 0.65f, 19},       /* 音のしない噴水 */
+    {"WHERE LIGHT BECOMES MOSS", {0.2f, 0.4f, -0.3f, 0.1f}, 0.90f, {64, 69, 62, 67}, 2.0f, 12}, /* 光が苔になるところ */
+};
+#define WORLD_GLIDE_S 20.0f
+static volatile uint8_t world;
+static uint8_t world_root;                       /* a new world: its first root at the next motif */
+static float wbias[EN_NSTATE], wcycles = 1.0f;   /* the lean and the cycles' scale, gliding to the world's */
+const char *en_world_name(int w) { return WORLDS[(unsigned)w % EN_NWORLD].name; }
+
 /* -------------------------------------------------- the hidden state --- */
 /* Four quantities nobody sees (named for paper: they are never shown), each -1..1, 0 neutral. They lean the
  * generator, never the knobs (the knobs adjust, plainly; these only bend what the generator chooses, within bounds):
@@ -202,7 +229,7 @@ static void state_step(uint32_t n)
     int i;
     for (i = 0; i < 3; i++) {                    /* the phase runs on, whatever the length does: no jumps */
         per[i] += (per_to[i] - per[i]) * (float)n * (1.0f / (PER_DRIFT_S * EN_SR));
-        cyc[i] += (float)n / (per[i] * EN_SR);
+        cyc[i] += (float)n / (per[i] * wcycles * EN_SR);
         if (cyc[i] >= 1.0f) {
             cyc[i] -= 1.0f;
             per_to[i] = PER_LO[i] + (PER_HI[i] - PER_LO[i]) * frand();
@@ -213,6 +240,13 @@ static void state_step(uint32_t n)
     base[S_LIGHT] = fm_sinf(cyc[1] * FM_TWO_PI);                      /* the tide */
     base[S_BLEED] = fm_sinf((cyc[1] + cyc[2]) * FM_TWO_PI);
     base[S_FOLD] = fm_sinf(cyc[2] * FM_TWO_PI);                     /* the long turn */
+    {
+        const world_t *w = &WORLDS[world];
+        float g = (float)n * (1.0f / (WORLD_GLIDE_S * EN_SR));
+        wcycles += (w->cycles - wcycles) * g;
+        for (i = 0; i < EN_NSTATE; i++)
+            wbias[i] += (w->bias[i] - wbias[i]) * g;
+    }
     for (i = 0; i < EN_NSTATE; i++) {
         float f = pend[i] * seep;
         pend[i] -= f;
@@ -220,7 +254,7 @@ static void state_step(uint32_t n)
         off[(i + 1) % EN_NSTATE] += 0.15f * f;   /* a little bleeds into the next */
         off[i] -= off[i] * fade;
         off[i] = fm_clampf(off[i], -1.0f, 1.0f);
-        st[i] = fm_tanhf(AMP[i] * base[i] + off[i]);   /* soft at the ends: never pinned */
+        st[i] = fm_tanhf(wbias[i] + AMP[i] * base[i] + off[i]);   /* soft at the ends: never pinned */
         en_state[i] = st[i];
         en_offset[i] = off[i];
     }
@@ -240,11 +274,10 @@ static const int8_t SCALE[NSCALE][8] = {         /* the length first, then the s
     {6, 0, 2, 4, 7, 9, 11},                      /* with the seventh */
     {7, 0, 2, 4, 6, 7, 9, 11},                   /* lydian: the brightest, the most folded */
 };
-static const int8_t ROOTS[4] = {65, 60, 70, 67};   /* F4, then C, B flat, G: a fourth or a fifth away */
 #define MOT_MAX 5
 static int8_t mot_deg[MOT_MAX], mot_dur[MOT_MAX];
 static int mot_len, mot_i, mot_reps, scale_i = 2, root = 65, root_wait;
-static float beat_len = 0.8f * EN_SR;            /* 75 a minute (S_MARGIN: up to 15 % either way) */
+static float beat_len = 0.8f * EN_SR;            /* the world's beat (S_MARGIN: up to 15 % either way) */
 static float gen_left;                           /* samples to the next event */
 volatile uint8_t en_scale;
 
@@ -292,7 +325,7 @@ static void motif_keep(void)                     /* the motif ending, into the m
 
 static int margin_cut(void)                      /* notes a motif loses to the margin */
 {
-    return st[S_MARGIN] > 0.3f && frand() < st[S_MARGIN] ? 1 + irand(2) : 0;
+    return st[S_MARGIN] > 0.2f && frand() < st[S_MARGIN] ? 1 + irand(2) : 0;
 }
 
 static void motif_new(void)
@@ -302,8 +335,12 @@ static void motif_new(void)
     float x = 2.0f + 2.4f * st[S_LIGHT] + (st[S_FOLD] > 0.4f ? 0.7f : 0.0f) + 0.6f * (frand() - 0.5f);
     scale_i = x < 0.0f ? 0 : x > (float)(NSCALE - 1) ? NSCALE - 1 : (int)(x + 0.5f);
     en_scale = (uint8_t)scale_i;
-    if (--root_wait <= 0 && frand() < 0.12f + 0.25f * fm_maxf(st[S_FOLD], 0.0f)) {   /* the root wanders */
-        root = ROOTS[irand(4)];
+    if (world_root) {                            /* a new world: its own root */
+        root = WORLDS[world].roots[0];
+        world_root = 0;
+        root_wait = 2;
+    } else if (--root_wait <= 0 && frand() < 0.12f + 0.25f * fm_maxf(st[S_FOLD], 0.0f)) {   /* the root wanders */
+        root = WORLDS[world].roots[irand(4)];
         root_wait = 3;
     }
     n = SCALE[scale_i][0];
@@ -361,7 +398,7 @@ static void gen_event(void)
         float vel = 0.45f + 0.35f * frand();
         while (note > 89)                        /* the ceiling: the lead to F6, the answer to A6 */
             note -= 12;
-        for (ans = note + 12; ans > 93; ans -= 12)
+        for (ans = note + WORLDS[world].answer; ans > 93; ans -= 12)
             ;
         if (mot_i == 0 && frand() < 0.5f - 0.25f * st[S_LIGHT])   /* a low tone under the pass: root or fifth */
             play(R_LOW, root - 24 + (irand(3) ? 0 : 7), 0.5f, 0.0f, 0);
@@ -373,9 +410,9 @@ static void gen_event(void)
         return;
     }
     {   /* the pass is over: a rest, then the motif again (perhaps changed) or a new one */
-        float lean = 0.5f + 0.5f * st[S_MARGIN];  /* 0 short rests .. 1 long */
+        float lean = fm_maxf(0.5f + 0.9f * st[S_MARGIN], 0.0f);   /* 0 short rests .. ~1.4 long */
         gen_left += beat_len * (2.0f + (1.0f - density) * 8.0f * (0.5f + lean) + 3.0f * frand());
-        beat_len = 0.8f * EN_SR * (1.0f + 0.15f * st[S_MARGIN]);
+        beat_len = WORLDS[world].beat * EN_SR * (1.0f + 0.15f * st[S_MARGIN]);
     }
     mot_i = 0;
     if (--mot_reps <= 0)
@@ -426,6 +463,12 @@ static void drain(void)
             for (i = 0; i < NFM; i++)
                 fmv[i].on = 0;
             break;
+        case C_WORLD:
+            if (a < EN_NWORLD && a != world) {
+                world = (uint8_t)a;
+                world_root = 1;
+            }
+            break;
         case C_OFFER:
             if (a < 27)
                 offer((int)a, b);
@@ -465,7 +508,12 @@ void en_init(void)
     gift_pc = -1;
     mem_n = mem_w = 0;
     mot_len = 0;
-    root = ROOTS[0];
+    world = 0;
+    world_root = 0;
+    wcycles = 1.0f;
+    for (i = 0; i < EN_NSTATE; i++)
+        wbias[i] = 0.0f;
+    root = WORLDS[0].roots[0];
     root_wait = 2;
     motif_new();
     gen_left = 1.5f * EN_SR;

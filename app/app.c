@@ -8,7 +8,8 @@
  *   1 the lagoon (HOME)      the music: K1..K4 Density, Bright, Space, Echo
  *   2..4 a voice (EDIT)      the kit's lead, answer and low voice: K1..K4 Color, Bright, Decay, Soft. EDIT again:
  *                            the next voice; EDIT held: the voice as the kit has it
- * PRESETS: the kit (a set of three voices; the edits are kept per kit). PLAY: play or rest. SAVE: keep it all.
+ * PRESETS: the kit (a set of three voices; the edits are kept per kit). ALGORITHM: the world (a place that exists
+ * nowhere: it leans how the music goes, never the knobs). PLAY: play or rest. SAVE: keep it all.
  * The keys play no notes: a press offers something to the hidden state (lagoon.h), which the music shows later and
  * loosely; the screen shows at once that something was given (a drop falling to the water, its rings), and the
  * state itself as the water's line, slowly. */
@@ -18,7 +19,7 @@
 typedef struct {
     uint32_t magic;
     int16_t par[P_NPARAMS];
-    uint8_t kit, pad;
+    uint8_t kit, world;                          /* (world was a spare byte: older records load world 0) */
     int8_t tone[EN_NKIT][EN_NROLE][EN_NTONE];
 } settings_t;
 static settings_t set;
@@ -38,6 +39,7 @@ static void settings_defaults(void)
     for (i = 0; i < P_NPARAMS; i++)
         set.par[i] = en_param_info(i)->def;
     set.kit = 0;
+    set.world = 0;
     for (i = 0; i < EN_NKIT * EN_NROLE; i++)
         tone_defaults(i / EN_NROLE, i % EN_NROLE);
 }
@@ -58,6 +60,9 @@ void app_init(void)
     if (set.kit >= EN_NKIT)
         set.kit = 0;
     en_set_kit(set.kit);
+    if (set.world >= EN_NWORLD)
+        set.world = 0;
+    en_set_world(set.world);
     for (i = 0; i < EN_NKIT * EN_NROLE; i++)
         for (f = 0; f < EN_NTONE; f++) {
             int8_t *v = &set.tone[i / EN_NROLE][i % EN_NROLE][f];
@@ -81,7 +86,7 @@ enum { PG_LAGOON, PG_LEAD, PG_ANSWER, PG_LOW, NPAGE };
 #define HOLD_MS 800u                             /* EDIT held this long: the voice as the kit has it */
 
 static struct {
-    char msg[2][24];
+    char msg[2][32];
     uint32_t msg_until;
     uint32_t keys, btn;
     uint32_t turned_at[4];                       /* each knob's last turn (the strip lights it) */
@@ -226,6 +231,23 @@ static void tone_reset(int role)
     app_say(en_role_name(role), "AS IT WAS");
 }
 
+static void world_step(int32_t d)
+{
+    char t[12];
+    uint32_t k;
+    int n = ((int)set.world + (int)d) % EN_NWORLD;
+    if (n < 0)
+        n += EN_NWORLD;
+    set.world = (uint8_t)n;
+    set_dirty = 1;
+    en_set_world(n);
+    int_text(n + 1, t);
+    k = (uint32_t)(n + 1 >= 10 ? 2 : 1);
+    t[k++] = '/';
+    int_text(EN_NWORLD, t + k);
+    app_say(en_world_name(n), t);
+}
+
 static void kit_step(int32_t d)
 {
     char t[12];
@@ -305,6 +327,8 @@ static void input(void)
         page_go((int)ui.page + (int)e);
     if ((e = plat_enc(EN_PRESET)) != 0)
         kit_step(e);
+    if ((e = plat_enc(EN_ALGO)) != 0)
+        world_step(e);
     for (k = 0; k < 4; k++)
         if ((e = plat_enc((int)(EN_K1 + k))) != 0) {
             if (ui.page == PG_LAGOON)
@@ -357,17 +381,20 @@ static void draw_header(uint32_t now)
     char t[8];
     int32_t x;
     cv_begin(240, 32, C_BLACK);
-    if (now < ui.msg_until) {
-        x = cv_text(10, 6, &FONT_B, ui.msg[0], C_WHITE);
-        cv_text(x + 8, 6, &FONT_B, ui.msg[1], C_HI);
+    if (now < ui.msg_until) {                    /* a long message in the smaller letters */
+        int big = 18 + text_w(&FONT_B, ui.msg[0]) + text_w(&FONT_B, ui.msg[1]) <= 230;
+        int32_t y = big ? 6 : 9;
+        x = cv_text(10, y, big ? &FONT_B : &FONT_XS, ui.msg[0], C_WHITE);
+        cv_text(x + 8, y, big ? &FONT_B : &FONT_XS, ui.msg[1], C_HI);
     } else {
         const char *s = en_playing ? "PLAYING" : "RESTING";
         uint32_t k;
-        if (ui.page == PG_LAGOON) {
-            cv_text(10, 6, &FONT_B, en_kit_name(set.kit), C_WHITE);
+        int32_t end;
+        if (ui.page == PG_LAGOON) {              /* the lagoon: the world (the kit under it, on the water) */
+            end = cv_text(10, 6, &FONT_B, en_world_name(set.world), C_WHITE);
         } else {
             x = cv_text(10, 6, &FONT_B, en_role_name(PG_ROLE(ui.page)), C_WHITE);
-            cv_text(x + 8, 10, &FONT_XS, en_kit_name(set.kit), C_GRAY);
+            end = cv_text(x + 8, 10, &FONT_XS, en_kit_name(set.kit), C_GRAY);
         }
         int_text(ui.page + 1, t);                /* where: n/m */
         k = 1;
@@ -375,7 +402,9 @@ static void draw_header(uint32_t now)
         int_text(NPAGE, t + k);
         x = 230 - text_w(&FONT_XS, t);
         cv_text(x, 10, &FONT_XS, t, C_HI);
-        cv_text(x - 10 - text_w(&FONT_XS, s), 10, &FONT_XS, s, en_playing ? C_HI : C_DIM);
+        x -= 10 + text_w(&FONT_XS, s);
+        if (x > end + 8)                         /* playing or resting, where a long name leaves room */
+            cv_text(x, 10, &FONT_XS, s, en_playing ? C_HI : C_DIM);
     }
     cv_blit(0, 0);
 }
@@ -401,6 +430,7 @@ static void draw_lagoon(uint32_t now)
     float amp = 1.5f + 3.5f * (fold + 1.0f), speed = 0.9f - 0.6f * margin;
     int32_t hy = 80 - (int32_t)(light * 26.0f), x, gap = 6 - (int32_t)(bleed * 3.0f);
     cv_begin(240, 144, C_BLACK);
+    cv_text(10, 2, &FONT_XS, en_kit_name(set.kit), C_GRAY);
     for (x = 0; x < 240; x += gap < 2 ? 2 : gap) {
         float y = (float)hy + amp * fm_sinf((float)x * 0.045f + t * speed) +
                   0.5f * amp * fm_sinf((float)x * 0.11f - t * speed * 1.7f);
@@ -558,6 +588,8 @@ int app_expect(const char *what, int *got)
         *got = set_dirty;
     else if (!strcmp(what, "page"))              /* 0 the lagoon, 1..3 the voices */
         *got = ui.page;
+    else if (!strcmp(what, "world"))
+        *got = set.world;
     else if (!strcmp(what, "kit"))
         *got = set.kit;
     else if (!strcmp(what, "offers"))            /* offerings since boot (presses) */

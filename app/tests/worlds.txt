@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 hacha
+# the worlds (ALGORITHM): turned through, said, kept; the music goes on through a change
+wait 600
+expect world 0
+shot world0.png
+turn ALGO 4
+wait 100
+expect world 4
+shot world-said.png
+wait 1500
+shot world4.png
+turn ALGO 1
+wait 30
+expect world 0
+turn ALGO -1
+wait 30
+expect world 4
+wait 60000
+expect notes >8
+tap SAVE
+wait 30
+reboot
+wait 600
+expect world 4
+expect kit 0

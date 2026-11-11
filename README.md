@@ -14,6 +14,7 @@ hidden state leans. Tested in the host simulator; runs on an FM-1 (installed wit
 | HOME | the lagoon (lit there) |
 | EDIT | the voices (lit there); again: the next voice; held: the voice as the kit has it |
 | PRESETS | the kit: six sets of three voices (lead, answer, low); edits are kept per kit |
+| ALGORITHM | the world: five places that exist nowhere; each leans how the music goes (never the knobs nor the kit) |
 | K1..K4 | the lagoon: Density, Bright, Space, Echo. A voice: Color (the FM ratio), Bright, Decay, Soft (the attack) |
 | PLAY | plays or rests |
 | SAVE | keeps all of it (lit when something is not saved) |
@@ -21,6 +22,10 @@ hidden state leans. Tested in the host simulator; runs on an FM-1 (installed wit
 | Keys | play no notes: a press *offers* something to a hidden state (held: a little more, again and again) |
 
 Kits: PAPER LAGOON, WOODEN RAIN, GLASS ORCHARD, SLOW BREATH, IRON SNOW, HAZE ARCHIVE.
+
+Worlds: SHALLOWS OF MEMORY (as it plays without worlds), BEHIND THE HORIZON (darker, slower, lower; the answer a
+fifth up), THE UNREAD LETTER (sparse; older motifs come back), SILENT FOUNTAIN (bright, quick, the answer an octave
+and a fifth up; quicker cycles), WHERE LIGHT BECOMES MOSS (long notes, slow cycles). A change glides in.
 
 The music leans on four hidden quantities, named for paper (light, bleed, fold, margin; never shown), which three slow cycles of unequal length
 (their lengths wander, about 50–100, 120–230 and 300–600 s) keep turning. An offering seeps into them over some seconds and fades over minutes; what it
@@ -33,7 +38,7 @@ The water's line is the state: higher in light, rougher when folded.
 ```sh
 git submodule update --init --recursive
 ./build.sh --host                     # host simulator (a C compiler is enough)
-app/build/host/paperlagoon_host app/tests/basic.txt app/build/host   # and tones.txt, offerings.txt
+app/build/host/paperlagoon_host app/tests/basic.txt app/build/host   # and tones.txt, offerings.txt, worlds.txt
 ./build.sh --web                      # browser emulator (Emscripten)
 ./serve.sh [port]                     # serve it on http://localhost:8000/
 ./build.sh                            # device package (JieLi toolchain + AC79 SDK)

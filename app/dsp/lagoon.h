@@ -41,7 +41,12 @@ void en_audition(int role);            /* one note of a voice, now (playing or r
 
 /* the hidden state (lagoon.c: what each leans) and the keys' offerings into it */
 enum { S_LIGHT, S_BLEED, S_FOLD, S_MARGIN, EN_NSTATE };
-void en_offer(int key, int strength);  /* key 0..26 (F3..G5); strength 100 a press, less while it is held */
+void en_offer(int key, int strength);
+
+/* worlds (ALGORITHM): places that exist nowhere; each leans the state, the beat, the roots, the cycles (lagoon.c) */
+#define EN_NWORLD 5
+const char *en_world_name(int world);
+void en_set_world(int world);           /* glides there: the lean over seconds, the beat and root at the next pass */  /* key 0..26 (F3..G5); strength 100 a press, less while it is held */
 
 /* commands (main loop -> render) */
 void en_init(void);
