@@ -92,14 +92,15 @@ turn K1 -1
 release SEL
 wait 30
 expect param0 48
-# the sleep timer: two minutes (one detent) after it started playing, it rests
+# the sleep timer: two minutes (one detent) after it is set, it rests
 tap GLO
 turn K4 1
 wait 30
 expect param23 2
 wait 1000
 shot sleep.png
-wait 100000
+expect playing 1
+wait 120000
 expect playing 0
 tap SAVE
 wait 30

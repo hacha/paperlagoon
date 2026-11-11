@@ -272,6 +272,8 @@ static void param_step(int p, int knob, int32_t d)
     set.par[p] = (int16_t)v;
     set_dirty = 1;
     en_set(p, (int)v);
+    if (p == P_SLEEP)                            /* the sleep timer counts from when it is set */
+        ui.play_at = plat_ms();
     int_text(v, t);
     app_say(pi->name, t);
 }
@@ -977,6 +979,8 @@ int app_expect(const char *what, int *got)
         *got = en_recording;
     else if (!strcmp(what, "taken"))             /* phrases taken in */
         *got = (int)en_taken;
+    else if (!strncmp(what, "fig", 3))           /* figN: the figure's note N, a scale degree */
+        *got = en_fig_deg[atoi(what + 3) % EN_FIG];
     else if (!strcmp(what, "held"))
         *got = en_held;
     else if (!strcmp(what, "world"))

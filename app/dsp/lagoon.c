@@ -854,8 +854,9 @@ static void drain(void)
                 raw_note = 1;
                 play(R_LEAD, (int)a, 0.6f, 0.0f, 0);
                 raw_note = 0;
-                if (rec_n < REC_MAX) {
-                    rec_note[rec_n] = (uint8_t)a;
+                if (rec_n < REC_MAX) {           /* kept in the music's own frame: what the music adds, taken off */
+                    int m = (int)a - transpose - 12 * music_oct;
+                    rec_note[rec_n] = (uint8_t)(m < 0 ? 0 : m > 127 ? 127 : m);
                     rec_t[rec_n++] = clock_s;
                 }
             }

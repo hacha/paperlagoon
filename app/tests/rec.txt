@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 hacha
+# a phrase played in reads the same whatever Transpose: played where it is heard, it lands on the same degrees
+wait 600
+press REC
+wait 50
+tapkey 7
+wait 400
+tapkey 9
+wait 400
+tapkey 12
+wait 400
+release REC
+wait 100
+expect taken 1
+expect fig0 3
+expect fig1 4
+expect fig2 5
+tap ENV
+turn K4 3
+wait 30
+expect param15 3
+press REC
+wait 50
+tapkey 10
+wait 400
+tapkey 12
+wait 400
+tapkey 15
+wait 400
+release REC
+wait 100
+expect taken 2
+expect fig0 3
+expect fig1 4
+expect fig2 5
+# the sleep timer, set late: it counts from then
+wait 150000
+expect playing 1
+tap GLO
+turn K4 1
+wait 1000
+expect playing 1
+wait 119000
+expect playing 0
