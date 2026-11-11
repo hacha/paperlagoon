@@ -4,7 +4,7 @@ A generative environmental-music firmware for the M-VAVE FM-1, after 1980s Japan
 (and, at most, Susumu Yokota's hazy pulse). It plays by itself; you steer it from outside.
 
 Status: a first sketch. FM voices through AMB-1's tape echo and plate, played by a placeholder generator
-(a motif on a pentatonic scale, with long rests). Built and tested in the host simulator only, not yet on a device.
+(a motif on a pentatonic scale, with long rests). Tested in the host simulator; runs on an FM-1 (installed with base/tools/fm1_install.py, 2026-11-11).
 
 ## Build
 
