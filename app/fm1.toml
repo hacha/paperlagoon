@@ -1,0 +1,24 @@
+# PaperLagoon's build settings (fm1-base's tools/build.py: ./build.sh)
+name = "PAPERLAGOON"           # the build's files: paperlagoon.fwsc, paperlagoon-X.Y.fwsc
+id_prefix = "FM-1_58"          # package identity (provisional: check docs/FIRMWARE-JSON.md before publishing)
+usb_manufacturer = "PaperLagoon"
+usb_product = "PaperLagoon FM-1"
+o2 = []                        # separate units compiled at -O2 (the engine, later)
+words = "words.tsv"
+ble = true                     # as the template (its code uses Bluetooth MIDI); revisit later
+ble_central = true
+usb_audio_in = true            # the music recordable over USB
+usb_audio_out = false
+# the site
+tagline = "Generative environmental music for the FM-1"
+repo = ""
+licence = "GPL-3.0-only"
+credits = "Built on fm1-base and felucca-bsp, from Felucca by Leo Kuroshita (Hügelton Instruments). Started from fm1-base's template by Charles Vestal."
+
+# firmware.json, for firmware hubs (fm1-base docs/FIRMWARE-JSON.md)
+author = "hacha"
+description = "PaperLagoon (working title) is a generative environmental-music firmware for the M-VAVE FM-1, after 1980s Japanese kankyō ongaku. It plays by itself; you steer it from outside."
+tags = ["ambient", "generative", "fm"]
+install = ""
+site = ""
+screenshot = ""
