@@ -152,9 +152,12 @@ static void play(int role, int note, float vel, float pan, int32_t wait)
  * keys' offerings move them further: an offering falls into a reservoir, which seeps into the state over seconds
  * (one quantity bleeding a little into the next), and what it moved relaxes back over minutes. A key gives a mix
  * across the four (its register, white or black, its pitch, and chance), so no key does one thing. */
-#define CYC_A 71.0f                              /* the cycles, in seconds: no two share a beat for a long time */
-#define CYC_B 163.0f
-#define CYC_C 409.0f
+/* the cycles' lengths wander: each turn ends with a new length to drift toward, within its own range (the ranges
+ * never overlap, so the three stay unequal; the shortest, the breath, never under 50 s) */
+static const float PER_LO[3] = {50.0f, 120.0f, 300.0f}, PER_HI[3] = {100.0f, 230.0f, 600.0f};
+static float per[3], per_to[3];                  /* the lengths now, and where they drift (s) */
+#define PER_DRIFT_S 60.0f
+volatile float en_period[3];
 #define SEEP_S 9.0f                              /* the reservoir's seepage into the state */
 #define FADE_S 150.0f                            /* the state's return, once moved */
 volatile float en_state[EN_NSTATE];
@@ -193,12 +196,15 @@ static void state_step(uint32_t n)
     float seep = (float)n * (1.0f / (SEEP_S * EN_SR)), fade = (float)n * (1.0f / (FADE_S * EN_SR));
     float base[EN_NSTATE];
     int i;
-    cyc[0] += (float)n * (1.0f / (CYC_A * EN_SR));
-    cyc[1] += (float)n * (1.0f / (CYC_B * EN_SR));
-    cyc[2] += (float)n * (1.0f / (CYC_C * EN_SR));
-    for (i = 0; i < 3; i++)
-        if (cyc[i] >= 1.0f)
+    for (i = 0; i < 3; i++) {                    /* the phase runs on, whatever the length does: no jumps */
+        per[i] += (per_to[i] - per[i]) * (float)n * (1.0f / (PER_DRIFT_S * EN_SR));
+        cyc[i] += (float)n / (per[i] * EN_SR);
+        if (cyc[i] >= 1.0f) {
             cyc[i] -= 1.0f;
+            per_to[i] = PER_LO[i] + (PER_HI[i] - PER_LO[i]) * frand();
+        }
+        en_period[i] = per[i];
+    }
     base[S_MARGIN] = fm_sinf(cyc[0] * FM_TWO_PI);                     /* the breath: rests long and short */
     base[S_LIGHT] = fm_sinf(cyc[1] * FM_TWO_PI);                      /* the tide */
     base[S_BLEED] = fm_sinf((cyc[1] + cyc[2]) * FM_TWO_PI);
@@ -449,6 +455,9 @@ void en_init(void)
     for (i = 0; i < EN_NSTATE; i++)
         pend[i] = off[i] = st[i] = 0.0f;
     cyc[0] = cyc[1] = cyc[2] = 0.0f;
+    per[0] = per_to[0] = 71.0f;                  /* the first turns: as before */
+    per[1] = per_to[1] = 163.0f;
+    per[2] = per_to[2] = 409.0f;
     gift_pc = -1;
     mem_n = mem_w = 0;
     mot_len = 0;

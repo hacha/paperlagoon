@@ -564,6 +564,8 @@ int app_expect(const char *what, int *got)
         *got = (int)en_offers;
     else if (!strcmp(what, "notemax"))           /* the highest note played since boot */
         *got = en_note_max;
+    else if (!strncmp(what, "period", 6))        /* periodN: cycle N's length now, in seconds */
+        *got = (int)en_period[atoi(what + 6) % 3];
     else if (!strcmp(what, "recalls"))           /* motifs folded back from the memory */
         *got = (int)en_recalls;
     else if (!strcmp(what, "scale"))
