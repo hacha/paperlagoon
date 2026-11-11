@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 hacha
+# the keys' offerings: the drop and its rings at once, the hidden state moved later, back in minutes
+wait 600
+expect offers 0
+expect offset0 0
+tapkey 24
+wait 200
+shot drop.png
+wait 700
+shot rings.png
+expect offers 1
+tapkey 25
+tapkey 26
+tapkey 22
+wait 1000
+expect offset0 <60
+wait 25000
+expect offers 4
+expect offset0 >50
+key 10 down
+wait 2200
+key 10 up
+wait 30
+expect offers 5
+tapkey 0
+tapkey 1
+tapkey 2
+tapkey 3
+tapkey 4
+tapkey 0
+tapkey 2
+wait 40000
+expect offset0 <30
+peakreset
+wait 60000
+expect peak_db_max -0.5
+shot water.png

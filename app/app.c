@@ -9,7 +9,9 @@
  *   2..4 a voice (EDIT)      the kit's lead, answer and low voice: K1..K4 Color, Bright, Decay, Soft. EDIT again:
  *                            the next voice; EDIT held: the voice as the kit has it
  * PRESETS: the kit (a set of three voices; the edits are kept per kit). PLAY: play or rest. SAVE: keep it all.
- * The keys only light, for now. */
+ * The keys play no notes: a press offers something to the hidden state (lagoon.h), which the music shows later and
+ * loosely; the screen shows at once that something was given (a drop falling to the water, its rings), and the
+ * state itself as the water's line, slowly. */
 #include "fastmath.h"
 
 #define SET_MAGIC 0x324C504Bu            /* "PLL2": the settings record; another magic loads defaults */
@@ -86,6 +88,13 @@ static struct {
     uint32_t last_draw;
     uint32_t edit_at;                            /* EDIT went down (0: up) */
     uint32_t audition_at;                        /* a voice was edited: let it sound then (0: none) */
+    uint32_t key_at[NKEYS];                      /* each held key's next offering (0: up) */
+    struct {
+        uint32_t born;                           /* 0: none */
+        int16_t x;
+        uint8_t big;
+    } drop[8];
+    uint8_t drop_i;
     uint8_t edit_held;                           /* the hold has acted: the release does nothing */
     uint8_t page;
     uint8_t redraw;
@@ -234,6 +243,19 @@ static void kit_step(int32_t d)
     app_say(en_kit_name(n), t);
 }
 
+#define DROP_FALL_MS 380u                        /* a drop's fall to the water */
+#define DROP_RING_MS 2600u                       /* its rings */
+#define HOLD_OFFER_MS 700u                       /* a held key offers again, less, this often */
+
+static void key_offer(uint32_t k, int strength, uint32_t now)
+{
+    en_offer((int)k, strength);
+    ui.drop[ui.drop_i].born = now ? now : 1u;
+    ui.drop[ui.drop_i].x = (int16_t)(12 + (int32_t)k * 216 / (NKEYS - 1));
+    ui.drop[ui.drop_i].big = (uint8_t)(strength >= 100);
+    ui.drop_i = (uint8_t)((ui.drop_i + 1u) % 8u);
+}
+
 static void input(void)
 {
     uint32_t keys = plat_keys(), btn = plat_buttons(), now = plat_ms(), k;
@@ -266,6 +288,18 @@ static void input(void)
         if (!ui.edit_held)
             page_go(ui.page == PG_LAGOON || ui.page == PG_LOW ? PG_LEAD : ui.page + 1);
         ui.edit_at = 0;
+    }
+    for (k = 0; k < NKEYS; k++) {                /* the keys: offerings */
+        uint32_t bit = 1u << k;
+        if ((keys & bit) && !(ui.keys & bit)) {
+            key_offer(k, 100, now);
+            ui.key_at[k] = now + HOLD_OFFER_MS;
+        } else if ((keys & bit) && ui.key_at[k] && now >= ui.key_at[k]) {
+            key_offer(k, 35, now);
+            ui.key_at[k] = now + HOLD_OFFER_MS;
+        } else if (!(keys & bit)) {
+            ui.key_at[k] = 0;
+        }
     }
     if ((e = plat_enc(EN_SELECT)) != 0)
         page_go((int)ui.page + (int)e);
@@ -346,24 +380,63 @@ static void draw_header(uint32_t now)
     cv_blit(0, 0);
 }
 
-/* the lagoon: each sounding voice a ripple, wider as it fades; a slow breath at the centre (the cycle) */
-static void draw_lagoon(void)
+/* a flat ring on the water: an ellipse, rx wide, a third as tall */
+static void draw_ellipse(int32_t cx, int32_t cy, int32_t rx, uint16_t c)
+{
+    int32_t i, n = rx < 8 ? 16 : 40;
+    for (i = 0; i < n; i++) {
+        float a = (float)i * (FM_TWO_PI / (float)n);
+        cv_pset(cx + (int32_t)(fm_cosf(a) * (float)rx), cy + (int32_t)(fm_sinf(a) * (float)rx * 0.3f), c);
+    }
+}
+
+/* the lagoon. The water's line is the hidden state, slowly: higher when warm, rougher when loose, its dots closer
+ * when wet, its waves slower when still. Each sounding voice a ripple, wider as it fades; a slow breath at the
+ * centre (the shortest cycle). An offering: a drop falls to the water at once, and rings spread */
+static void draw_lagoon(uint32_t now)
 {
     uint32_t i;
-    float b = 0.5f + 0.5f * fm_sinf(en_cycle * FM_TWO_PI);
+    float warm = en_state[S_WARM], wet = en_state[S_WET], loose = en_state[S_LOOSE], still = en_state[S_STILL];
+    float b = 0.5f + 0.5f * fm_sinf(en_cycle * FM_TWO_PI), t = (float)now * 0.001f;
+    float amp = 1.5f + 3.5f * (loose + 1.0f), speed = 0.9f - 0.6f * still;
+    int32_t hy = 80 - (int32_t)(warm * 26.0f), x, gap = 6 - (int32_t)(wet * 3.0f);
     cv_begin(240, 144, C_BLACK);
-    draw_ring(120, 72, 3 + (int32_t)(4.0f * b), C_LINE);
+    for (x = 0; x < 240; x += gap < 2 ? 2 : gap) {
+        float y = (float)hy + amp * fm_sinf((float)x * 0.045f + t * speed) +
+                  0.5f * amp * fm_sinf((float)x * 0.11f - t * speed * 1.7f);
+        cv_pset(x, (int32_t)y, C_LINE);
+    }
+    draw_ring(120, hy, 3 + (int32_t)(4.0f * b), C_LINE);
     for (i = 0; i < EN_NVOICE; i++) {
         float g = en_glow[i];
-        int32_t x, r;
+        int32_t r;
         if (g < 0.02f)
             continue;
         x = 20 + ((int32_t)en_voice_note[i] - 41) * 4;
         x = x < 10 ? 10 : x > 230 ? 230 : x;
         r = 4 + (int32_t)((1.0f - g) * 56.0f);
-        draw_ring(x, 72, r, g > 0.5f ? C_HI : g > 0.2f ? C_AMB : C_DIM);
+        draw_ring(x, hy, r, g > 0.5f ? C_HI : g > 0.2f ? C_AMB : C_DIM);
         if (g > 0.6f)
-            draw_ring(x, 72, r / 2, C_AMB);
+            draw_ring(x, hy, r / 2, C_AMB);
+    }
+    for (i = 0; i < 8; i++) {                    /* the offerings */
+        uint32_t age;
+        if (!ui.drop[i].born)
+            continue;
+        age = now - ui.drop[i].born;
+        if (age < DROP_FALL_MS) {                /* falling */
+            int32_t y = (int32_t)((float)hy * (float)(age * age) / (float)(DROP_FALL_MS * DROP_FALL_MS));
+            cv_rect(ui.drop[i].x, y, 2, ui.drop[i].big ? 4 : 2, C_WHITE);
+        } else if (age < DROP_FALL_MS + DROP_RING_MS) {   /* rings, spreading */
+            float f = (float)(age - DROP_FALL_MS) / (float)DROP_RING_MS;
+            int32_t rx = 3 + (int32_t)(f * (ui.drop[i].big ? 70.0f : 34.0f));
+            uint16_t c = f < 0.3f ? C_WHITE : f < 0.65f ? C_GRAY : C_DIM;
+            draw_ellipse(ui.drop[i].x, hy, rx, c);
+            if (ui.drop[i].big && f < 0.7f)
+                draw_ellipse(ui.drop[i].x, hy, rx * 3 / 5, c);
+        } else {
+            ui.drop[i].born = 0;
+        }
     }
     cv_blit(0, 36);
 }
@@ -442,7 +515,7 @@ static void draw(void)
     uint32_t now = plat_ms();
     draw_header(now);
     if (ui.page == PG_LAGOON)
-        draw_lagoon();
+        draw_lagoon(now);
     else
         draw_voice(PG_ROLE(ui.page));
     draw_knobs(now);
@@ -487,6 +560,14 @@ int app_expect(const char *what, int *got)
         *got = ui.page;
     else if (!strcmp(what, "kit"))
         *got = set.kit;
+    else if (!strcmp(what, "offers"))            /* offerings since boot (presses) */
+        *got = (int)en_offers;
+    else if (!strcmp(what, "scale"))
+        *got = en_scale;
+    else if (!strncmp(what, "state", 5))         /* stateN: the hidden state N (lagoon.h S_*), times 100 */
+        *got = (int)(en_state[atoi(what + 5) % EN_NSTATE] * 100.0f);
+    else if (!strncmp(what, "offset", 6))        /* offsetN: what the offerings moved it by, times 100 */
+        *got = (int)(en_offset[atoi(what + 6) % EN_NSTATE] * 100.0f);
     else if (!strncmp(what, "param", 5))         /* paramN: parameter N's value (lagoon.h P_*) */
         *got = set.par[atoi(what + 5) % P_NPARAMS];
     else if (!strncmp(what, "tone", 4) && what[4] && what[5])   /* toneRF: this kit's voice R, setting F */

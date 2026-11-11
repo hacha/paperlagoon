@@ -20,12 +20,13 @@ static const en_param_t PARAMS[P_NPARAMS] = {
 };
 const en_param_t *en_param_info(int i) { return (i >= 0 && i < P_NPARAMS) ? &PARAMS[i] : &PARAMS[0]; }
 
-enum { C_SET, C_PLAY, C_SEED, C_PANIC, C_AUDITION };
+enum { C_SET, C_PLAY, C_SEED, C_PANIC, C_AUDITION, C_OFFER };
 void en_set(int p, int v) { post(C_SET, p, v); }
 void en_play(int on) { post(C_PLAY, on, 0); }
 void en_seed(uint32_t s) { post(C_SEED, 0, (int)(s & 0xFFFFu)); }
 void en_panic(void) { post(C_PANIC, 0, 0); }
 void en_audition(int role) { post(C_AUDITION, role, 0); }
+void en_offer(int key, int strength) { post(C_OFFER, key, strength); }
 
 /* state for the screen (UI) */
 volatile uint8_t en_playing;
@@ -137,44 +138,160 @@ static void play(int role, int note, float vel, float pan, int32_t wait)
     en_notes++;
 }
 
+/* -------------------------------------------------- the hidden state --- */
+/* Four quantities nobody sees, each -1..1, 0 neutral. They lean the generator, never the knobs (the knobs adjust,
+ * plainly; these only bend what the generator chooses, within bounds):
+ *   S_WARM   up: a brighter mode, a higher register, the low voice less often
+ *   S_WET    up: longer notes, the answer more often
+ *   S_LOOSE  up: wider steps, more changes, new motifs sooner, the root may wander
+ *   S_STILL  up: longer rests, a slower beat
+ * Three slow cycles of unequal length move their resting point (nothing done, the place still turns), and the
+ * keys' offerings move them further: an offering falls into a reservoir, which seeps into the state over seconds
+ * (one quantity bleeding a little into the next), and what it moved relaxes back over minutes. A key gives a mix
+ * across the four (its register, white or black, its pitch, and chance), so no key does one thing. */
+#define CYC_A 71.0f                              /* the cycles, in seconds: no two share a beat for a long time */
+#define CYC_B 163.0f
+#define CYC_C 409.0f
+#define SEEP_S 9.0f                              /* the reservoir's seepage into the state */
+#define FADE_S 150.0f                            /* the state's return, once moved */
+volatile float en_state[EN_NSTATE];
+volatile float en_offset[EN_NSTATE];
+volatile uint32_t en_offers;
+static float pend[EN_NSTATE], off[EN_NSTATE], st[EN_NSTATE];
+static float cyc[3];                             /* the cycles' phases, in turns */
+static int8_t gift_pc = -1;                      /* the last offered key's pitch class (-1 none), for a motif */
+
+/* each pitch class's lean across WARM, WET, LOOSE, STILL: a fixed, uneven mix */
+static const int8_t PC_MIX[12][EN_NSTATE] = {
+    {3, 2, -1, 2}, {-1, 3, 3, -2}, {2, -1, 1, 3}, {1, 3, 2, -1}, {3, -1, -2, 2}, {-2, 2, 1, 3},
+    {1, -2, 3, 1}, {3, 1, -1, -1}, {-1, 3, -2, 2}, {2, 2, 1, -2}, {1, -1, 3, 2}, {2, 1, -2, 3},
+};
+
+static void offer(int key, int strength)         /* key 0..26 (F3..G5), strength 0..100 */
+{
+    int i, pc = (key + 5) % 12;
+    int black = (0x54A >> pc) & 1;               /* C# D# F# G# A# */
+    float m = 0.32f * (float)strength * 0.01f, q[EN_NSTATE];
+    q[S_WARM] = (float)(key - 13) * (1.0f / 13.0f) * 1.4f;     /* high keys warm, low keys cool */
+    q[S_WET] = 0.0f;
+    q[S_LOOSE] = black ? 0.8f : -0.2f;          /* black keys loosen */
+    q[S_STILL] = black ? -0.3f : 0.4f;
+    for (i = 0; i < EN_NSTATE; i++)
+        pend[i] += m * (q[i] + (float)PC_MIX[pc][i] * 0.25f + 0.5f * (frand() * 2.0f - 1.0f));
+    if (strength >= 100) {
+        gift_pc = (int8_t)pc;
+        en_offers++;
+    }
+}
+
+static void state_step(uint32_t n)
+{
+    static const float AMP[EN_NSTATE] = {0.45f, 0.4f, 0.35f, 0.5f};
+    float seep = (float)n * (1.0f / (SEEP_S * EN_SR)), fade = (float)n * (1.0f / (FADE_S * EN_SR));
+    float base[EN_NSTATE];
+    int i;
+    cyc[0] += (float)n * (1.0f / (CYC_A * EN_SR));
+    cyc[1] += (float)n * (1.0f / (CYC_B * EN_SR));
+    cyc[2] += (float)n * (1.0f / (CYC_C * EN_SR));
+    for (i = 0; i < 3; i++)
+        if (cyc[i] >= 1.0f)
+            cyc[i] -= 1.0f;
+    base[S_STILL] = fm_sinf(cyc[0] * FM_TWO_PI);                     /* the breath: rests long and short */
+    base[S_WARM] = fm_sinf(cyc[1] * FM_TWO_PI);                      /* the tide */
+    base[S_WET] = fm_sinf((cyc[1] + cyc[2]) * FM_TWO_PI);
+    base[S_LOOSE] = fm_sinf(cyc[2] * FM_TWO_PI);                     /* the long turn */
+    for (i = 0; i < EN_NSTATE; i++) {
+        float f = pend[i] * seep;
+        pend[i] -= f;
+        off[i] += 0.85f * f;
+        off[(i + 1) % EN_NSTATE] += 0.15f * f;   /* a little bleeds into the next */
+        off[i] -= off[i] * fade;
+        off[i] = fm_clampf(off[i], -1.5f, 1.5f);
+        st[i] = fm_clampf(AMP[i] * base[i] + off[i], -1.0f, 1.0f);
+        en_state[i] = st[i];
+        en_offset[i] = off[i];
+    }
+}
+
 /* -------------------------------------------------- the generator --- */
-/* PLACEHOLDER (lagoon.h): a motif of 3..5 notes on a major pentatonic over F, each a beat or a few long, played
- * a few times with small changes, a long rest after each pass (Density shortens it), a low tone under a pass now
- * and then, and glass answering a note now and then. A slow cycle (~90 s) leans the rests longer and shorter. */
-static const int8_t PENT[5] = {0, 2, 4, 7, 9};
-#define ROOT 65                                  /* F4 */
+/* A motif of 3..5 notes on a scale over a root, each a beat or a few long, played a few times with small changes,
+ * a rest after each pass (Density shortens it, S_STILL lengthens it), a low tone under a pass now and then, the
+ * answer an octave up now and then. A new motif takes its scale from the state (S_WARM: darker .. brighter; S_LOOSE
+ * lets in the fourth and seventh), and sometimes the pitch of the last offering, changed into the scale. */
+#define NSCALE 5
+static const int8_t SCALE[NSCALE][8] = {         /* the length first, then the steps over the root */
+    {5, 0, 3, 5, 7, 10},                         /* minor pentatonic: the coolest */
+    {5, 0, 2, 5, 7, 9},                          /* the yo scale */
+    {5, 0, 2, 4, 7, 9},                          /* major pentatonic */
+    {6, 0, 2, 4, 7, 9, 11},                      /* with the seventh */
+    {7, 0, 2, 4, 6, 7, 9, 11},                   /* lydian: the brightest, the loosest */
+};
+static const int8_t ROOTS[4] = {65, 60, 70, 67};   /* F4, then C, B flat, G: a fourth or a fifth away */
 #define MOT_MAX 5
 static int8_t mot_deg[MOT_MAX], mot_dur[MOT_MAX];
-static int mot_len, mot_i, mot_reps;
-static float beat_len = 0.8f * EN_SR;            /* 75 a minute */
+static int mot_len, mot_i, mot_reps, scale_i = 2, root = 65, root_wait;
+static float beat_len = 0.8f * EN_SR;            /* 75 a minute (S_STILL: up to 15 % either way) */
 static float gen_left;                           /* samples to the next event */
-static float cyc_ph;                             /* the slow cycle, in turns */
+volatile uint8_t en_scale;
 
 static int deg_note(int d)                       /* scale degree (0 the root) to a MIDI note */
 {
-    int o = d >= 0 ? d / 5 : -((4 - d) / 5);
-    return ROOT + 12 * o + PENT[d - 5 * o];
+    int n = SCALE[scale_i][0], o = d >= 0 ? d / n : -((n - 1 - d) / n);
+    return root + 12 * o + SCALE[scale_i][1 + d - n * o];
+}
+
+static int pc_degree(int pc)                     /* a pitch class to the nearest degree of the scale, low octave */
+{
+    int n = SCALE[scale_i][0], i, best = 0, bd = 99, rel = ((pc - root) % 12 + 12) % 12;
+    for (i = 0; i < n; i++) {
+        int dd = SCALE[scale_i][1 + i] - rel;
+        dd = dd < 0 ? -dd : dd;
+        dd = dd > 6 ? 12 - dd : dd;
+        if (dd < bd) {
+            bd = dd;
+            best = i;
+        }
+    }
+    return best;
 }
 
 static void motif_new(void)
 {
-    int i, d = 3 + irand(4);
     static const int8_t DUR[6] = {1, 1, 2, 2, 3, 4};
+    int i, n, d, lo, hi, step = st[S_LOOSE] > 0.3f ? 3 : 2;
+    float x = 2.0f + 1.8f * st[S_WARM] + (st[S_LOOSE] > 0.4f ? 0.7f : 0.0f) + 0.6f * (frand() - 0.5f);
+    scale_i = x < 0.0f ? 0 : x > (float)(NSCALE - 1) ? NSCALE - 1 : (int)(x + 0.5f);
+    en_scale = (uint8_t)scale_i;
+    if (--root_wait <= 0 && frand() < 0.12f + 0.25f * fm_maxf(st[S_LOOSE], 0.0f)) {   /* the root wanders */
+        root = ROOTS[irand(4)];
+        root_wait = 3;
+    }
+    n = SCALE[scale_i][0];
+    lo = n / 5;                                  /* the register: a degree range of two octaves, raised by warmth */
+    hi = 2 * n;
+    d = (int)((float)n * (0.6f + 0.35f * st[S_WARM])) + irand(n * 4 / 5 + 1);
+    if (gift_pc >= 0 && frand() < 0.6f) {        /* the offering, come back changed */
+        d = pc_degree(gift_pc) + n * (1 + irand(2));
+        gift_pc = -1;
+    }
     mot_len = 3 + irand(3);
     for (i = 0; i < mot_len; i++) {
+        int k = irand(6);
+        d = d < lo ? lo : d > hi ? hi : d;
         mot_deg[i] = (int8_t)d;
-        mot_dur[i] = DUR[irand(6)];
-        d += irand(2) ? 1 + irand(2) : -(1 + irand(2));
-        d = d < 1 ? 1 : d > 10 ? 10 : d;
+        if (st[S_WET] > 0.2f && frand() < st[S_WET])
+            k = k < 5 ? k + 1 : 5;               /* wet: longer notes */
+        mot_dur[i] = DUR[k];
+        d += irand(2) ? 1 + irand(step) : -(1 + irand(step));
     }
-    mot_reps = 2 + irand(3);
+    mot_reps = 2 + irand(3) - (st[S_LOOSE] > 0.5f ? 1 : 0);
     mot_i = 0;
 }
 
 static void motif_vary(void)
 {
-    int i = irand(mot_len), d = mot_deg[i] + (irand(2) ? 1 : -1);
-    mot_deg[i] = (int8_t)(d < 1 ? 1 : d > 10 ? 10 : d);
+    int n = SCALE[scale_i][0], i = irand(mot_len), d = mot_deg[i] + (irand(2) ? 1 : -1);
+    mot_deg[i] = (int8_t)(d < n / 5 ? n / 5 : d > 2 * n ? 2 * n : d);
     if (frand() < 0.3f) {                        /* or two notes trade places in time */
         int j = irand(mot_len), t = mot_dur[i];
         mot_dur[i] = mot_dur[j];
@@ -187,23 +304,24 @@ static void gen_event(void)
     if (mot_i < mot_len) {
         int note = deg_note(mot_deg[mot_i]);
         float vel = 0.45f + 0.35f * frand();
-        if (mot_i == 0 && frand() < 0.5f)        /* a low tone under the pass: the root or the fifth */
-            play(R_LOW, ROOT - 24 + (irand(3) ? 0 : 7), 0.5f, 0.0f, 0);
+        if (mot_i == 0 && frand() < 0.5f - 0.25f * st[S_WARM])   /* a low tone under the pass: root or fifth */
+            play(R_LOW, root - 24 + (irand(3) ? 0 : 7), 0.5f, 0.0f, 0);
         play(R_LEAD, note, vel, -0.3f + 0.6f * frand(), irand(1500));   /* a hand: up to 34 ms late */
-        if (frand() < 0.08f + 0.3f * density)    /* glass answers, an octave up, a little later */
+        if (frand() < 0.08f + 0.3f * density + 0.12f * st[S_WET])   /* the answer, an octave up, a little later */
             play(R_ANSWER, note + 12, vel * 0.5f, 0.6f * (frand() * 2.0f - 1.0f), (int32_t)(beat_len * (0.5f + frand())));
         gen_left += beat_len * (float)mot_dur[mot_i];
         mot_i++;
         return;
     }
     {   /* the pass is over: a rest, then the motif again (perhaps changed) or a new one */
-        float lean = 0.5f + 0.5f * fm_sinf(cyc_ph * FM_TWO_PI);   /* the cycle: 0 short rests .. 1 long */
+        float lean = 0.5f + 0.5f * st[S_STILL];  /* 0 short rests .. 1 long */
         gen_left += beat_len * (2.0f + (1.0f - density) * 8.0f * (0.5f + lean) + 3.0f * frand());
+        beat_len = 0.8f * EN_SR * (1.0f + 0.15f * st[S_STILL]);
     }
     mot_i = 0;
     if (--mot_reps <= 0)
         motif_new();
-    else if (frand() < 0.35f)
+    else if (frand() < 0.35f + 0.3f * fm_maxf(st[S_LOOSE], 0.0f))
         motif_vary();
 }
 
@@ -249,9 +367,13 @@ static void drain(void)
             for (i = 0; i < NFM; i++)
                 fmv[i].on = 0;
             break;
+        case C_OFFER:
+            if (a < 27)
+                offer((int)a, b);
+            break;
         case C_AUDITION:                         /* a note where the voice usually sounds */
             if (a < EN_NROLE)
-                play((int)a, a == R_LOW ? ROOT - 24 : a == R_ANSWER ? ROOT + 19 : ROOT + 7, 0.7f, 0.0f, 0);
+                play((int)a, a == R_LOW ? root - 24 : a == R_ANSWER ? root + 19 : root + 7, 0.7f, 0.0f, 0);
             break;
         }
     }
@@ -275,9 +397,14 @@ void en_init(void)
     kit = 0;
     pl_decay = pl_target;
     echo_time(beat_len * 3.0f / EN_SR);          /* three beats */
+    for (i = 0; i < EN_NSTATE; i++)
+        pend[i] = off[i] = st[i] = 0.0f;
+    cyc[0] = cyc[1] = cyc[2] = 0.0f;
+    gift_pc = -1;
+    root = ROOTS[0];
+    root_wait = 2;
     motif_new();
     gen_left = 1.5f * EN_SR;
-    cyc_ph = 0.0f;
     en_playing = 1;                              /* it plays from the start */
 }
 
@@ -288,10 +415,8 @@ static void control(uint32_t n)                  /* once a chunk: the slow thing
     mods_step(n);
     echo_control(n, 0.5f, modv, en_playing);
     plate_tick(pl_target);
-    cyc_ph += (float)n * (1.0f / (90.0f * EN_SR));
-    if (cyc_ph >= 1.0f)
-        cyc_ph -= 1.0f;
-    en_cycle = cyc_ph;
+    state_step(n);
+    en_cycle = cyc[0];
     for (i = 0; i < EN_NVOICE && i < NFM; i++)
         en_glow[i] = fmv[i].on && fmv[i].wait <= 0 ? fm_minf(fmv[i].amp / fm_maxf(fmv[i].peak, 0.01f), 1.0f) : 0.0f;
 }

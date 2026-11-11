@@ -2,10 +2,8 @@
  * Copyright (C) 2026 hacha */
 /* PaperLagoon's engine: FM voices through a tape echo and a plate (both from AMB-1), played by a generator.
  *
- * STATUS: the first sketch. The generator is a PLACEHOLDER (a short motif on a pentatonic scale, repeated with
- * small changes and long rests, now and then a low tone under it): it exists so that the sound can be heard and
- * judged, not as the design. The design (notes/concept.md in the workspace): hidden state, slow cycles of unequal
- * length, keys that offer something to the state rather than play notes, knobs that adjust.
+ * STATUS: a sketch of the design (notes/concept.md in the workspace): a generator of short motifs, leaned by a
+ * hidden state that slow cycles of unequal length turn and the keys' offerings move; knobs that adjust plainly.
  *
  * Threads, as AMB-1's: en_render() runs in the audio interrupt. Everything else posts commands, which the render
  * drains at the start of a block; the state marked (UI) is written by the render and only read elsewhere.
@@ -41,6 +39,10 @@ void en_set_tone(int kit, int role, int field, int value);
 void en_voice_shape(int kit, int role, float *ratio, float *att_ms, float *t60);   /* for the screen */
 void en_audition(int role);            /* one note of a voice, now (playing or resting) */
 
+/* the hidden state (lagoon.c: what each leans) and the keys' offerings into it */
+enum { S_WARM, S_WET, S_LOOSE, S_STILL, EN_NSTATE };
+void en_offer(int key, int strength);  /* key 0..26 (F3..G5); strength 100 a press, less while it is held */
+
 /* commands (main loop -> render) */
 void en_init(void);
 void en_set(int param, int value);
@@ -57,4 +59,8 @@ extern volatile float en_glow[EN_NVOICE];      /* 0..1: each voice's level, for 
 extern volatile uint8_t en_voice_note[EN_NVOICE];
 extern volatile uint32_t en_notes;             /* notes started since boot */
 extern volatile float en_cycle;                /* 0..1: where the slow cycle is (the screen's breath) */
-extern volatile uint8_t en_voice_role[EN_NVOICE];   /* R_*: which voice of the kit each FM voice plays */
+extern volatile uint8_t en_voice_role[EN_NVOICE];
+extern volatile float en_state[EN_NSTATE];     /* -1..1: the hidden state, as it leans the generator now */
+extern volatile float en_offset[EN_NSTATE];    /* what the offerings have moved it by (the rest: the cycles) */
+extern volatile uint32_t en_offers;            /* offerings since boot (presses) */
+extern volatile uint8_t en_scale;              /* the scale of the motif now (0 the coolest .. 4) */   /* R_*: which voice of the kit each FM voice plays */
