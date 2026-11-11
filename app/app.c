@@ -157,7 +157,7 @@ static void input(void)
 void app_input_only(void) { input(); }
 
 /* a ring: the midpoint circle, clipped by the canvas */
-static void ring(int32_t cx, int32_t cy, int32_t r, uint16_t c)
+static void draw_ring(int32_t cx, int32_t cy, int32_t r, uint16_t c)
 {
     int32_t x = r, y = 0, err = 1 - r;
     while (x >= y) {
@@ -198,7 +198,7 @@ static void draw(void)
     cv_begin(240, 144, C_BLACK);
     {
         float b = 0.5f + 0.5f * fm_sinf(en_cycle * FM_TWO_PI);
-        ring(120, 72, 3 + (int32_t)(4.0f * b), C_LINE);
+        draw_ring(120, 72, 3 + (int32_t)(4.0f * b), C_LINE);
     }
     for (i = 0; i < EN_NVOICE; i++) {
         float g = en_glow[i];
@@ -208,9 +208,9 @@ static void draw(void)
         x = 20 + ((int32_t)en_voice_note[i] - 41) * 4;
         x = x < 10 ? 10 : x > 230 ? 230 : x;
         r = 4 + (int32_t)((1.0f - g) * 56.0f);
-        ring(x, 72, r, g > 0.5f ? C_HI : g > 0.2f ? C_AMB : C_DIM);
+        draw_ring(x, 72, r, g > 0.5f ? C_HI : g > 0.2f ? C_AMB : C_DIM);
         if (g > 0.6f)
-            ring(x, 72, r / 2, C_AMB);
+            draw_ring(x, 72, r / 2, C_AMB);
     }
     cv_blit(0, 36);
     /* the knobs: K1..K4, each its name, its value and a bar */
