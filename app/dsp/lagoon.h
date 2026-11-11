@@ -14,10 +14,15 @@
 #define EN_SR 44100.0f
 #define EN_NVOICE 8                    /* FM voices */
 
-/* parameters, four to a page: the lagoon's, the effects' (FX), the memory's (SEQ) */
+/* parameters, four to a page: the lagoon's, the effects' (FX), the memory's (SEQ), the environment's (ENV), the
+ * cycles' (LFO), global (GLO) */
 enum { P_DENSITY, P_BRIGHT, P_SPACE, P_ECHO,
        P_TIME, P_FEEDBACK, P_SIZE, P_WEAR,
-       P_REPEAT, P_CHANGE, P_LENGTH, P_MEMORY, P_NPARAMS };
+       P_REPEAT, P_CHANGE, P_LENGTH, P_MEMORY,
+       P_DRIFT, P_OFFER, P_TEMPO, P_TRANSPOSE,     /* the environment (ENV) */
+       P_BREATH, P_TIDE, P_TURN, P_PACE,           /* the cycles (LFO) */
+       P_TUNE, P_LEVEL, P_LIGHTS, P_SLEEP,         /* global (GLO): P_LIGHTS and P_SLEEP are the UI's */
+       P_NPARAMS };
 typedef struct {
     const char *name;
     int16_t lo, hi, def;
@@ -40,6 +45,10 @@ void en_set_kit(int kit);
 void en_set_tone(int kit, int role, int field, int value);
 void en_voice_shape(int kit, int role, float *ratio, float *att_ms, float *t60);   /* for the screen */
 void en_audition(int role);
+void en_octave(int oct);               /* the music's register: -2..2 octaves (OCT- / OCT+) */
+void en_arp(int on);                   /* the pulse of broken chords (ARP) */
+void en_rec(int on);                   /* REC: 1 a phrase starts (the generator waits), 0 it is taken in */
+void en_rec_note(int note);            /* a key played while REC: sounds now, kept for the phrase (MIDI note) */
 void en_hold(int on);                  /* hold what the music holds now (a motif, a chord, the loops' colour) */            /* one note of a voice, now (playing or resting) */
 
 /* the hidden state (lagoon.c: what each leans) and the keys' offerings into it */
@@ -50,6 +59,12 @@ void en_offer(int key, int strength);
 #define EN_NWORLD 5
 const char *en_world_name(int world);
 void en_set_world(int world);           /* there at once; only the state's lean glides */  /* key 0..26 (F3..G5); strength 100 a press, less while it is held */
+extern volatile uint8_t en_arp_on, en_arp_beat;   /* the pulse on; a count of its notes (the screen's tick) */
+extern volatile uint8_t en_recording;          /* a phrase is being played in */
+extern volatile uint32_t en_taken;             /* phrases taken in, since boot */
+extern volatile float en_cyc[3];               /* the three cycles, where each is (turns) */
+extern volatile float en_beat_s;               /* the beat now (s) */
+extern volatile uint8_t en_root;               /* the root now (MIDI note, before Transpose) */
 extern volatile uint8_t en_held;               /* en_hold: held */
 /* what the music holds now, for the screen (SEQ): a figure of up to 8 notes (scale degrees, lengths in beats; for
  * the loops each loop's note and its length in seconds, for the drone the chord's tones), the note sounding, and the

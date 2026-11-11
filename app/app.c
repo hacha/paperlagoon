@@ -4,14 +4,20 @@
  * announce.c are in scope), the glue to the engine (dsp/lagoon.c, its own -O2 unit) and the screen.
  *
  * Pages, as HYP-1's: SELECT turns through all of them, a button jumps to its own and is lit while one of its pages
- * shows (the buttons that have a page or a use glow dim); the header says where (n/6).
+ * shows (the buttons that have a page or a use glow dim); the header says where (n/9).
  *   1 the lagoon (HOME)      the music: K1..K4 Density, Bright, Space, Echo
  *   2..4 a voice (EDIT)      the kit's lead, answer and low voice: K1..K4 Color, Bright, Decay, Soft. EDIT again:
  *                            the next voice; EDIT held: the voice as the kit has it
  *   5 the effects (FX)       the tape echo and the plate: K1..K4 Time, Feedback, Size, Wear
- *   6 the memory (SEQ)       what the music holds (a motif and the ones remembered, a chord, the loops):
+ *   6 the environment (ENV)  K1..K4 Drift (how far the cycles and offerings sway it), Offer, Tempo, Transpose
+ *   7 the cycles (LFO)       the breath, the tide, the long turn: K1..K3 their depths, K4 Pace
+ *   8 the memory (SEQ)       what the music holds (a motif and the ones remembered, a chord, the loops):
  *                            K1..K4 Repeat, Change, Length, Memory. SEQ held: hold it (no new motif, chord or
  *                            colour; the changes go on), held again: let go
+ *   9 global (GLO)           K1..K4 Tune, Level, Lights (the buttons' glow), Sleep (minutes: then it rests)
+ * ARP: a pulse of broken chords, on or off. OCT- / OCT+: the music's register. REC held: the keys play, and the
+ * phrase is taken in when it is let go (OCT- / OCT+ then move the keys' octave). SEL held: the knobs are the
+ * lagoon's four on any page (on the lagoon, in finer steps); the strip shows it.
  * PRESETS: the kit (a set of three voices; the edits are kept per kit). ALGORITHM: the world (a place that exists
  * nowhere: it leans how the music goes, never the knobs). PLAY: play or rest. SAVE: keep it all.
  * The keys play no notes: a press offers something to the hidden state (lagoon.h), which the music shows later and
@@ -19,14 +25,23 @@
  * state itself as the water's line, slowly. */
 #include "fastmath.h"
 
-#define SET_MAGIC 0x334C504Bu            /* "PLL3": the settings record; PLL2 (four parameters) is carried over */
+#define SET_MAGIC 0x344C504Bu            /* "PLL4": the settings record; PLL3 and PLL2 (fewer parameters) carry over */
+#define SET_MAGIC_3 0x334C504Bu
 #define SET_MAGIC_2 0x324C504Bu
 typedef struct {
     uint32_t magic;
     int16_t par[P_NPARAMS];
     uint8_t kit, world;
+    int8_t oct;                                  /* the music's register, -2..2 */
+    uint8_t arp;                                 /* the pulse on */
     int8_t tone[EN_NKIT][EN_NROLE][EN_NTONE];
 } settings_t;
+typedef struct {                                 /* PLL3: twelve parameters */
+    uint32_t magic;
+    int16_t par[12];
+    uint8_t kit, world;
+    int8_t tone[EN_NKIT][EN_NROLE][EN_NTONE];
+} settings3_t;
 typedef struct {                                 /* PLL2: the lagoon's four parameters only */
     uint32_t magic;
     int16_t par[4];
@@ -51,6 +66,8 @@ static void settings_defaults(void)
         set.par[i] = en_param_info(i)->def;
     set.kit = 0;
     set.world = 0;
+    set.oct = 0;
+    set.arp = 0;
     for (i = 0; i < EN_NKIT * EN_NROLE; i++)
         tone_defaults(i / EN_NROLE, i % EN_NROLE);
 }
@@ -60,23 +77,31 @@ void app_init(void)
 {
     int i, f;
     static union {
-        settings_t v3;
+        settings_t v4;
+        settings3_t v3;
         settings2_t v2;
     } ld;
     int n;
     en_init();
     n = plat_store_load(OBJ_SETTINGS, &ld, sizeof ld);
-    if (n == (int)sizeof(settings_t) && ld.v3.magic == SET_MAGIC) {
-        set = ld.v3;
-    } else if (n == (int)sizeof(settings2_t) && ld.v2.magic == SET_MAGIC_2) {   /* an older record: carried over */
+    if (n == (int)sizeof(settings_t) && ld.v4.magic == SET_MAGIC) {
+        set = ld.v4;
+    } else if (n == (int)sizeof(settings3_t) && ld.v3.magic == SET_MAGIC_3) {   /* older records: carried over */
+        settings_defaults();
+        for (i = 0; i < 12; i++)
+            set.par[i] = ld.v3.par[i];
+        set.kit = ld.v3.kit;
+        set.world = ld.v3.world;
+        for (i = 0; i < (int)sizeof set.tone; i++)
+            ((int8_t *)set.tone)[i] = ((const int8_t *)ld.v3.tone)[i];
+    } else if (n == (int)sizeof(settings2_t) && ld.v2.magic == SET_MAGIC_2) {
         settings_defaults();
         for (i = 0; i < 4; i++)
             set.par[i] = ld.v2.par[i];
         set.kit = ld.v2.kit;
         set.world = ld.v2.world;
-        for (i = 0; i < EN_NKIT * EN_NROLE * EN_NTONE; i++)
-            set.tone[i / (EN_NROLE * EN_NTONE)][i / EN_NTONE % EN_NROLE][i % EN_NTONE] =
-                ld.v2.tone[i / (EN_NROLE * EN_NTONE)][i / EN_NTONE % EN_NROLE][i % EN_NTONE];
+        for (i = 0; i < (int)sizeof set.tone; i++)
+            ((int8_t *)set.tone)[i] = ((const int8_t *)ld.v2.tone)[i];
     } else {
         settings_defaults();
     }
@@ -92,6 +117,10 @@ void app_init(void)
     if (set.world >= EN_NWORLD)
         set.world = 0;
     en_set_world(set.world);
+    set.oct = (int8_t)clamp(set.oct, -2, 2);
+    en_octave(set.oct);
+    set.arp = (uint8_t)(set.arp != 0);
+    en_arp(set.arp);
     for (i = 0; i < EN_NKIT * EN_NROLE; i++)
         for (f = 0; f < EN_NTONE; f++) {
             int8_t *v = &set.tone[i / EN_NROLE][i % EN_NROLE][f];
@@ -110,19 +139,21 @@ void app_panic(void)
 }
 
 /* ------------------------------------------------------------------ UI --- */
-enum { PG_LAGOON, PG_LEAD, PG_ANSWER, PG_LOW, PG_FX, PG_SEQ, NPAGE };
+enum { PG_LAGOON, PG_LEAD, PG_ANSWER, PG_LOW, PG_FX, PG_ENV, PG_LFO, PG_SEQ, PG_GLO, NPAGE };
 #define PG_ROLE(p) ((p) - PG_LEAD)               /* a voice page's R_* */
 #define PG_VOICE(p) ((p) >= PG_LEAD && (p) <= PG_LOW)
 #define HOLD_MS 800u                             /* EDIT or SEQ held this long: its second use */
 
 static int page_par(int p)                       /* a page's first parameter (P_*), or -1 (a voice page) */
 {
-    return p == PG_LAGOON ? P_DENSITY : p == PG_FX ? P_TIME : p == PG_SEQ ? P_REPEAT : -1;
+    return p == PG_LAGOON ? P_DENSITY : p == PG_FX ? P_TIME : p == PG_SEQ ? P_REPEAT : p == PG_ENV ? P_DRIFT :
+           p == PG_LFO ? P_BREATH : p == PG_GLO ? P_TUNE : -1;
 }
 
 static const char *page_name(int p)
 {
-    return p == PG_LAGOON ? "LAGOON" : p == PG_FX ? "EFFECTS" : p == PG_SEQ ? "MEMORY" : en_role_name(PG_ROLE(p));
+    return p == PG_LAGOON ? "LAGOON" : p == PG_FX ? "EFFECTS" : p == PG_SEQ ? "MEMORY" : p == PG_ENV ? "ENVIRONMENT" :
+           p == PG_LFO ? "CYCLES" : p == PG_GLO ? "GLOBAL" : en_role_name(PG_ROLE(p));
 }
 
 static struct {
@@ -143,6 +174,9 @@ static struct {
     uint8_t hb_done[2];                          /* its hold has acted: the release does nothing */
     uint8_t page;
     uint8_t redraw;
+    uint8_t shift;                               /* SEL held: the knobs are the lagoon's */
+    int8_t rec_oct;                              /* the keys' octave while REC */
+    uint32_t play_at;                            /* playing since (the sleep timer) */
 } ui;
 
 /* s copied into d (cap bytes with the terminator); returns the length written */
@@ -229,7 +263,8 @@ static void page_go(int p)
 static void param_step(int p, int knob, int32_t d)
 {
     const en_param_t *pi = en_param_info(p);
-    int32_t v = clamp(set.par[p] + 2 * d, pi->lo, pi->hi);
+    int step = pi->hi - pi->lo <= 30 || (ui.shift && ui.page == PG_LAGOON) ? 1 : 2;   /* small ranges, SEL: fine */
+    int32_t v = clamp(set.par[p] + step * d, pi->lo, pi->hi);
     char t[12];
     ui.turned_at[knob] = plat_ms();
     if (v == set.par[p])
@@ -358,6 +393,47 @@ static void input(void)
         page_go(PG_LAGOON);
     if (down & 1u << B_FX)
         page_go(PG_FX);
+    if (down & 1u << B_ENV)
+        page_go(PG_ENV);
+    if (down & 1u << B_LFO)
+        page_go(PG_LFO);
+    if (down & 1u << B_GLO)
+        page_go(PG_GLO);
+    ui.shift = (uint8_t)((btn >> B_SEL) & 1u);
+    if ((down | up) & 1u << B_SEL)
+        ui.redraw = 1;
+    if (down & 1u << B_ARP) {
+        set.arp ^= 1u;
+        set_dirty = 1;
+        en_arp(set.arp);
+        app_say("PULSE", set.arp ? "ON" : "OFF");
+    }
+    if (down & 1u << B_REC) {                    /* REC held: the keys play; let go: the phrase is taken in */
+        ui.rec_oct = 0;
+        en_rec(1);
+        app_say("REC", "PLAY A PHRASE");
+    }
+    if (up & 1u << B_REC) {
+        en_rec(0);
+        app_say("TAKEN IN", "");
+    }
+    if (down & (1u << B_OCTDN | 1u << B_OCTUP)) {
+        int d = down & 1u << B_OCTUP ? 1 : -1;
+        char t[12];
+        if (btn & 1u << B_REC) {                 /* while REC: the keys' octave */
+            ui.rec_oct = (int8_t)clamp(ui.rec_oct + d, -2, 2);
+            int_text(ui.rec_oct, t);
+            app_say("KEYS OCT", t);
+        } else {
+            set.oct = (int8_t)clamp(set.oct + d, -2, 2);
+            set_dirty = 1;
+            en_octave(set.oct);
+            int_text(set.oct, t);
+            app_say("OCTAVE", t);
+        }
+    }
+    if (down & 1u << B_PLAY && !en_playing)
+        ui.play_at = now;
     switch (press(0, B_EDIT, btn, down, up, now)) {   /* EDIT: the voices; held: the voice as the kit has it */
     case 1: page_go(PG_VOICE(ui.page) && ui.page != PG_LOW ? ui.page + 1 : PG_LEAD); break;
     case 2:
@@ -372,8 +448,15 @@ static void input(void)
         app_say(en_held ? "LET GO" : "HELD", "");
         break;
     }
-    for (k = 0; k < NKEYS; k++) {                /* the keys: offerings */
+    for (k = 0; k < NKEYS; k++) {                /* the keys: offerings (while REC: notes) */
         uint32_t bit = 1u << k;
+        if ((btn & 1u << B_REC) && (keys & bit) && !(ui.keys & bit)) {
+            en_rec_note(53 + (int)k + 12 * ui.rec_oct);   /* key 0 = F3 */
+            ui.key_at[k] = 0;
+            continue;
+        }
+        if (btn & 1u << B_REC)
+            continue;
         if ((keys & bit) && !(ui.keys & bit)) {
             key_offer(k, 100, now);
             ui.key_at[k] = now + HOLD_OFFER_MS;
@@ -392,7 +475,9 @@ static void input(void)
         world_step(e);
     for (k = 0; k < 4; k++)
         if ((e = plat_enc((int)(EN_K1 + k))) != 0) {
-            if (PG_VOICE(ui.page))
+            if (ui.shift)                        /* SEL: the lagoon's four, from anywhere */
+                param_step(P_DENSITY + (int)k, (int)k, e);
+            else if (PG_VOICE(ui.page))
                 tone_step(PG_ROLE(ui.page), (int)k, e);
             else
                 param_step(page_par(ui.page) + (int)k, (int)k, e);
@@ -408,11 +493,13 @@ static void input(void)
     ui.btn = btn;
     {   /* lit: the page's button, playing, unsaved, held; dim: every button that has a page or a use */
         uint32_t page_btn = ui.page == PG_LAGOON ? 1u << B_HOME : ui.page == PG_FX ? 1u << B_FX :
-                            ui.page == PG_SEQ ? 1u << B_SEQ : 1u << B_EDIT;
+                            ui.page == PG_SEQ ? 1u << B_SEQ : ui.page == PG_ENV ? 1u << B_ENV :
+                            ui.page == PG_LFO ? 1u << B_LFO : ui.page == PG_GLO ? 1u << B_GLO : 1u << B_EDIT;
         uint32_t lit = btn | page_btn | (set_dirty ? 1u << B_SAVE : 0u) | (en_playing ? 1u << B_PLAY : 0u) |
-                       (en_held ? 1u << B_SEQ : 0u);
-        uint32_t dim = 1u << B_HOME | 1u << B_EDIT | 1u << B_FX | 1u << B_SEQ | 1u << B_SAVE | 1u << B_PLAY;
-        plat_lights(lit, keys, dim, 0, 1);
+                       (en_held ? 1u << B_SEQ : 0u) | (set.arp ? 1u << B_ARP : 0u) |
+                       (set.oct > 0 ? 1u << B_OCTUP : 0u) | (set.oct < 0 ? 1u << B_OCTDN : 0u);
+        uint32_t dim = (1u << NB) - 1u;          /* every button has a use */
+        plat_lights(lit, keys, dim, 0, set.par[P_LIGHTS]);
     }
 }
 
@@ -464,6 +551,13 @@ static void draw_header(uint32_t now)
             end = cv_text(10, 6, &FONT_B, page_name(ui.page), C_WHITE);
             if (ui.page == PG_SEQ && en_held)
                 end = cv_text(end + 8, 10, &FONT_XS, "HELD", C_AMB);
+        }
+        if (en_recording) {                      /* REC, SEL: said over the rest */
+            cv_rect(0, 0, 240, 32, C_BLACK);
+            end = cv_text(10, 6, &FONT_B, "REC", C_WHITE);
+            end = cv_text(end + 8, 10, &FONT_XS, "the keys play; let go to give it", C_AMB);
+        } else if (ui.shift) {
+            end = cv_text(end + 8, 10, &FONT_XS, ui.page == PG_LAGOON ? "SEL: FINE" : "SEL: LAGOON", C_AMB);
         }
         int_text(ui.page + 1, t);                /* where: n/m */
         k = 1;
@@ -626,6 +720,16 @@ static void draw_fx(uint32_t now)
     cv_blit(0, 36);
 }
 
+static void k_append_s(char *t)                  /* " S" after a number */
+{
+    uint32_t k;
+    for (k = 0; t[k]; k++)
+        ;
+    t[k++] = ' ';
+    t[k++] = 'S';
+    t[k] = 0;
+}
+
 /* a figure: notes as bars, across by their lengths, up by their degrees; one lit */
 static void draw_fig(int32_t x0, int32_t y0, int32_t w, int32_t h, const volatile int8_t *deg,
                      const volatile int8_t *dur, int n, int lit, uint16_t c)
@@ -679,6 +783,89 @@ static void draw_seq(void)
     cv_blit(0, 36);
 }
 
+/* the environment: where the music is (the world, its root, its beat, its colour) and what moves it */
+static void draw_env(void)
+{
+    static const char *const NOTE[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+    static const char *const SCALE_NAME[5] = {"MINOR PENTATONIC", "YO", "MAJOR PENTATONIC", "WITH THE SEVENTH",
+                                              "LYDIAN"};
+    char t[24];
+    uint32_t k;
+    int32_t bpm = (int32_t)(60.0f / (en_beat_s > 0.05f ? en_beat_s : 0.8f) + 0.5f);
+    cv_begin(240, 144, C_BLACK);
+    cv_text(10, 2, &FONT_XS, "THE WORLD", C_GRAY);
+    cv_text(10, 18, &FONT_B, en_world_name(set.world), C_WHITE);
+    cv_text(10, 46, &FONT_XS, "ROOT", C_GRAY);
+    cv_text(70, 42, &FONT_B, NOTE[((int)en_root + set.par[P_TRANSPOSE] + 120) % 12], C_HI);
+    cv_text(10, 66, &FONT_XS, "BEAT", C_GRAY);
+    int_text(bpm, t);
+    k = str_put(t + 6, 12, t);                   /* (t: the number, then " a minute") */
+    str_put(t + 6 + k, 12, " A MINUTE");
+    cv_text(70, 62, &FONT_B, t + 6, C_HI);
+    cv_text(10, 86, &FONT_XS, "COLOUR", C_GRAY);
+    cv_text(70, 84, &FONT_XS, SCALE_NAME[en_scale % 5], C_HI);
+    cv_text(10, 106, &FONT_XS, "OCTAVE", C_GRAY);
+    int_text(set.oct, t);
+    cv_text(70, 102, &FONT_B, t, C_HI);
+    cv_text(130, 106, &FONT_XS, "PULSE", C_GRAY);
+    cv_text(180, 102, &FONT_B, set.arp ? "ON" : "OFF", set.arp ? C_HI : C_DIM);
+    cv_blit(0, 36);
+}
+
+/* the cycles: the breath, the tide, the long turn, each an orbit (its size its depth) with where it is now, and its
+ * length in seconds */
+static void draw_lfo(void)
+{
+    static const char *const NAME[3] = {"BREATH", "TIDE", "TURN"};
+    int32_t i;
+    char t[12];
+    cv_begin(240, 144, C_BLACK);
+    for (i = 0; i < 3; i++) {
+        int32_t cx = 42 + i * 78, cy = 60, r = 6 + set.par[P_BREATH + i] * 26 / 100;
+        float a = en_cyc[i] * FM_TWO_PI - FM_PI / 2.0f;
+        draw_ring(cx, cy, 32, C_LINE);
+        draw_ring(cx, cy, r, C_GRAY);
+        cv_rect(cx + (int32_t)(fm_cosf(a) * (float)r) - 2, cy + (int32_t)(fm_sinf(a) * (float)r) - 2, 5, 5, C_HI);
+        cv_text(cx - text_w(&FONT_XS, NAME[i]) / 2, 100, &FONT_XS, NAME[i], C_GRAY);
+        int_text((int32_t)(en_period[i] + 0.5f), t);
+        k_append_s(t);
+        cv_text(cx - text_w(&FONT_XS, t) / 2, 116, &FONT_XS, t, C_HI);
+    }
+    cv_blit(0, 36);
+}
+
+/* global: the tuning as a frequency, the level, the lights, the sleep timer's minutes left */
+static void draw_glo(uint32_t now)
+{
+    char t[24];
+    uint32_t k;
+    int32_t hz10 = (int32_t)(4400.0f * fm_exp2f((float)set.par[P_TUNE] * (1.0f / 1200.0f)) + 0.5f);
+    cv_begin(240, 144, C_BLACK);
+    cv_text(10, 2, &FONT_XS, APP_NAME, C_GRAY);
+    cv_text(10, 26, &FONT_XS, "A4", C_GRAY);
+    int_text(hz10 / 10, t);
+    k = str_put(t + 12, 12, t);
+    t[12 + k] = '.';
+    t[13 + k] = (char)('0' + hz10 % 10);
+    str_put(t + 14 + k, 8, " HZ");
+    cv_text(80, 22, &FONT_B, t + 12, C_HI);
+    cv_text(10, 52, &FONT_XS, "SLEEP", C_GRAY);
+    if (!set.par[P_SLEEP]) {
+        cv_text(80, 48, &FONT_B, "OFF", C_DIM);
+    } else {
+        int32_t left = (int32_t)set.par[P_SLEEP] * 60 - (int32_t)((now - ui.play_at) / 1000u);
+        if (!en_playing) {
+            cv_text(80, 48, &FONT_B, "RESTING", C_DIM);
+        } else {
+            int_text(left > 0 ? (left + 59) / 60 : 0, t);
+            k = str_put(t + 12, 12, t);
+            str_put(t + 12 + k, 12, " MIN LEFT");
+            cv_text(80, 48, &FONT_B, t + 12, C_HI);
+        }
+    }
+    cv_blit(0, 36);
+}
+
 /* the knobs: K1..K4, each its name, its value and a bar */
 static void draw_knobs(uint32_t now)
 {
@@ -690,8 +877,8 @@ static void draw_knobs(uint32_t now)
         int32_t x = 6 + i * 59, w = 52, v, hi;
         int lit = ui.turned_at[i] && now - ui.turned_at[i] < 600u;
         const char *name;
-        if (!PG_VOICE(ui.page)) {
-            int pn = page_par(ui.page) + (int)i;
+        if (ui.shift || !PG_VOICE(ui.page)) {    /* (SEL: the lagoon's four) */
+            int pn = (ui.shift ? P_DENSITY : page_par(ui.page)) + (int)i;
             const en_param_t *p = en_param_info(pn);
             name = p->name;
             v = set.par[pn] - p->lo;
@@ -724,6 +911,12 @@ static void draw(void)
         draw_fx(now);
     else if (ui.page == PG_SEQ)
         draw_seq();
+    else if (ui.page == PG_ENV)
+        draw_env();
+    else if (ui.page == PG_LFO)
+        draw_lfo();
+    else if (ui.page == PG_GLO)
+        draw_glo(now);
     else
         draw_voice(PG_ROLE(ui.page));
     draw_knobs(now);
@@ -740,6 +933,12 @@ void app_frame(void)
     uint32_t now = plat_ms();
     input();
     ann_tick(now);
+    if (!ui.play_at)
+        ui.play_at = now ? now : 1u;
+    if (set.par[P_SLEEP] && en_playing && now - ui.play_at >= (uint32_t)set.par[P_SLEEP] * 60000u) {   /* asleep */
+        en_play(0);
+        app_say("SLEEP", "RESTING");
+    }
     if (ui.msg_until && now >= ui.msg_until) {
         ui.msg_until = 0;
         ui.redraw = 1;
@@ -768,6 +967,16 @@ int app_expect(const char *what, int *got)
         *got = ui.page;
     else if (!strcmp(what, "alg"))               /* the world's algorithm: 0 motifs, 1 drone, 2 loops */
         *got = en_alg;
+    else if (!strcmp(what, "oct"))
+        *got = set.oct;
+    else if (!strcmp(what, "arp"))
+        *got = en_arp_on;
+    else if (!strcmp(what, "arpbeats"))          /* the pulse's notes (a count, mod 256) */
+        *got = en_arp_beat;
+    else if (!strcmp(what, "rec"))
+        *got = en_recording;
+    else if (!strcmp(what, "taken"))             /* phrases taken in */
+        *got = (int)en_taken;
     else if (!strcmp(what, "held"))
         *got = en_held;
     else if (!strcmp(what, "world"))

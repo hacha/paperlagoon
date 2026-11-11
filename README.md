@@ -10,10 +10,17 @@ hidden state leans. Tested in the host simulator; runs on an FM-1 (installed wit
 
 | Control | Does |
 |---|---|
-| SELECT | turns through the pages: 1 the lagoon, 2..4 the kit's voices, 5 the effects, 6 the memory (the header shows n/6) |
+| SELECT | turns through the pages: 1 the lagoon, 2..4 the kit's voices, 5 the effects, 6 the environment, 7 the cycles, 8 the memory, 9 global (the header shows n/9) |
 | HOME | the lagoon (lit there) |
 | EDIT | the voices (lit there); again: the next voice; held: the voice as the kit has it |
 | FX | the effects: K1..K4 Time (the tape's loop), Feedback, Size (the plate), Wear (the tape's age) |
+| ENV | the environment: the world, its root, beat and colour; K1..K4 Drift (how far the cycles and offerings sway the music), Offer, Tempo, Transpose |
+| LFO | the cycles (breath, tide, long turn) as orbits: K1..K3 their depths, K4 Pace |
+| GLO | global: K1..K4 Tune, Level, Lights (the buttons' glow), Sleep (minutes; then it rests) |
+| ARP | a pulse of broken chords under the music, on or off (soft, short; no drums) |
+| OCT- / OCT+ | the music's register, two octaves either way |
+| REC | held: the keys play (the music waits); let go: the phrase is taken in as the music's own (the motif, the drone's chord, the loops' notes). OCT- / OCT+ meanwhile move the keys' octave |
+| SEL | held: K1..K4 are the lagoon's four from any page (on the lagoon itself, in finer steps) |
 | SEQ | the memory: what the music holds (the motif and the ones remembered, the chord, the loops); K1..K4 Repeat, Change, Length, Memory. Held: hold it (no new motif, chord or colour), held again: let go |
 | PRESETS | the kit: six sets of three voices (lead, answer, low); edits are kept per kit |
 | ALGORITHM | the world: five places that exist nowhere, each its own way of making music (never the knobs nor the kit) |
@@ -21,9 +28,9 @@ hidden state leans. Tested in the host simulator; runs on an FM-1 (installed wit
 | PLAY | plays or rests |
 | SAVE | keeps all of it (lit when something is not saved) |
 
-Buttons that do something glow dim; the one whose page shows is lit.
+Every button glows dim; the one whose page shows is lit, and so are PLAY when playing, SAVE when unsaved, SEQ when held, ARP when on, OCT when moved.
 
-| Keys | play no notes: a press *offers* something to a hidden state (held: a little more, again and again) |
+| Keys | play no notes (but under REC): a press *offers* something to a hidden state (held: a little more, again and again) |
 
 Kits: PAPER LAGOON, WOODEN RAIN, GLASS ORCHARD, SLOW BREATH, IRON SNOW, HAZE ARCHIVE.
 
@@ -44,7 +51,7 @@ The water's line is the state: higher in light, rougher when folded.
 ```sh
 git submodule update --init --recursive
 ./build.sh --host                     # host simulator (a C compiler is enough)
-app/build/host/paperlagoon_host app/tests/basic.txt app/build/host   # and tones, offerings, worlds, pages
+app/build/host/paperlagoon_host app/tests/basic.txt app/build/host   # and tones, offerings, worlds, pages, buttons
 ./build.sh --web                      # browser emulator (Emscripten)
 ./serve.sh [port]                     # serve it on http://localhost:8000/
 ./build.sh                            # device package (JieLi toolchain + AC79 SDK)

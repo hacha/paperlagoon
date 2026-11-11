@@ -1,0 +1,110 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 hacha
+# the rest of the panel: ENV, LFO, GLO, ARP, OCT, REC, SEL, the sleep timer
+wait 600
+tap ENV
+wait 30
+expect page 5
+turn K4 3
+wait 30
+expect param15 3
+wait 1000
+shot env.png
+tap LFO
+wait 30
+expect page 6
+turn K4 10
+wait 30
+expect param19 70
+wait 1000
+shot lfo.png
+tap GLO
+wait 30
+expect page 8
+turn K3 1
+wait 30
+expect param22 2
+shot glo.png
+tap HOME
+wait 30
+expect page 0
+# the pulse
+expect arp 0
+tap ARP
+wait 30
+expect arp 1
+wait 20000
+expect arpbeats >10
+tap ARP
+wait 30
+expect arp 0
+# the register
+tap OCT+
+wait 30
+expect oct 1
+tap OCT+
+tap OCT+
+wait 30
+expect oct 2
+tap OCT-
+tap OCT-
+wait 30
+expect oct 0
+# a phrase played in
+expect taken 0
+press REC
+wait 100
+expect rec 1
+tap OCT-
+tapkey 7
+wait 400
+tapkey 9
+wait 800
+tapkey 12
+wait 400
+tapkey 9
+wait 1600
+shot rec.png
+release REC
+wait 30
+expect rec 0
+expect taken 1
+expect oct 0
+tap SEQ
+wait 1500
+shot taken.png
+tap HOME
+# SEL: the lagoon's knobs from any page, finer on the lagoon
+tap FX
+wait 30
+press SEL
+wait 30
+turn K1 2
+wait 30
+shot sel.png
+release SEL
+wait 30
+expect param0 49
+expect param4 42
+tap HOME
+press SEL
+turn K1 -1
+release SEL
+wait 30
+expect param0 48
+# the sleep timer: two minutes (one detent) after it started playing, it rests
+tap GLO
+turn K4 1
+wait 30
+expect param23 2
+wait 1000
+shot sleep.png
+wait 100000
+expect playing 0
+tap SAVE
+wait 30
+reboot
+wait 600
+expect param15 3
+expect param22 2
+expect oct 0

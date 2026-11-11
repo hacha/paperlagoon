@@ -107,6 +107,8 @@ typedef struct {
     float dry, esend, rsend;                     /* to the mix, the echo, the plate */
 } fm_patch_t;
 
+static float fm_tune;                            /* (PaperLagoon) the tuning, in semitones */
+
 static int fm_start(const fm_patch_t *pt, int note, float vel, float pan, int32_t wait)   /* the voice used */
 {
     int i, best = 0;
@@ -123,7 +125,7 @@ static int fm_start(const fm_patch_t *pt, int note, float vel, float pan, int32_
     v->on = 1;
     v->note = (uint8_t)note;
     v->cph = v->mph = 0.0f;
-    v->cinc = mtof((float)note) * (1.0f / EN_SR);
+    v->cinc = mtof((float)note + fm_tune) * (1.0f / EN_SR);
     v->minc = v->cinc * pt->ratio;
     v->amp = v->peak = vel;
     v->adec = fm_expf(-6.9f / (pt->t60 * EN_SR));
