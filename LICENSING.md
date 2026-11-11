@@ -4,7 +4,7 @@ PaperLagoon as a whole is distributed under **GPL-3.0-only** (LICENSE). Its part
 
 | Part | From | Licence |
 | --- | --- | --- |
-| `app/app.c`, `app/app.h`, `app/dsp/lagoon.c`, `app/dsp/lagoon.h`, `app/tests/`, `build.sh` | PaperLagoon | GPL-3.0-only |
+| `app/app.c`, `app/app.h`, `app/dsp/lagoon.c`, `app/dsp/lagoon.h`, `app/tests/`, `build.sh`, `serve.sh` | PaperLagoon | GPL-3.0-only |
 | `app/dsp/amb_parts.c` (the command queue, random numbers, sine table, slow modulators, two-operator FM voice, output mix) | [AMB-1](https://github.com/charlesvestal/fm1-amb) by Charles Vestal, with changes | MPL-2.0 |
 | `app/dsp/plate.c` (Dattorro's plate) | [AMB-1](https://github.com/charlesvestal/fm1-amb) by Charles Vestal, its plate after FoMni | MPL-2.0 |
 | `app/dsp/echo.c` (tape echo and Echoplex) | [AMB-1](https://github.com/charlesvestal/fm1-amb) by Charles Vestal | MPL-2.0 |
