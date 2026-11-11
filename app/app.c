@@ -431,10 +431,16 @@ static void draw_lagoon(uint32_t now)
     int32_t hy = 80 - (int32_t)(light * 26.0f), x, gap = 6 - (int32_t)(bleed * 3.0f);
     cv_begin(240, 144, C_BLACK);
     cv_text(10, 2, &FONT_XS, en_kit_name(set.kit), C_GRAY);
+    if (en_alg == 1)                             /* the drone: a heavy, slow water */
+        speed *= 0.5f;
     for (x = 0; x < 240; x += gap < 2 ? 2 : gap) {
         float y = (float)hy + amp * fm_sinf((float)x * 0.045f + t * speed) +
                   0.5f * amp * fm_sinf((float)x * 0.11f - t * speed * 1.7f);
         cv_pset(x, (int32_t)y, C_LINE);
+        if (en_alg == 1) {
+            cv_pset(x + gap / 2, (int32_t)y + 3, C_LINE);
+            cv_pset(x, (int32_t)y + 6, C_LINE);
+        }
     }
     draw_ring(120, hy, 3 + (int32_t)(4.0f * b), C_LINE);
     for (i = 0; i < EN_NVOICE; i++) {
@@ -444,11 +450,26 @@ static void draw_lagoon(uint32_t now)
             continue;
         x = 20 + ((int32_t)en_voice_note[i] - 41) * 4;
         x = x < 10 ? 10 : x > 230 ? 230 : x;
+        if (en_alg == 1) {                       /* the drone: bands that swell with the sound and sink with it */
+            int32_t rx = 6 + (int32_t)(g * 54.0f);
+            draw_ellipse(x, hy + 3, rx, g > 0.5f ? C_HI : g > 0.2f ? C_AMB : C_DIM);
+            draw_ellipse(x, hy + 3, rx * 2 / 3, g > 0.5f ? C_AMB : C_DIM);
+            continue;
+        }
         r = 4 + (int32_t)((1.0f - g) * 56.0f);
         draw_ring(x, hy, r, g > 0.5f ? C_HI : g > 0.2f ? C_AMB : C_DIM);
         if (g > 0.6f)
             draw_ring(x, hy, r / 2, C_AMB);
     }
+    if (en_alg == 2)                             /* the loops: four buoys, a light going round each */
+        for (i = 0; i < 4; i++) {
+            float ph = en_loop_ph[i], a = ph * FM_TWO_PI - FM_PI / 2.0f;
+            int32_t bx = 36 + (int32_t)i * 56, by = hy - 26;
+            draw_ring(bx, by, 9, ph < 0.06f ? C_WHITE : C_LINE);
+            cv_rect(bx + (int32_t)(fm_cosf(a) * 9.0f) - 1, by + (int32_t)(fm_sinf(a) * 9.0f) - 1, 3, 3, C_HI);
+            if (ph < 0.15f)
+                draw_ring(bx, by, 9 + (int32_t)(ph * 80.0f), C_GRAY);
+        }
     for (i = 0; i < 8; i++) {                    /* the offerings */
         uint32_t age;
         if (!ui.drop[i].born)
@@ -588,6 +609,8 @@ int app_expect(const char *what, int *got)
         *got = set_dirty;
     else if (!strcmp(what, "page"))              /* 0 the lagoon, 1..3 the voices */
         *got = ui.page;
+    else if (!strcmp(what, "alg"))               /* the world's algorithm: 0 motifs, 1 drone, 2 loops */
+        *got = en_alg;
     else if (!strcmp(what, "world"))
         *got = set.world;
     else if (!strcmp(what, "kit"))

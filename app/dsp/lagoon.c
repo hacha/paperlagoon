@@ -127,11 +127,14 @@ void en_voice_shape(int k, int role, float *ratio, float *att_ms, float *t60)
     *t60 = pt.t60;
 }
 
-static void play(int role, int note, float vel, float pan, int32_t wait)
+/* a note of the kit's voice; t60x and att_min reshape it (a drone stretches any kit's voice into a swell) */
+static void play_shaped(int role, int note, float vel, float pan, int32_t wait, float t60x, float att_min)
 {
     fm_patch_t pt;
     int v;
     voice_patch(kit, role, &pt);
+    pt.t60 *= t60x;
+    pt.att_ms = fm_maxf(pt.att_ms, att_min);
     pt.t60 *= fm_clampf(1.0f - (float)(note - 66) * 0.012f, 0.6f, 1.5f);   /* low notes ring longer */
     pt.idx *= (0.3f + 1.4f * bright) * (0.6f + 0.4f * vel);               /* Bright, and a harder strike */
     v = fm_start(&pt, note, vel * KITS[kit].gain, pan, wait);
@@ -142,11 +145,18 @@ static void play(int role, int note, float vel, float pan, int32_t wait)
     en_notes++;
 }
 
+static void play(int role, int note, float vel, float pan, int32_t wait)
+{
+    play_shaped(role, note, vel, pan, wait, 1.0f, 0.0f);
+}
+
 /* ------------------------------------------------------------ worlds --- */
-/* Places that exist nowhere (ALGORITHM). A world leans the hidden state from its own resting point, sets the beat,
- * the roots the music wanders among, how fast the cycles turn and where the answer sounds. It never touches the
- * knobs nor the kit. A change of world glides: the lean over some seconds, the beat at the end of a pass, the root
- * at the next motif. World 0 is the music as it was before there were worlds. */
+/* Places that exist nowhere (ALGORITHM). Each makes its music its own way (the algorithm: motifs, a drone, loops),
+ * leans the hidden state from its own resting point, and sets the beat, the roots the music wanders among, how fast
+ * the cycles turn and where the answer sounds. It never touches the knobs nor the kit. A change is heard at once:
+ * the new world starts within a moment (what sounds rings out); only the state's lean glides. World 0 is the music
+ * as it was before there were worlds. */
+enum { ALG_MOTIF, ALG_DRONE, ALG_LOOPS };
 typedef struct {
     const char *name;
     float bias[EN_NSTATE];                       /* the state's resting lean: light, bleed, fold, margin */
@@ -154,17 +164,18 @@ typedef struct {
     int8_t roots[4];                             /* the first is where it starts */
     float cycles;                                /* the cycles' lengths, times this */
     int8_t answer;                               /* the answer, this far over the lead (semitones) */
+    uint8_t alg;                                 /* ALG_* */
 } world_t;
 static const world_t WORLDS[EN_NWORLD] = {
-    {"SHALLOWS OF MEMORY", {0.0f, 0.0f, 0.0f, 0.0f}, 0.80f, {65, 60, 70, 67}, 1.0f, 12},        /* 記憶の浅瀬 */
-    {"BEHIND THE HORIZON", {-0.35f, 0.2f, 0.0f, 0.3f}, 0.95f, {58, 60, 63, 55}, 1.4f, 7},       /* 水平線の裏側 */
-    {"THE UNREAD LETTER", {0.0f, -0.2f, 0.55f, 0.6f}, 0.85f, {62, 67, 69, 64}, 1.0f, 12},       /* 誰も読まない手紙 */
-    {"SILENT FOUNTAIN", {0.35f, 0.35f, 0.0f, -0.3f}, 0.68f, {67, 72, 65, 70}, 0.65f, 19},       /* 音のしない噴水 */
-    {"WHERE LIGHT BECOMES MOSS", {0.2f, 0.4f, -0.3f, 0.1f}, 0.90f, {64, 69, 62, 67}, 2.0f, 12}, /* 光が苔になるところ */
+    {"SHALLOWS OF MEMORY", {0.0f, 0.0f, 0.0f, 0.0f}, 0.80f, {65, 60, 70, 67}, 1.0f, 12, ALG_MOTIF},        /* 記憶の浅瀬 */
+    {"BEHIND THE HORIZON", {-0.35f, 0.2f, 0.0f, 0.3f}, 0.95f, {58, 60, 63, 55}, 1.4f, 7, ALG_DRONE},        /* 水平線の裏側 */
+    {"THE UNREAD LETTER", {0.0f, -0.2f, 0.55f, 0.6f}, 0.85f, {62, 67, 69, 64}, 1.0f, 12, ALG_MOTIF},       /* 誰も読まない手紙 */
+    {"SILENT FOUNTAIN", {0.35f, 0.35f, 0.0f, -0.3f}, 0.68f, {67, 72, 65, 70}, 0.65f, 19, ALG_MOTIF},       /* 音のしない噴水 */
+    {"WHERE LIGHT BECOMES MOSS", {0.2f, 0.4f, -0.3f, 0.1f}, 0.90f, {64, 69, 62, 67}, 2.0f, 12, ALG_LOOPS}, /* 光が苔になるところ */
 };
 #define WORLD_GLIDE_S 20.0f
 static volatile uint8_t world;
-static uint8_t world_root;                       /* a new world: its first root at the next motif */
+volatile uint8_t en_alg;
 static float wbias[EN_NSTATE], wcycles = 1.0f;   /* the lean and the cycles' scale, gliding to the world's */
 const char *en_world_name(int w) { return WORLDS[(unsigned)w % EN_NWORLD].name; }
 
@@ -328,21 +339,27 @@ static int margin_cut(void)                      /* notes a motif loses to the m
     return st[S_MARGIN] > 0.2f && frand() < st[S_MARGIN] ? 1 + irand(2) : 0;
 }
 
+static void scale_pick(void)                     /* the scale from the state: S_LIGHT darker .. brighter */
+{
+    float x = 2.0f + 2.4f * st[S_LIGHT] + (st[S_FOLD] > 0.4f ? 0.7f : 0.0f) + 0.6f * (frand() - 0.5f);
+    scale_i = x < 0.0f ? 0 : x > (float)(NSCALE - 1) ? NSCALE - 1 : (int)(x + 0.5f);
+    en_scale = (uint8_t)scale_i;
+}
+
+static void root_wander(void)
+{
+    if (--root_wait <= 0 && frand() < 0.12f + 0.25f * fm_maxf(st[S_FOLD], 0.0f)) {
+        root = WORLDS[world].roots[irand(4)];
+        root_wait = 3;
+    }
+}
+
 static void motif_new(void)
 {
     static const int8_t DUR[6] = {1, 1, 2, 2, 3, 4};
     int i, n, d, lo, hi, step = st[S_FOLD] > 0.3f ? 3 : 2;
-    float x = 2.0f + 2.4f * st[S_LIGHT] + (st[S_FOLD] > 0.4f ? 0.7f : 0.0f) + 0.6f * (frand() - 0.5f);
-    scale_i = x < 0.0f ? 0 : x > (float)(NSCALE - 1) ? NSCALE - 1 : (int)(x + 0.5f);
-    en_scale = (uint8_t)scale_i;
-    if (world_root) {                            /* a new world: its own root */
-        root = WORLDS[world].roots[0];
-        world_root = 0;
-        root_wait = 2;
-    } else if (--root_wait <= 0 && frand() < 0.12f + 0.25f * fm_maxf(st[S_FOLD], 0.0f)) {   /* the root wanders */
-        root = WORLDS[world].roots[irand(4)];
-        root_wait = 3;
-    }
+    scale_pick();
+    root_wander();
     n = SCALE[scale_i][0];
     lo = n / 5;                                  /* the register: a degree range of two octaves, raised by light */
     hi = 2 * n;
@@ -391,7 +408,7 @@ static void motif_vary(void)
     }
 }
 
-static void gen_event(void)
+static void motif_event(void)
 {
     if (mot_i < mot_len) {
         int note = deg_note(mot_deg[mot_i]), ans;
@@ -419,6 +436,167 @@ static void gen_event(void)
         motif_new();
     else if (frand() < 0.35f + 0.3f * fm_maxf(st[S_FOLD], 0.0f))
         motif_vary();
+}
+
+/* -------------------------------------------------------- the drone --- */
+/* ALG_DRONE: chords that swell and fall back, a low tone under every second or third, now and then one note of a
+ * melody above. Any kit's voices, stretched (a slow attack, a long fall). The state leans it: light the register,
+ * bleed the overlap (swells come sooner), margin the space between, fold how often the chord moves; an offering's
+ * pitch joins the next chord. */
+static int drone_deg, drone_k;
+
+static void drone_event(void)
+{
+    static const int8_t STEP[4] = {2, -2, 3, -1};
+    int n = SCALE[scale_i][0], base = n + (int)((float)n * 0.3f * st[S_LIGHT]), i, tones;
+    float gap;
+    if (drone_k % (2 + irand(2)) == 0)           /* the low tone: the root, or the chord's own */
+        play_shaped(R_LOW, deg_note(drone_deg % n) - 24, 0.55f, 0.0f, 0, 2.5f, 1500.0f);
+    tones = 2 + (frand() < 0.3f + 0.3f * st[S_BLEED]);
+    for (i = 0; i < tones; i++) {                /* the chord: from its degree, every other step of the scale */
+        int d = base + drone_deg + 2 * irand(3), note;
+        if (i == 0 && gift_pc >= 0) {            /* the offering, in the chord */
+            d = pc_degree(gift_pc) + n;
+            gift_pc = -1;
+        }
+        note = deg_note(d);
+        while (note > 84)
+            note -= 12;
+        play_shaped(i ? R_ANSWER : R_LEAD, note, 0.45f + 0.15f * frand(), 0.7f * (frand() * 2.0f - 1.0f),
+                    irand((int)(1.5f * EN_SR)), 3.0f, 900.0f);
+    }
+    if (frand() < 0.18f + 0.2f * fm_maxf(st[S_FOLD], 0.0f)) {   /* one note of a melody, plain */
+        int note = deg_note(base + n + irand(n));
+        while (note > 89)
+            note -= 12;
+        play(R_LEAD, note, 0.4f, 0.4f * (frand() * 2.0f - 1.0f), (int32_t)(beat_len * (2.0f + 3.0f * frand())));
+    }
+    if (frand() < 0.25f + 0.3f * fm_maxf(st[S_FOLD], 0.0f)) {   /* the chord moves */
+        drone_deg += STEP[irand(4)];
+        drone_deg = drone_deg < 0 ? 0 : drone_deg > n ? n : drone_deg;
+    }
+    if (drone_k % 4 == 3) {                      /* now and then, a new colour and root */
+        scale_pick();
+        root_wander();
+    }
+    drone_k++;
+    gap = (6.0f + 8.0f * frand()) * (1.0f + 0.6f * st[S_MARGIN]) * (1.0f - 0.3f * st[S_BLEED]) * (1.6f - density);
+    gen_left += beat_len * gap;
+}
+
+/* -------------------------------------------------------------- loops --- */
+/* ALG_LOOPS: four loops of unequal length, each a note or two, sounding as their lengths come round; they drift in
+ * and out of step (as tape loops do). The state leans them: the margin stretches the lengths, bleed lengthens the
+ * notes, light lifts the register, fold now and then moves a note or wakes a loop's second one; an offering's pitch
+ * becomes the next loop's second note. Their positions (UI) show on the screen. */
+#define NLOOP 4
+static const float LOOP_S[NLOOP] = {6.1f, 7.7f, 9.4f, 12.9f};
+static const uint8_t LOOP_ROLE[NLOOP] = {R_LEAD, R_ANSWER, R_LEAD, R_LOW};
+static struct {
+    float left, len;                             /* samples to its next sound, its length now */
+    int8_t deg[2];
+    uint8_t two, i;                              /* two notes (alternating), the next */
+} loop[NLOOP];
+volatile float en_loop_ph[NLOOP];
+
+static float loop_len(int i)
+{
+    return LOOP_S[i] * (1.0f + 0.35f * st[S_MARGIN]) * (1.3f - 0.6f * density) * EN_SR;
+}
+
+static void loops_begin(void)
+{
+    static const int8_t DEG[NLOOP] = {0, 2, 4, 0};
+    int i, n = SCALE[scale_i][0];
+    for (i = 0; i < NLOOP; i++) {
+        loop[i].len = loop_len(i);
+        loop[i].left = (float)EN_SR * (0.3f + 1.2f * (float)i);   /* they come in one by one */
+        loop[i].deg[0] = (int8_t)(DEG[i] + (i < 3 ? n : 0));
+        loop[i].deg[1] = (int8_t)(loop[i].deg[0] + 1 + irand(2));
+        loop[i].two = 0;
+        loop[i].i = 0;
+    }
+}
+
+static void loops_tick(uint32_t n)               /* (control) the loops run on; their places for the screen */
+{
+    int i;
+    for (i = 0; i < NLOOP; i++) {
+        loop[i].left -= (float)n;
+        en_loop_ph[i] = fm_clampf(1.0f - loop[i].left / loop[i].len, 0.0f, 1.0f);
+    }
+}
+
+static void loops_event(void)
+{
+    int i, n = SCALE[scale_i][0];
+    float next = 1e9f, lift = (float)(int)((float)n * 0.3f * st[S_LIGHT]);
+    for (i = 0; i < NLOOP; i++) {
+        int note;
+        if (loop[i].left >= 1.0f)
+            continue;
+        note = deg_note(loop[i].deg[loop[i].two ? loop[i].i : 0] + (i < 3 ? (int)lift : 0));
+        if (i == 3)
+            note -= 12;
+        while (note > 89)
+            note -= 12;
+        play_shaped(LOOP_ROLE[i], note, i == 3 ? 0.5f : 0.4f + 0.15f * frand(), -0.6f + 0.4f * (float)i, 0,
+                    1.0f + 0.8f * fm_maxf(st[S_BLEED], 0.0f), 0.0f);
+        loop[i].i ^= 1;
+        if (gift_pc >= 0 && i < 3) {             /* the offering: this loop's second note */
+            loop[i].deg[1] = (int8_t)(pc_degree(gift_pc) + n);
+            loop[i].two = 1;
+            gift_pc = -1;
+        } else if (frand() < 0.04f + 0.12f * fm_maxf(st[S_FOLD], 0.0f)) {   /* a note moves, or a second wakes */
+            if (irand(2))
+                loop[i].deg[irand(2)] += (int8_t)(irand(2) ? 1 : -1);
+            else
+                loop[i].two ^= 1;
+        }
+        loop[i].len = loop_len(i);
+        loop[i].left += loop[i].len;
+        if (loop[i].left < 1.0f)                 /* (long behind: start its round afresh) */
+            loop[i].left = loop[i].len * (0.2f + 0.8f * frand());
+    }
+    for (i = 0; i < NLOOP; i++)
+        next = fm_minf(next, loop[i].left);
+    gen_left = fm_maxf(next, 1.0f);
+    if (frand() < 0.03f) {                       /* rarely, the colour turns under them */
+        scale_pick();
+        root_wander();
+    }
+}
+
+/* ------------------------------------------------------- the dispatcher --- */
+static void gen_event(void)
+{
+    switch (WORLDS[world].alg) {
+    case ALG_DRONE: drone_event(); break;
+    case ALG_LOOPS: loops_event(); break;
+    default: motif_event(); break;
+    }
+}
+
+static void world_begin(void)                    /* a new world, at once: its root, its beat, its algorithm */
+{
+    const world_t *w = &WORLDS[world];
+    root = w->roots[0];
+    root_wait = 2;
+    beat_len = w->beat * EN_SR;
+    en_alg = w->alg;
+    scale_pick();
+    switch (w->alg) {
+    case ALG_DRONE:
+        drone_deg = 0;
+        drone_k = 0;
+        break;
+    case ALG_LOOPS: loops_begin(); break;
+    default:
+        mot_len = 0;
+        motif_new();
+        break;
+    }
+    gen_left = 0.3f * EN_SR;
 }
 
 /* ------------------------------------------------------------ parameters --- */
@@ -466,7 +644,7 @@ static void drain(void)
         case C_WORLD:
             if (a < EN_NWORLD && a != world) {
                 world = (uint8_t)a;
-                world_root = 1;
+                world_begin();
             }
             break;
         case C_OFFER:
@@ -509,7 +687,7 @@ void en_init(void)
     mem_n = mem_w = 0;
     mot_len = 0;
     world = 0;
-    world_root = 0;
+    en_alg = ALG_MOTIF;
     wcycles = 1.0f;
     for (i = 0; i < EN_NSTATE; i++)
         wbias[i] = 0.0f;
@@ -529,6 +707,8 @@ static void control(uint32_t n)                  /* once a chunk: the slow thing
     plate_tick(pl_target);
     state_step(n);
     en_cycle = cyc[0];
+    if (WORLDS[world].alg == ALG_LOOPS && en_playing)
+        loops_tick(n);
     for (i = 0; i < EN_NVOICE && i < NFM; i++)
         en_glow[i] = fmv[i].on && fmv[i].wait <= 0 ? fm_minf(fmv[i].amp / fm_maxf(fmv[i].peak, 0.01f), 1.0f) : 0.0f;
 }

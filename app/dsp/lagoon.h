@@ -46,7 +46,9 @@ void en_offer(int key, int strength);
 /* worlds (ALGORITHM): places that exist nowhere; each leans the state, the beat, the roots, the cycles (lagoon.c) */
 #define EN_NWORLD 5
 const char *en_world_name(int world);
-void en_set_world(int world);           /* glides there: the lean over seconds, the beat and root at the next pass */  /* key 0..26 (F3..G5); strength 100 a press, less while it is held */
+void en_set_world(int world);           /* there at once; only the state's lean glides */  /* key 0..26 (F3..G5); strength 100 a press, less while it is held */
+extern volatile uint8_t en_alg;                /* the world's way of making music: 0 motifs, 1 a drone, 2 loops */
+extern volatile float en_loop_ph[4];           /* the loops (en_alg 2): each one's way round, 0..1 */
 
 /* commands (main loop -> render) */
 void en_init(void);
