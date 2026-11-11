@@ -3,10 +3,10 @@ name = "PAPERLAGOON"           # the build's files: paperlagoon.fwsc, paperlagoo
 id_prefix = "FM-1_58"          # package identity (provisional: check docs/FIRMWARE-JSON.md before publishing)
 usb_manufacturer = "PaperLagoon"
 usb_product = "PaperLagoon FM-1"
-o2 = []                        # separate units compiled at -O2 (the engine, later)
+include = ["dsp"]
+o2 = ["dsp/lagoon.c"]           # the engine, at -O2 (it #includes the plate and the echo)
 words = "words.tsv"
-ble = true                     # as the template (its code uses Bluetooth MIDI); revisit later
-ble_central = true
+ble = false                    # no radio
 usb_audio_in = true            # the music recordable over USB
 usb_audio_out = false
 # the site
