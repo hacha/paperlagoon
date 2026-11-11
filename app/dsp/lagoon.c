@@ -151,7 +151,8 @@ static void play(int role, int note, float vel, float pan, int32_t wait)
  * Three slow cycles of unequal length move their resting point (nothing done, the place still turns), and the
  * keys' offerings move them further: an offering falls into a reservoir, which seeps into the state over seconds
  * (one quantity bleeding a little into the next), and what it moved relaxes back over minutes. A key gives a mix
- * across the four (its register, white or black, its pitch, and chance), so no key does one thing. */
+ * across the four (its register, white or black, its pitch, and chance; the register's lean turning with the long
+ * cycle), so no key does one thing, nor the same thing for long. */
 /* the cycles' lengths wander: each turn ends with a new length to drift toward, within its own range (the ranges
  * never overlap, so the three stay unequal; the shortest, the breath, never under 50 s) */
 static const float PER_LO[3] = {50.0f, 120.0f, 300.0f}, PER_HI[3] = {100.0f, 230.0f, 600.0f};
@@ -178,10 +179,13 @@ static void offer(int key, int strength)         /* key 0..26 (F3..G5), strength
     int i, pc = (key + 5) % 12;
     int black = (0x54A >> pc) & 1;               /* C# D# F# G# A# */
     float m = 0.17f * (float)strength * 0.01f, q[EN_NSTATE];
-    q[S_LIGHT] = (float)(key - 13) * (1.0f / 13.0f) * 1.4f;     /* high keys lighten, low keys darken */
+    float reg = (float)(key - 13) * (1.0f / 13.0f) * 1.4f, turn = cyc[2] * FM_TWO_PI;
+    /* the register's meaning turns with the long cycle: high keys lighten for a while, then widen the margin,
+     * then darken, then narrow it (and low keys the other way); nobody can count on it for long */
+    q[S_LIGHT] = reg * fm_cosf(turn);
     q[S_BLEED] = 0.0f;
     q[S_FOLD] = black ? 0.8f : -0.2f;          /* black keys fold */
-    q[S_MARGIN] = black ? -0.3f : 0.4f;
+    q[S_MARGIN] = (black ? -0.3f : 0.4f) + reg * fm_sinf(turn);
     for (i = 0; i < EN_NSTATE; i++)
         pend[i] += m * (q[i] + (float)PC_MIX[pc][i] * 0.25f + 0.5f * (frand() * 2.0f - 1.0f));
     if (strength >= 100) {

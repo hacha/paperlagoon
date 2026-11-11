@@ -572,7 +572,12 @@ int app_expect(const char *what, int *got)
         *got = en_scale;
     else if (!strncmp(what, "state", 5))         /* stateN: the hidden state N (lagoon.h S_*), times 100 */
         *got = (int)(en_state[atoi(what + 5) % EN_NSTATE] * 100.0f);
-    else if (!strncmp(what, "offset", 6))        /* offsetN: what the offerings moved it by, times 100 */
+    else if (!strcmp(what, "offsetsum")) {       /* how far the offerings moved the state, all four, times 100 */
+        float a = 0.0f;
+        for (i = 0; i < EN_NSTATE; i++)
+            a += en_offset[i] < 0.0f ? -en_offset[i] : en_offset[i];
+        *got = (int)(a * 100.0f);
+    } else if (!strncmp(what, "offset", 6))        /* offsetN: what the offerings moved it by, times 100 */
         *got = (int)(en_offset[atoi(what + 6) % EN_NSTATE] * 100.0f);
     else if (!strncmp(what, "param", 5))         /* paramN: parameter N's value (lagoon.h P_*) */
         *got = set.par[atoi(what + 5) % P_NPARAMS];
