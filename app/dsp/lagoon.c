@@ -20,11 +20,12 @@ static const en_param_t PARAMS[P_NPARAMS] = {
 };
 const en_param_t *en_param_info(int i) { return (i >= 0 && i < P_NPARAMS) ? &PARAMS[i] : &PARAMS[0]; }
 
-enum { C_SET, C_PLAY, C_SEED, C_PANIC };
+enum { C_SET, C_PLAY, C_SEED, C_PANIC, C_AUDITION };
 void en_set(int p, int v) { post(C_SET, p, v); }
 void en_play(int on) { post(C_PLAY, on, 0); }
 void en_seed(uint32_t s) { post(C_SEED, 0, (int)(s & 0xFFFFu)); }
 void en_panic(void) { post(C_PANIC, 0, 0); }
+void en_audition(int role) { post(C_AUDITION, role, 0); }
 
 /* state for the screen (UI) */
 volatile uint8_t en_playing;
@@ -37,23 +38,102 @@ static int16_t par[P_NPARAMS];
 static float density, bright;                    /* 0..1 */
 static float echo_send, rev_send, pl_target = 0.8f;
 
-/* ------------------------------------------------------------ colours --- */
-/* PLACEHOLDER colours for the FM voice (amb_parts.c): ratio, index, index fall, level fall, attack, dry/echo/plate */
-enum { TB_TINE, TB_GLASS, TB_LOW, TB_N };
-static const fm_patch_t TIMBRE[TB_N] = {
-    {1.0f, 1.6f, 0.30f, 3.6f, 3.0f, 0.9f, 0.8f, 0.7f},     /* a tine, as an electric piano's */
-    {3.5f, 0.9f, 0.90f, 5.0f, 2.0f, 0.6f, 1.0f, 0.9f},     /* glass: an inharmonic, ringing bell */
-    {1.0f, 0.4f, 1.60f, 7.0f, 60.0f, 0.8f, 0.3f, 0.6f},    /* a soft low tone */
-};
+/* ------------------------------------------------------------ tones --- */
+/* the modulator's ratios, T_COLOR's steps: whole numbers (clear, as a reed or a tine), then between (bells, metal) */
+static const float RATIO[EN_NRATIO] = {0.5f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 7.0f, 1.41f, 2.76f, 3.5f, 4.24f, 5.19f};
 
-static void play(int tb, int note, float vel, float pan, int32_t wait)
+/* one voice of a kit: the ratio (RATIO's step), the index at the strike (radians) and its fall to -60 dB (s), the
+ * level's fall (s), the attack (T_SOFT's scale: 0 = 1 ms .. 100 = 3 s), to the mix, the echo, the plate */
+typedef struct {
+    uint8_t color;
+    float idx, idx_t, t60;
+    uint8_t soft;
+    float dry, esend, rsend;
+} voice_t;
+typedef struct {
+    const char *name;
+    float gain;                                  /* the kit's level: short voices are quieter */
+    voice_t v[EN_NROLE];                         /* R_LEAD, R_ANSWER, R_LOW */
+} kit_t;
+static const kit_t KITS[EN_NKIT] = {
+    {"PAPER LAGOON", 1.0f, {{1, 1.6f, 0.30f, 3.6f, 14, 0.9f, 0.8f, 0.7f},      /* a tine, as an electric piano's */
+                      {9, 0.9f, 0.90f, 5.0f, 9, 0.6f, 1.0f, 0.9f},       /* glass, an inharmonic bell */
+                      {1, 0.4f, 1.60f, 7.0f, 51, 0.8f, 0.3f, 0.6f}}},    /* a soft low tone */
+    {"WOODEN RAIN", 1.7f, {{4, 2.2f, 0.05f, 1.6f, 0, 0.9f, 0.6f, 0.5f},        /* a bar of wood, struck */
+                     {1, 0.5f, 1.00f, 4.5f, 9, 0.6f, 1.0f, 0.8f},        /* a vibraphone's bar */
+                     {2, 0.6f, 0.30f, 3.0f, 17, 0.8f, 0.3f, 0.5f}}},     /* a low, hollow log */
+    {"GLASS ORCHARD", 1.0f, {{3, 1.1f, 0.15f, 2.8f, 0, 0.9f, 0.8f, 0.7f},      /* a celesta */
+                       {11, 0.7f, 1.50f, 7.0f, 14, 0.5f, 1.0f, 1.0f},    /* a thin glass bowl */
+                       {2, 0.3f, 2.00f, 8.0f, 55, 0.7f, 0.3f, 0.7f}}},   /* a held low glass */
+    {"SLOW BREATH", 1.0f, {{1, 0.7f, 3.00f, 5.0f, 73, 0.8f, 0.7f, 0.8f},       /* a breath, almost a flute */
+                     {2, 0.5f, 4.00f, 6.0f, 82, 0.5f, 0.9f, 1.0f},       /* an octave's breath, slower */
+                     {0, 0.3f, 5.00f, 10.0f, 89, 0.8f, 0.3f, 0.7f}}},    /* a low swell */
+    {"IRON SNOW", 0.9f, {{7, 1.2f, 0.60f, 6.0f, 9, 0.7f, 0.9f, 0.9f},          /* a struck plate of iron */
+                   {8, 0.8f, 2.00f, 9.0f, 17, 0.5f, 1.0f, 1.0f},         /* a far, wide bell */
+                   {1, 0.5f, 3.00f, 9.0f, 46, 0.8f, 0.3f, 0.6f}}},       /* a low hum */
+    {"HAZE ARCHIVE", 1.0f, {{1, 0.9f, 6.00f, 9.0f, 85, 0.7f, 0.8f, 1.0f},      /* a slow, soft chord tone */
+                      {3, 0.4f, 6.00f, 10.0f, 91, 0.4f, 1.0f, 1.0f},     /* a haze above it */
+                      {0, 0.5f, 8.00f, 12.0f, 95, 0.7f, 0.3f, 0.8f}}},   /* a low haze */
+};
+static const char *const ROLE_NAME[EN_NROLE] = {"LEAD", "ANSWER", "LOW"};
+static const char *const TONE_NAME[EN_NTONE] = {"Color", "Bright", "Decay", "Soft"};
+
+static volatile uint8_t kit;
+static volatile int8_t tone[EN_NKIT][EN_NROLE][EN_NTONE];   /* the edits (en_tone_default: as KITS has them) */
+volatile uint8_t en_voice_role[EN_NVOICE];
+
+const char *en_kit_name(int k) { return KITS[(unsigned)k % EN_NKIT].name; }
+const char *en_role_name(int r) { return ROLE_NAME[(unsigned)r % EN_NROLE]; }
+const char *en_tone_name(int f) { return TONE_NAME[(unsigned)f % EN_NTONE]; }
+int en_tone_hi(int f) { return f == T_COLOR ? EN_NRATIO - 1 : 100; }
+float en_ratio(int c) { return RATIO[c < 0 ? 0 : c >= EN_NRATIO ? EN_NRATIO - 1 : c]; }
+int en_tone_default(int k, int r, int f)
 {
-    fm_patch_t pt = TIMBRE[tb];
+    const voice_t *v = &KITS[(unsigned)k % EN_NKIT].v[(unsigned)r % EN_NROLE];
+    return f == T_COLOR ? v->color : f == T_SOFT ? v->soft : 50;   /* Bright and Decay: 50, as the kit has them */
+}
+void en_set_kit(int k) { kit = (uint8_t)((unsigned)k % EN_NKIT); }
+void en_set_tone(int k, int r, int f, int v)
+{
+    if (k < 0 || k >= EN_NKIT || r < 0 || r >= EN_NROLE || f < 0 || f >= EN_NTONE)
+        return;
+    tone[k][r][f] = (int8_t)(v < 0 ? 0 : v > en_tone_hi(f) ? en_tone_hi(f) : v);
+}
+
+/* a kit's voice, as edited: Bright and Decay scale the kit's by 1/4..4 (50: as it is); Soft is the attack */
+static void voice_patch(int k, int role, fm_patch_t *pt)
+{
+    const voice_t *b = &KITS[k].v[role];
+    const volatile int8_t *e = tone[k][role];
+    pt->ratio = en_ratio(e[T_COLOR]);
+    pt->idx = b->idx * fm_exp2f((float)(e[T_BRIGHT] - 50) * 0.04f);
+    pt->idx_t = b->idx_t;
+    pt->t60 = b->t60 * fm_exp2f((float)(e[T_DECAY] - 50) * 0.04f);
+    pt->att_ms = fm_exp2f((float)e[T_SOFT] * 0.1155f);   /* 2^(100 * 0.1155) = 3000 ms */
+    pt->dry = b->dry;
+    pt->esend = b->esend;
+    pt->rsend = b->rsend;
+}
+
+void en_voice_shape(int k, int role, float *ratio, float *att_ms, float *t60)
+{
+    fm_patch_t pt;
+    voice_patch((int)((unsigned)k % EN_NKIT), (int)((unsigned)role % EN_NROLE), &pt);
+    *ratio = pt.ratio;
+    *att_ms = pt.att_ms;
+    *t60 = pt.t60;
+}
+
+static void play(int role, int note, float vel, float pan, int32_t wait)
+{
+    fm_patch_t pt;
     int v;
+    voice_patch(kit, role, &pt);
     pt.t60 *= fm_clampf(1.0f - (float)(note - 66) * 0.012f, 0.6f, 1.5f);   /* low notes ring longer */
     pt.idx *= (0.3f + 1.4f * bright) * (0.6f + 0.4f * vel);               /* Bright, and a harder strike */
-    v = fm_start(&pt, note, vel, pan, wait);
+    v = fm_start(&pt, note, vel * KITS[kit].gain, pan, wait);
     en_voice_note[v] = (uint8_t)note;
+    en_voice_role[v] = (uint8_t)role;
     en_notes++;
 }
 
@@ -108,10 +188,10 @@ static void gen_event(void)
         int note = deg_note(mot_deg[mot_i]);
         float vel = 0.45f + 0.35f * frand();
         if (mot_i == 0 && frand() < 0.5f)        /* a low tone under the pass: the root or the fifth */
-            play(TB_LOW, ROOT - 24 + (irand(3) ? 0 : 7), 0.5f, 0.0f, 0);
-        play(TB_TINE, note, vel, -0.3f + 0.6f * frand(), irand(1500));   /* a hand: up to 34 ms late */
+            play(R_LOW, ROOT - 24 + (irand(3) ? 0 : 7), 0.5f, 0.0f, 0);
+        play(R_LEAD, note, vel, -0.3f + 0.6f * frand(), irand(1500));   /* a hand: up to 34 ms late */
         if (frand() < 0.08f + 0.3f * density)    /* glass answers, an octave up, a little later */
-            play(TB_GLASS, note + 12, vel * 0.5f, 0.6f * (frand() * 2.0f - 1.0f), (int32_t)(beat_len * (0.5f + frand())));
+            play(R_ANSWER, note + 12, vel * 0.5f, 0.6f * (frand() * 2.0f - 1.0f), (int32_t)(beat_len * (0.5f + frand())));
         gen_left += beat_len * (float)mot_dur[mot_i];
         mot_i++;
         return;
@@ -169,6 +249,10 @@ static void drain(void)
             for (i = 0; i < NFM; i++)
                 fmv[i].on = 0;
             break;
+        case C_AUDITION:                         /* a note where the voice usually sounds */
+            if (a < EN_NROLE)
+                play((int)a, a == R_LOW ? ROOT - 24 : a == R_ANSWER ? ROOT + 19 : ROOT + 7, 0.7f, 0.0f, 0);
+            break;
         }
     }
 }
@@ -185,6 +269,10 @@ void en_init(void)
         fmv[i].on = 0;
     for (i = 0; i < P_NPARAMS; i++)
         apply(i, PARAMS[i].def);
+    for (i = 0; i < EN_NKIT * EN_NROLE * EN_NTONE; i++)
+        tone[i / (EN_NROLE * EN_NTONE)][i / EN_NTONE % EN_NROLE][i % EN_NTONE] =
+            (int8_t)en_tone_default(i / (EN_NROLE * EN_NTONE), i / EN_NTONE % EN_NROLE, i % EN_NTONE);
+    kit = 0;
     pl_decay = pl_target;
     echo_time(beat_len * 3.0f / EN_SR);          /* three beats */
     motif_new();
