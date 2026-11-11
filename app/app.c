@@ -242,22 +242,26 @@ void app_say(const char *a, const char *b)
     ann_say(line, 0, ANN_NOW);
 }
 
-/* a page's position and name, said */
+/* a page: the header shows it (its name, and where it is in the strip of pages); a screen reader hears "name n of m" */
 static void page_go(int p)
 {
-    char t[24];
+    char t[32];
     uint32_t k;
     p = p < 0 ? 0 : p >= NPAGE ? NPAGE - 1 : p;
     if (p == ui.page)
         return;
     ui.page = (uint8_t)p;
+    ui.msg_until = 0;                            /* a message over the header gives way to the page */
+    ui.redraw = 1;
+    if (!ann_on())
+        return;
     k = str_put(t, sizeof t, page_name(p));
-    t[k++] = ' ';
+    k += str_put(t + k, sizeof t - k, " ");
     int_text(p + 1, t + k);
     k += p + 1 >= 10 ? 2 : 1;
-    t[k++] = '/';
+    k += str_put(t + k, sizeof t - k, " of ");
     int_text(NPAGE, t + k);
-    app_say(t, "");
+    ann_say(t, 0, ANN_NOW);
 }
 
 static void param_step(int p, int knob, int32_t d)
@@ -530,19 +534,32 @@ static void draw_ring(int32_t cx, int32_t cy, int32_t r, uint16_t c)
     }
 }
 
+/* where the page is (after HYP-1's): a short bar a page, at the header's right, ending at x 230; the page shown lit, the
+ * voices' three (a group, as EDIT walks them) a little brighter than the rest while one of them shows. Returns its left */
+static int32_t draw_pages(void)
+{
+    int32_t x0 = 231 - NPAGE * 5, i;
+    for (i = 0; i < NPAGE; i++) {
+        int cur = i == (int32_t)ui.page, group = PG_VOICE(i) && PG_VOICE(ui.page);
+        cv_rect(x0 + i * 5, cur ? 11 : 12, 3, cur ? 7 : 5, cur ? C_HI : group ? C_GRAY : C_LINE);
+    }
+    return x0;
+}
+
 static void draw_header(uint32_t now)
 {
-    char t[8];
-    int32_t x;
+    int32_t x, xp;
     cv_begin(240, 32, C_BLACK);
+    xp = draw_pages();
     if (now < ui.msg_until) {                    /* a long message in the smaller letters */
-        int big = 18 + text_w(&FONT_B, ui.msg[0]) + text_w(&FONT_B, ui.msg[1]) <= 230;
+        int big = 18 + text_w(&FONT_B, ui.msg[0]) + text_w(&FONT_B, ui.msg[1]) <= xp - 10;
         int32_t y = big ? 6 : 9;
+        if (!big && 18 + text_w(&FONT_XS, ui.msg[0]) + text_w(&FONT_XS, ui.msg[1]) > xp - 10)
+            cv_rect(xp - 4, 0, 240 - xp + 4, 32, C_BLACK);   /* too long even so: over the strip */
         x = cv_text(10, y, big ? &FONT_B : &FONT_XS, ui.msg[0], C_WHITE);
         cv_text(x + 8, y, big ? &FONT_B : &FONT_XS, ui.msg[1], C_HI);
     } else {
         const char *s = en_playing ? "PLAYING" : "RESTING";
-        uint32_t k;
         int32_t end;
         if (ui.page == PG_LAGOON) {              /* the lagoon: the world (the kit under it, on the water) */
             end = cv_text(10, 6, &FONT_B, en_world_name(set.world), C_WHITE);
@@ -555,19 +572,13 @@ static void draw_header(uint32_t now)
                 end = cv_text(end + 8, 10, &FONT_XS, "HELD", C_AMB);
         }
         if (en_recording) {                      /* REC, SEL: said over the rest */
-            cv_rect(0, 0, 240, 32, C_BLACK);
+            cv_rect(0, 0, xp - 4, 32, C_BLACK);
             end = cv_text(10, 6, &FONT_B, "REC", C_WHITE);
-            end = cv_text(end + 8, 10, &FONT_XS, "the keys play; let go to give it", C_AMB);
+            end = cv_text(end + 8, 10, &FONT_XS, "the keys play; let go", C_AMB);
         } else if (ui.shift) {
             end = cv_text(end + 8, 10, &FONT_XS, ui.page == PG_LAGOON ? "SEL: FINE" : "SEL: LAGOON", C_AMB);
         }
-        int_text(ui.page + 1, t);                /* where: n/m */
-        k = 1;
-        t[k++] = '/';
-        int_text(NPAGE, t + k);
-        x = 230 - text_w(&FONT_XS, t);
-        cv_text(x, 10, &FONT_XS, t, C_HI);
-        x -= 10 + text_w(&FONT_XS, s);
+        x = xp - 8 - text_w(&FONT_XS, s);
         if (x > end + 8)                         /* playing or resting, where a long name leaves room */
             cv_text(x, 10, &FONT_XS, s, en_playing ? C_HI : C_DIM);
     }
