@@ -62,5 +62,6 @@ extern volatile float en_cycle;                /* 0..1: where the slow cycle is 
 extern volatile uint8_t en_voice_role[EN_NVOICE];
 extern volatile float en_state[EN_NSTATE];     /* -1..1: the hidden state, as it leans the generator now */
 extern volatile float en_offset[EN_NSTATE];    /* what the offerings have moved it by (the rest: the cycles) */
+extern volatile uint8_t en_note_max;           /* the highest note played since boot */
 extern volatile uint32_t en_offers;            /* offerings since boot (presses) */
 extern volatile uint8_t en_scale;              /* the scale of the motif now (0 the coolest .. 4) */   /* R_*: which voice of the kit each FM voice plays */

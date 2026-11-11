@@ -562,6 +562,8 @@ int app_expect(const char *what, int *got)
         *got = set.kit;
     else if (!strcmp(what, "offers"))            /* offerings since boot (presses) */
         *got = (int)en_offers;
+    else if (!strcmp(what, "notemax"))           /* the highest note played since boot */
+        *got = en_note_max;
     else if (!strcmp(what, "scale"))
         *got = en_scale;
     else if (!strncmp(what, "state", 5))         /* stateN: the hidden state N (lagoon.h S_*), times 100 */

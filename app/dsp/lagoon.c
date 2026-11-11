@@ -82,6 +82,7 @@ static const char *const TONE_NAME[EN_NTONE] = {"Color", "Bright", "Decay", "Sof
 static volatile uint8_t kit;
 static volatile int8_t tone[EN_NKIT][EN_NROLE][EN_NTONE];   /* the edits (en_tone_default: as KITS has them) */
 volatile uint8_t en_voice_role[EN_NVOICE];
+volatile uint8_t en_note_max;
 
 const char *en_kit_name(int k) { return KITS[(unsigned)k % EN_NKIT].name; }
 const char *en_role_name(int r) { return ROLE_NAME[(unsigned)r % EN_NROLE]; }
@@ -135,6 +136,8 @@ static void play(int role, int note, float vel, float pan, int32_t wait)
     v = fm_start(&pt, note, vel * KITS[kit].gain, pan, wait);
     en_voice_note[v] = (uint8_t)note;
     en_voice_role[v] = (uint8_t)role;
+    if (note > en_note_max)
+        en_note_max = (uint8_t)note;
     en_notes++;
 }
 
@@ -171,7 +174,7 @@ static void offer(int key, int strength)         /* key 0..26 (F3..G5), strength
 {
     int i, pc = (key + 5) % 12;
     int black = (0x54A >> pc) & 1;               /* C# D# F# G# A# */
-    float m = 0.32f * (float)strength * 0.01f, q[EN_NSTATE];
+    float m = 0.17f * (float)strength * 0.01f, q[EN_NSTATE];
     q[S_WARM] = (float)(key - 13) * (1.0f / 13.0f) * 1.4f;     /* high keys warm, low keys cool */
     q[S_WET] = 0.0f;
     q[S_LOOSE] = black ? 0.8f : -0.2f;          /* black keys loosen */
@@ -206,8 +209,8 @@ static void state_step(uint32_t n)
         off[i] += 0.85f * f;
         off[(i + 1) % EN_NSTATE] += 0.15f * f;   /* a little bleeds into the next */
         off[i] -= off[i] * fade;
-        off[i] = fm_clampf(off[i], -1.5f, 1.5f);
-        st[i] = fm_clampf(AMP[i] * base[i] + off[i], -1.0f, 1.0f);
+        off[i] = fm_clampf(off[i], -1.0f, 1.0f);
+        st[i] = fm_tanhf(AMP[i] * base[i] + off[i]);   /* soft at the ends: never pinned */
         en_state[i] = st[i];
         en_offset[i] = off[i];
     }
@@ -259,7 +262,7 @@ static void motif_new(void)
 {
     static const int8_t DUR[6] = {1, 1, 2, 2, 3, 4};
     int i, n, d, lo, hi, step = st[S_LOOSE] > 0.3f ? 3 : 2;
-    float x = 2.0f + 1.8f * st[S_WARM] + (st[S_LOOSE] > 0.4f ? 0.7f : 0.0f) + 0.6f * (frand() - 0.5f);
+    float x = 2.0f + 2.4f * st[S_WARM] + (st[S_LOOSE] > 0.4f ? 0.7f : 0.0f) + 0.6f * (frand() - 0.5f);
     scale_i = x < 0.0f ? 0 : x > (float)(NSCALE - 1) ? NSCALE - 1 : (int)(x + 0.5f);
     en_scale = (uint8_t)scale_i;
     if (--root_wait <= 0 && frand() < 0.12f + 0.25f * fm_maxf(st[S_LOOSE], 0.0f)) {   /* the root wanders */
@@ -302,13 +305,17 @@ static void motif_vary(void)
 static void gen_event(void)
 {
     if (mot_i < mot_len) {
-        int note = deg_note(mot_deg[mot_i]);
+        int note = deg_note(mot_deg[mot_i]), ans;
         float vel = 0.45f + 0.35f * frand();
+        while (note > 89)                        /* the ceiling: the lead to F6, the answer to A6 */
+            note -= 12;
+        for (ans = note + 12; ans > 93; ans -= 12)
+            ;
         if (mot_i == 0 && frand() < 0.5f - 0.25f * st[S_WARM])   /* a low tone under the pass: root or fifth */
             play(R_LOW, root - 24 + (irand(3) ? 0 : 7), 0.5f, 0.0f, 0);
         play(R_LEAD, note, vel, -0.3f + 0.6f * frand(), irand(1500));   /* a hand: up to 34 ms late */
         if (frand() < 0.08f + 0.3f * density + 0.12f * st[S_WET])   /* the answer, an octave up, a little later */
-            play(R_ANSWER, note + 12, vel * 0.5f, 0.6f * (frand() * 2.0f - 1.0f), (int32_t)(beat_len * (0.5f + frand())));
+            play(R_ANSWER, ans, vel * 0.5f, 0.6f * (frand() * 2.0f - 1.0f), (int32_t)(beat_len * (0.5f + frand())));
         gen_left += beat_len * (float)mot_dur[mot_i];
         mot_i++;
         return;
