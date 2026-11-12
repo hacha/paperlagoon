@@ -717,7 +717,7 @@ static void draw_header(uint32_t now)
         cv_text(x + 8, y, big ? &FONT_B : &FONT_XS, ui.msg[1], C_HI);
     } else if (en_recording) {
         end = cv_text(10, 6, &FONT_B, "REC", C_WHITE);
-        cv_text(end + 8, 10, &FONT_XS, "THE KEYS PLAY; LET GO TO GIVE IT", C_AMB);
+        cv_text(end + 8, 7, &FONT_XS, "THE KEYS PLAY; LET GO TO GIVE IT", C_AMB);
     } else {
         const char *s = en_crossing ? "CROSSING" : 0;   /* (playing or resting: the name says it, white or grey) */
         uint16_t c = en_playing ? C_WHITE : C_GRAY;   /* resting: the name greyed (a long one leaves no room to say) */
@@ -729,7 +729,7 @@ static void draw_header(uint32_t now)
         }
         end = cv_text(10, 6, &FONT_B, en_world_name(set.world), c);
         if (s && (x = 230 - text_w(&FONT_XS, s)) > end + 8)   /* where a long name leaves room */
-            cv_text(x, 10, &FONT_XS, s, C_AMB);
+            cv_text(x, 7, &FONT_XS, s, C_AMB);
     }
     cv_blit(0, 0);
 }
@@ -1359,19 +1359,19 @@ static void draw_glo(uint32_t now)
     t[12 + k] = '.';
     t[13 + k] = (char)('0' + hz10 % 10);
     str_put(t + 14 + k, 8, " HZ");
-    cv_text(80, 22, &FONT_B, t + 12, C_HI);
+    cv_text(80, 25, &FONT_B, t + 12, C_HI);
     cv_text(10, 52, &FONT_XS, "SLEEP", C_GRAY);
     if (!set.par[P_SLEEP]) {
-        cv_text(80, 48, &FONT_B, "OFF", C_DIM);
+        cv_text(80, 51, &FONT_B, "OFF", C_DIM);
     } else {
         int32_t left = (int32_t)set.par[P_SLEEP] * 60 - (int32_t)((now - ui.play_at) / 1000u);
         if (!en_playing) {
-            cv_text(80, 48, &FONT_B, "RESTING", C_DIM);
+            cv_text(80, 51, &FONT_B, "RESTING", C_DIM);
         } else {
             int_text(left > 0 ? (left + 59) / 60 : 0, t);
             k = str_put(t + 12, 12, t);
             str_put(t + 12 + k, 12, " MIN LEFT");
-            cv_text(80, 48, &FONT_B, t + 12, C_HI);
+            cv_text(80, 51, &FONT_B, t + 12, C_HI);
         }
     }
     cv_blit(0, 36);
