@@ -77,7 +77,7 @@ Install を押します。ブラウザが MIDI の許可を一度だけ尋ねる
 | OCT− · OCT+ | 音楽の音域を動かします。どちらへも2オクターブまで。REC を押している間は、鍵盤のオクターブを動かします。 |
 | REC | 押している間、鍵盤が音になり、音楽は待ちます。離すと、弾いたフレーズが音楽自身のものとして取り込まれます。モチーフにはフレーズが丸ごと一度に書き込まれ、屋根裏の世界ではフレーズが鍵になります。 |
 | SEL | 押している間、どのページでも K1〜K4 がラグーンの4つになります。ラグーンでは細かい刻みで回ります。 |
-| PRESETS | キットを選びます。8つ、それぞれ3つの声。声の手直しはキットごとに残ります。 |
+| PRESETS | キットを選びます。10、それぞれ3つの声。声の手直しはキットごとに残ります。 |
 | ALGORITHM | 世界を選びます。7つ。切り替えは渡り（crossing）になります。 |
 | K1〜K4 | 開いているページの4つのノブ。 |
 | PLAY | 鳴らす、または休む。 |
@@ -117,7 +117,7 @@ Soft 14](img/screen-voice.png "TIN HARBOR の主旋律の声")
 - Soft: 声の始まりのやわらかさ。低いと軽い一打、高いとゆっくりした膨らみ。（アタックです）
 
 声には息のあるものがあります。音の横の空気、ざらついた揺れ、少しさまよう音程で、古びた、かすんだ感じになります。
-これはキットが決めていて、SLOW BREATH と HAZE ARCHIVE には少し、DUST PIPES と FOG LANTERN には多く入っています。
+これはキットが決めていて、SLOW BREATH と HAZE ARCHIVE には少し、DUST PIPES と FOG LANTERN と CHALK GARDEN には多く入っています。
 AGE ページの Air で強さを変えられ、声のページにも出ます。声の手直しは、そのキットのものとして残ります。EDIT を
 押し続けると、声がキットの元の音色に戻ります。
 
@@ -285,7 +285,8 @@ ALGORITHM が世界を選びます。どれもどこにも存在しない場所�
 ### キット
 
 PRESETS でキットを選びます。主旋律、応え、低音の3つの声の組です。TIN HARBOR、WOODEN RAIN、GLASS ORCHARD、
-SLOW BREATH、IRON SNOW、HAZE ARCHIVE、DUST PIPES、FOG LANTERN の8つ。コードは、キットの低音の声の音色で鳴ります。
+SLOW BREATH、IRON SNOW、HAZE ARCHIVE、DUST PIPES、FOG LANTERN、CHALK GARDEN、BRASS EVENING
+の10。コードは、キットの低音の声の音色で鳴ります。
 
 ---
 

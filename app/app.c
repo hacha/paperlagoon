@@ -30,9 +30,10 @@
  * state itself as the water's line, slowly. */
 #include "fastmath.h"
 
-#define SET_MAGIC 0x394C504Bu            /* "PLL9": the settings record; PLL8 .. PLL2 (fewer parameters; before PLL6 six
-                                         * kits; ARP a switch, later levels; before PLL9 the chords' Speed, Range,
+#define SET_MAGIC 0x414C504Bu            /* "PLLA": the settings record, ten kits; PLL9 .. PLL2 (fewer parameters;
+                                         * eight kits, before PLL6 six; ARP a switch, later levels; before PLL9 the chords' Speed, Range,
                                          * Gate) carry over */
+#define SET_MAGIC_9 0x394C504Bu
 #define SET_MAGIC_8 0x384C504Bu
 #define SET_MAGIC_7 0x374C504Bu
 #define SET_MAGIC_6 0x364C504Bu
@@ -48,6 +49,15 @@ typedef struct {
     uint8_t spare;
     int8_t tone[EN_NKIT][EN_NROLE][EN_NTONE];
 } settings_t;
+#define KIT8 8                                   /* the kits from PLL6 to PLL9 */
+typedef struct {                                 /* PLL9 (and PLL8): eight kits */
+    uint32_t magic;
+    int16_t par[P_NPARAMS];
+    uint8_t kit, world;
+    int8_t oct;
+    uint8_t spare;
+    int8_t tone[KIT8][EN_NROLE][EN_NTONE];
+} settings9_t;
 typedef struct {                                 /* PLL7: thirty-two parameters (ARP's four levels: the chords, the thump,
                                                   * the click, the brush), ARP on or off */
     uint32_t magic;
@@ -55,7 +65,7 @@ typedef struct {                                 /* PLL7: thirty-two parameters 
     uint8_t kit, world;
     int8_t oct;
     uint8_t arp;
-    int8_t tone[EN_NKIT][EN_NROLE][EN_NTONE];
+    int8_t tone[KIT8][EN_NROLE][EN_NTONE];
 } settings7_t;
 typedef struct {                                 /* PLL6: twenty-eight parameters, ARP a turn of four (0 off, 1 the
                                                   * chords, 2 the chords and the pulse, 3 the pulse) */
@@ -64,7 +74,7 @@ typedef struct {                                 /* PLL6: twenty-eight parameter
     uint8_t kit, world;
     int8_t oct;
     uint8_t arp;
-    int8_t tone[EN_NKIT][EN_NROLE][EN_NTONE];
+    int8_t tone[KIT8][EN_NROLE][EN_NTONE];
 } settings6_t;
 #define OLD_NKIT 6                               /* the kits before PLL6 */
 typedef struct {                                 /* PLL5: twenty-eight parameters, six kits */
@@ -133,7 +143,8 @@ void app_init(void)
 {
     int i, f;
     static union {
-        settings_t v8;
+        settings_t v10;
+        settings9_t v9;
         settings7_t v7;
         settings6_t v6;
         settings5_t v5;
@@ -144,17 +155,24 @@ void app_init(void)
     int n;
     en_init();
     n = plat_store_load(OBJ_SETTINGS, &ld, sizeof ld);
-    if (n == (int)sizeof(settings_t) && ld.v8.magic == SET_MAGIC) {
-        set = ld.v8;
-    } else if (n == (int)sizeof(settings_t) && ld.v8.magic == SET_MAGIC_8) {   /* PLL8: the same, but the chords'
-                                                                                  * Speed (0..3) and Range (1..3) as
-                                                                                  * Stir and Spread; Gate gone */
-        int sp = ld.v8.par[P_CH_BUSY], rg = ld.v8.par[P_CH_SPREAD];
-        set = ld.v8;
-        set.magic = SET_MAGIC;
-        set.par[P_CH_BUSY] = (int16_t)(clamp(sp, 0, 3) * 100 / 3);
-        set.par[P_CH_SPREAD] = (int16_t)((clamp(rg, 1, 3) - 1) * 50);
-        set.par[P_CH_WANDER] = en_param_info(P_CH_WANDER)->def;
+    if (n == (int)sizeof(settings_t) && ld.v10.magic == SET_MAGIC) {
+        set = ld.v10;
+    } else if (n == (int)sizeof(settings9_t) && (ld.v9.magic == SET_MAGIC_9 || ld.v9.magic == SET_MAGIC_8)) {
+        settings_defaults();                     /* PLL9: eight kits (the new ones as they come) */
+        for (i = 0; i < P_NPARAMS; i++)
+            set.par[i] = ld.v9.par[i];
+        set.kit = ld.v9.kit;
+        set.world = ld.v9.world;
+        set.oct = ld.v9.oct;
+        for (i = 0; i < (int)sizeof ld.v9.tone; i++)
+            ((int8_t *)set.tone)[i] = ((const int8_t *)ld.v9.tone)[i];
+        if (ld.v9.magic == SET_MAGIC_8) {        /* PLL8: the chords' Speed (0..3) and Range (1..3) as Stir and
+                                                  * Spread; Gate gone */
+            int sp = ld.v9.par[P_CH_BUSY], rg = ld.v9.par[P_CH_SPREAD];
+            set.par[P_CH_BUSY] = (int16_t)(clamp(sp, 0, 3) * 100 / 3);
+            set.par[P_CH_SPREAD] = (int16_t)((clamp(rg, 1, 3) - 1) * 50);
+            set.par[P_CH_WANDER] = en_param_info(P_CH_WANDER)->def;
+        }
     } else if (n == (int)sizeof(settings7_t) && ld.v7.magic == SET_MAGIC_7) {   /* older records: carried over */
         settings_defaults();
         for (i = 0; i < 28; i++)
@@ -219,6 +237,12 @@ void app_init(void)
             ((int8_t *)set.tone)[i] = ((const int8_t *)ld.v2.tone)[i];
     } else {
         settings_defaults();
+    }
+    if (ld.v10.magic != SET_MAGIC) {             /* an older record (or none): the kits remade in PLLA start as they
+                                                  * are made (their old edits were another kit's) */
+        static const uint8_t REMADE[] = {2, 5, 7};   /* GLASS ORCHARD, HAZE ARCHIVE, FOG LANTERN */
+        for (i = 0; i < (int)sizeof REMADE * EN_NROLE; i++)
+            tone_defaults(REMADE[i / EN_NROLE], i % EN_NROLE);
     }
     for (i = 0; i < P_NPARAMS; i++) {
         const en_param_t *p = en_param_info(i);

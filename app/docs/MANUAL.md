@@ -78,7 +78,7 @@ Lights, on the global page, sets how bright they all are.
 | OCT− · OCT+ | Move the register of the music, two octaves either way. While REC is held they move the keys' octave instead. |
 | REC | Hold it and the keys play, and the music waits. Let go, and what you played is taken in as the music's own: the motif is written whole at once, and in the attic the phrase becomes the keys. |
 | SEL | Hold it and K1 to K4 are the lagoon's four knobs, on any page. On the lagoon itself, they turn in finer steps. |
-| PRESETS | Picks the kit. Eight kits, each three voices. Edits to the voices are kept per kit. |
+| PRESETS | Picks the kit. Ten kits, each three voices. Edits to the voices are kept per kit. |
 | ALGORITHM | Picks the world. Seven worlds. The change is a crossing. |
 | K1 to K4 | The four knobs of the page that is shown. |
 | PLAY | Plays, or rests. |
@@ -119,7 +119,7 @@ envelope, and a ring that opens and closes with the voice.
 - Soft: how gently the voice begins. Low is a tap, high is a slow swell. (This is the attack.)
 
 Some voices have breath: air beside the tone, a rough wobble, a pitch that wanders a little, as if worn or hazy. The
-kit fixes it. There is a little in SLOW BREATH and HAZE ARCHIVE and much in DUST PIPES and FOG LANTERN. Air, on the
+kit fixes it. There is a little in SLOW BREATH and HAZE ARCHIVE and much in DUST PIPES, FOG LANTERN and CHALK GARDEN. Air, on the
 age page, scales it, and the voice's page shows it. Edits to a voice are kept for that kit. Hold EDIT to put the
 voice back as the kit has it.
 
@@ -296,8 +296,9 @@ touch the knobs or the kit. The screen changes with the world.
 
 ### The kits
 
-PRESETS picks the kit, a set of three voices: a lead, an answer and a low voice. There are eight: TIN HARBOR,
-WOODEN RAIN, GLASS ORCHARD, SLOW BREATH, IRON SNOW, HAZE ARCHIVE, DUST PIPES and FOG LANTERN. The chords take the
+PRESETS picks the kit, a set of three voices: a lead, an answer and a low voice. There are ten: TIN HARBOR,
+WOODEN RAIN, GLASS ORCHARD, SLOW BREATH, IRON SNOW, HAZE ARCHIVE, DUST PIPES, FOG LANTERN, CHALK GARDEN and
+BRASS EVENING. The chords take the
 colour of the kit's low voice.
 
 ---

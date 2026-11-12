@@ -34,7 +34,7 @@ const en_param_t *en_param_info(int i);
 
 /* tones: sets of three voices (kits), one chosen at a time; each voice's four settings can be edited, per kit.
  * The UI writes them (en_set_kit, en_set_tone: single bytes); the render reads them as a note starts */
-#define EN_NKIT 8
+#define EN_NKIT 10
 enum { R_LEAD, R_ANSWER, R_LOW, EN_NROLE };
 enum { T_COLOR, T_BRIGHT, T_DECAY, T_SOFT, EN_NTONE };
 #define EN_NRATIO 12                   /* T_COLOR: 0..EN_NRATIO-1, the modulator's ratio (en_ratio); the rest 0..100 */

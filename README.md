@@ -24,7 +24,7 @@ the browser and install it: https://hacha.github.io/paperlagoon/
 | REC | held: the keys play (the music waits); let go: the phrase is taken in as the music's own (the motif, written whole at once; the drone's chord, the loops' notes, the attic's keys). OCT- / OCT+ meanwhile move the keys' octave |
 | SEL | held: K1..K4 are the lagoon's four from any page (on the lagoon itself, in finer steps) |
 | SEQ | the memory: what the music holds (the motif and the ones remembered, the chord, the loops, the letter's line, the fountain's figure, the attic's keys, the stair's centre); K1..K4 Repeat, Change, Length, Memory. Held: hold it (no new motif, chord, line, figure, keys, centre or scale), held again: let go |
-| PRESETS | the kit: eight sets of three voices (lead, answer, low); edits are kept per kit |
+| PRESETS | the kit: ten sets of three voices (lead, answer, low); edits are kept per kit |
 | ALGORITHM | the world: seven places that exist nowhere, each its own way of making music (never the knobs nor the kit). Chosen at once, reached by a crossing: the music finishes its phrase where it is (a few seconds; the header says CROSSING, the name breathing, a wake running under it), the chords and the pulse fading, then a breath, and the new world opens |
 | K1..K4 | the lagoon: Density, Bright, Space, Echo. A voice: Color (the FM ratio), Bright, Decay, Soft (the attack) |
 | PLAY | plays or rests. It opens: sparse at first, full in some 25 s, the chords and the pulse coming in a few bars later. A rest is at once (the echoes and the plate ring on) |
@@ -34,9 +34,9 @@ Every button glows dim; the one whose page shows is lit, and so are PLAY when pl
 
 | Keys | play no notes (but under REC): a press *offers* something to a hidden state (held: a little more, again and again). When its drop meets the water the offering splashes: the sound stirs at once (smeared, darker or opener, the echoes and the plate swelling, hushed or swollen), the music answers soon, and in a second or two it is gone; then it seeps in slowly |
 
-Kits: TIN HARBOR, WOODEN RAIN, GLASS ORCHARD, SLOW BREATH, IRON SNOW, HAZE ARCHIVE, DUST PIPES, FOG LANTERN.
+Kits: TIN HARBOR, WOODEN RAIN, GLASS ORCHARD, SLOW BREATH, IRON SNOW, HAZE ARCHIVE, DUST PIPES, FOG LANTERN, CHALK GARDEN, BRASS EVENING.
 Some voices have breath (air beside the tone, a rough modulation, a pitch that wanders: worn, hazy), fixed by the kit
-(a little in SLOW BREATH and HAZE ARCHIVE, much in DUST PIPES and FOG LANTERN), scaled by Air (FX, again); a voice's
+(a little in SLOW BREATH and HAZE ARCHIVE, much in DUST PIPES, FOG LANTERN and CHALK GARDEN), scaled by Air (FX, again); a voice's
 page shows it.
 
 Worlds, each its own way of making music (heard at once; the screen changes with it):

@@ -110,9 +110,9 @@ static const kit_t KITS[EN_NKIT] = {
     {"WOODEN RAIN", 1.7f, {{4, 2.2f, 0.05f, 1.6f, 0, 0.9f, 0.6f, 0.5f, 0},        /* a bar of wood, struck */
                      {1, 0.5f, 1.00f, 4.5f, 9, 0.6f, 1.0f, 0.8f, 0},        /* a vibraphone's bar */
                      {2, 0.6f, 0.30f, 3.0f, 17, 0.8f, 0.3f, 0.5f, 0}}},     /* a low, hollow log */
-    {"GLASS ORCHARD", 1.0f, {{3, 1.1f, 0.15f, 2.8f, 0, 0.9f, 0.8f, 0.7f, 0},      /* a celesta */
-                       {11, 0.7f, 1.50f, 7.0f, 14, 0.5f, 1.0f, 1.0f, 0},    /* a thin glass bowl */
-                       {2, 0.3f, 2.00f, 8.0f, 55, 0.7f, 0.3f, 0.7f, 0}}},   /* a held low glass */
+    {"GLASS ORCHARD", 1.3f, {{3, 1.1f, 0.15f, 2.4f, 0, 0.9f, 0.5f, 0.4f, 0},      /* a celesta, near */
+                       {11, 0.8f, 0.40f, 3.5f, 0, 0.6f, 0.7f, 0.6f, 0},     /* a thin glass, tapped */
+                       {2, 0.6f, 0.50f, 4.5f, 4, 0.8f, 0.2f, 0.3f, 0}}},    /* a low glass, tapped: all of it struck, close */
     {"SLOW BREATH", 1.0f, {{1, 0.7f, 3.00f, 5.0f, 73, 0.8f, 0.7f, 0.8f, 30},       /* a breath, almost a flute */
                      {2, 0.5f, 4.00f, 6.0f, 82, 0.5f, 0.9f, 1.0f, 35},       /* an octave's breath, slower */
                      {0, 0.3f, 5.00f, 10.0f, 89, 0.8f, 0.3f, 0.7f, 20}}},    /* a low swell */
@@ -120,14 +120,20 @@ static const kit_t KITS[EN_NKIT] = {
                    {8, 0.8f, 2.00f, 9.0f, 17, 0.5f, 1.0f, 1.0f, 0},         /* a far, wide bell */
                    {1, 0.5f, 3.00f, 9.0f, 46, 0.8f, 0.3f, 0.6f, 0}}},       /* a low hum */
     {"HAZE ARCHIVE", 1.0f, {{1, 0.9f, 6.00f, 9.0f, 85, 0.7f, 0.8f, 1.0f, 25},      /* a slow, soft chord tone */
-                      {3, 0.4f, 6.00f, 10.0f, 91, 0.4f, 1.0f, 1.0f, 40},     /* a haze above it */
+                      {6, 0.6f, 0.40f, 4.0f, 0, 0.35f, 1.0f, 1.0f, 20},       /* a small chime, far off in it */
                       {0, 0.5f, 8.00f, 12.0f, 95, 0.7f, 0.3f, 0.8f, 20}}},   /* a low haze */
     {"DUST PIPES", 1.1f, {{1, 0.5f, 2.00f, 4.5f, 46, 0.8f, 0.7f, 0.7f, 75},     /* a pipe, more air than tone */
                      {2, 0.4f, 3.00f, 5.0f, 55, 0.5f, 1.0f, 0.9f, 85},      /* a higher one, further off */
                      {0, 0.3f, 4.00f, 8.0f, 64, 0.8f, 0.3f, 0.6f, 50}}},    /* a low breath */
-    {"FOG LANTERN", 1.0f, {{7, 0.9f, 0.80f, 5.0f, 9, 0.8f, 0.9f, 0.9f, 55},     /* a bell through fog */
-                      {9, 0.6f, 1.50f, 7.0f, 17, 0.5f, 1.0f, 1.0f, 65},     /* glass, worn */
-                      {1, 0.4f, 2.50f, 9.0f, 46, 0.8f, 0.3f, 0.7f, 40}}},   /* a low hum, grainy */
+    {"FOG LANTERN", 1.0f, {{10, 0.7f, 1.20f, 6.0f, 17, 0.35f, 1.0f, 1.0f, 55},  /* a lantern's bell, far */
+                      {5, 0.5f, 1.50f, 7.0f, 30, 0.25f, 1.0f, 1.0f, 65},    /* a higher one, further */
+                      {1, 0.4f, 2.50f, 9.0f, 46, 0.5f, 0.4f, 1.0f, 40}}},   /* a low hum, grainy: all of it far */
+    {"CHALK GARDEN", 1.6f, {{2, 1.4f, 0.08f, 0.9f, 0, 0.9f, 0.5f, 0.4f, 70},    /* a dry tap, more grain than tone */
+                       {4, 0.8f, 0.10f, 1.2f, 0, 0.6f, 0.8f, 0.6f, 80},     /* a higher one, scraped */
+                       {1, 0.6f, 0.20f, 1.8f, 4, 0.8f, 0.3f, 0.4f, 45}}},   /* a low knock, dusty */
+    {"BRASS EVENING", 0.9f, {{3, 1.4f, 9.00f, 8.0f, 40, 0.8f, 0.6f, 0.7f, 10},  /* a reed, held bright */
+                        {1, 1.6f, 9.00f, 9.0f, 50, 0.5f, 0.9f, 0.9f, 10},   /* a brighter one over it */
+                        {1, 1.0f, 10.0f, 10.0f, 55, 0.8f, 0.3f, 0.6f, 5}}}, /* a low reed: it keeps its colour */
 };
 static const char *const ROLE_NAME[EN_NROLE] = {"LEAD", "ANSWER", "LOW"};
 static const char *const TONE_NAME[EN_NTONE] = {"Color", "Bright", "Decay", "Soft"};
