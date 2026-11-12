@@ -669,7 +669,7 @@ static void draw_header(uint32_t now)
         end = cv_text(10, 6, &FONT_B, "REC", C_WHITE);
         cv_text(end + 8, 10, &FONT_XS, "THE KEYS PLAY; LET GO TO GIVE IT", C_AMB);
     } else {
-        const char *s = en_crossing ? "CROSSING" : en_playing ? "PLAYING" : "RESTING";
+        const char *s = en_crossing ? "CROSSING" : 0;   /* (playing or resting: the name says it, white or grey) */
         uint16_t c = en_playing ? C_WHITE : C_GRAY;   /* resting: the name greyed (a long one leaves no room to say) */
         if (en_crossing) {                       /* a crossing: the name not yet reached breathes, a wake runs under */
             int32_t ph = (int32_t)(now % 1600u), b = ph < 800 ? ph : 1600 - ph, i;
@@ -678,9 +678,8 @@ static void draw_header(uint32_t now)
                 cv_rect(10 + (int32_t)((now / 12u + (uint32_t)i * 47u) % 220u), 29, 6 - i, 1, i ? C_GRAY : C_HI);
         }
         end = cv_text(10, 6, &FONT_B, en_world_name(set.world), c);
-        x = 230 - text_w(&FONT_XS, s);
-        if (x > end + 8)                         /* where a long name leaves room */
-            cv_text(x, 10, &FONT_XS, s, en_crossing ? C_AMB : en_playing ? C_HI : C_DIM);
+        if (s && (x = 230 - text_w(&FONT_XS, s)) > end + 8)   /* where a long name leaves room */
+            cv_text(x, 10, &FONT_XS, s, C_AMB);
     }
     cv_blit(0, 0);
 }

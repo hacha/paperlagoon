@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 hacha
+# The manual's screenshots (app/docs/img): ./build.sh --host, then
+#   app/build/host/paperlagoon_host app/tests/screens.txt app/docs/img
+wait 30000
+shot screen-lagoon.png
+tapkey 14
+wait 250
+shot screen-drop.png
+wait 900
+shot screen-rings.png
+tap EDIT
+wait 1500
+shot screen-voice.png
+tap FX
+wait 1500
+shot screen-effects.png
+tap FX
+wait 1500
+shot screen-age.png
+tap ENV
+wait 1500
+shot screen-environment.png
+tap LFO
+wait 1500
+shot screen-cycles.png
+tap ARP
+turn K1 25
+wait 20000
+shot screen-chords.png
+tap ARP
+turn K1 25
+wait 8000
+shot screen-pulse.png
+tap SEQ
+wait 1500
+shot screen-memory.png
+tap GLO
+wait 1500
+shot screen-global.png
+tap HOME
+turn ALGO 3
+wait 1600
+shot screen-crossing.png
+wait 12000
+shot screen-fountain.png

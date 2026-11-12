@@ -1,10 +1,11 @@
-# PaperLagoon (working title)
+# PaperLagoon
 
 A generative environmental-music firmware for the M-VAVE FM-1, after 1980s Japanese *kankyō ongaku*
 (and, at most, Susumu Yokota's hazy pulse). It plays by itself; you steer it from outside.
 
-Status: a sketch. FM voices through AMB-1's tape echo and plate, played by a generator of short motifs that a
-hidden state leans. Tested in the host simulator; runs on an FM-1 (installed with base/tools/fm1_install.py, 2026-11-11).
+FM voices through AMB-1's tape echo and plate, played in five worlds that a hidden state leans. The manual:
+[app/docs/MANUAL.md](app/docs/MANUAL.md) (日本語: [app/docs/MANUAL.ja.md](app/docs/MANUAL.ja.md)); the site, to try it in
+the browser and install it: https://hacha.github.io/paperlagoon/
 
 ## Controls
 

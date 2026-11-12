@@ -1,4 +1,12 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # PaperLagoon's words for a screen reader (fm1-reader): the text on the screen <TAB> what to say.
-# url: https://charlesvestal.github.io/fm1-base/words/
+# url: https://hacha.github.io/paperlagoon/words/
 PAPERLAGOON	paper lagoon
+CARRIER : MODULATOR	carrier to modulator
+LEVEL 0: SILENT	level zero, silent
+SEL: LAGOON	select, the lagoon's knobs
+SEL: FINE	select, fine
+NONE IN THIS KIT	none in this kit
+TIN HARBOR	tin harbor
+A4	A 4
+HZ	hertz
