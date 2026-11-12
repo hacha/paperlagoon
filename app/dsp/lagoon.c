@@ -83,7 +83,7 @@ typedef struct {
     voice_t v[EN_NROLE];                         /* R_LEAD, R_ANSWER, R_LOW */
 } kit_t;
 static const kit_t KITS[EN_NKIT] = {
-    {"PAPER LAGOON", 1.0f, {{1, 1.6f, 0.30f, 3.6f, 14, 0.9f, 0.8f, 0.7f, 0},      /* a tine, as an electric piano's */
+    {"TIN HARBOR", 1.0f, {{1, 1.6f, 0.30f, 3.6f, 14, 0.9f, 0.8f, 0.7f, 0},      /* a tine, as an electric piano's */
                       {9, 0.9f, 0.90f, 5.0f, 9, 0.6f, 1.0f, 0.9f, 0},       /* glass, an inharmonic bell */
                       {1, 0.4f, 1.60f, 7.0f, 51, 0.8f, 0.3f, 0.6f, 0}}},    /* a soft low tone */
     {"WOODEN RAIN", 1.7f, {{4, 2.2f, 0.05f, 1.6f, 0, 0.9f, 0.6f, 0.5f, 0},        /* a bar of wood, struck */

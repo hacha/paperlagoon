@@ -32,7 +32,7 @@ Every button glows dim; the one whose page shows is lit, and so are PLAY when pl
 
 | Keys | play no notes (but under REC): a press *offers* something to a hidden state (held: a little more, again and again) |
 
-Kits: PAPER LAGOON, WOODEN RAIN, GLASS ORCHARD, SLOW BREATH, IRON SNOW, HAZE ARCHIVE, DUST PIPES, FOG LANTERN.
+Kits: TIN HARBOR, WOODEN RAIN, GLASS ORCHARD, SLOW BREATH, IRON SNOW, HAZE ARCHIVE, DUST PIPES, FOG LANTERN.
 Some voices have breath (air beside the tone, a rough modulation, a pitch that wanders: worn, hazy), fixed by the kit
 (a little in SLOW BREATH and HAZE ARCHIVE, much in DUST PIPES and FOG LANTERN), scaled by Air (FX, again); a voice's
 page shows it.
