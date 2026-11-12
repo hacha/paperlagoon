@@ -1,6 +1,9 @@
 #!/bin/sh
-# SPDX-License-Identifier: GPL-3.0-only
-# Build PaperLagoon with fm1-base (base/, a git submodule). After AMB-1's build.sh.
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (C) 2026 Charles Vestal
+# Changes Copyright (C) 2026 hacha
+# Build PaperLagoon with fm1-base (base/, a git submodule). AMB-1's build.sh (charlesvestal/fm1-amb, MPL-2.0), its
+# name changed.
 #   ./build.sh [--release X.Y] [--host | --web]
 #   JIELI_TOOLCHAIN  JieLi Linux toolchain (default: ~/.jieli/toolchain)
 #   AC79_SDK         JieLi AC79 SDK checkout (default: ~/fw-AC79_AIoT_SDK)

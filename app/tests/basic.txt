@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 hacha
 # PaperLagoon in the host simulator: ./build.sh --host, then
 #   app/build/host/paperlagoon_host app/tests/basic.txt app/build/host
 # It plays from the start; a minute of it goes to listen.wav (to hear, not only to check).

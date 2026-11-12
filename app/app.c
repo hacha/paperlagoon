@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 hacha */
+ * Copyright (C) 2026 hacha
+ * Started from fm1-base's template app (charlesvestal/fm1-base, template/app.c, MPL-2.0, by Charles Vestal) and
+ * rewritten; a few of its idioms remain (the settings' defaults, app_say(), the keys' edges). */
 /* PaperLagoon on fm1-base: the app's unity build (compiled into fm1-base's, after the platform: gfx.c and
  * announce.c are in scope), the glue to the engine (dsp/lagoon.c, its own -O2 unit) and the screen.
  *
