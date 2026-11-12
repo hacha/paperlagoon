@@ -15,7 +15,7 @@
 
 #include "amb_parts.c"
 
-#ifdef PLAT_HOST                                 /* (the host only) a log for the long listens: PL_LOG=file */
+#if defined PLAT_HOST && !defined __EMSCRIPTEN__                                 /* (the host only) a log for the long listens: PL_LOG=file */
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -209,7 +209,7 @@ static void play_shaped(int role, int note, float vel, float pan, int32_t wait, 
     if (note > en_note_max)
         en_note_max = (uint8_t)note;
     en_notes++;
-#ifdef PLAT_HOST
+#if defined PLAT_HOST && !defined __EMSCRIPTEN__
     if (log_file())
         fprintf(pl_log, "N %.3f %d %d %.3f\n", (double)clock_s / EN_SR + (double)wait / EN_SR, role, note, (double)vel);
 #endif
@@ -1607,7 +1607,7 @@ void en_render(int32_t *out, uint32_t n, uint32_t gain_q12)
         fm_render(k, 1.6f);
         pulse_render(k);
         mix_out(out, k, gain * spl_gain * (1.0f - 0.45f * dusk), echo_send * spl_echo, rev_send, spl_wet);
-#ifdef PLAT_HOST
+#if defined PLAT_HOST && !defined __EMSCRIPTEN__
         if (log_file()) {                        /* once a second: the loudness (RMS, peak), the state, where it is */
             static double sq;
             static float pk;
