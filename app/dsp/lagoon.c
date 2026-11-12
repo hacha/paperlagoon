@@ -15,6 +15,24 @@
 
 #include "amb_parts.c"
 
+#ifdef PLAT_HOST                                 /* (the host only) a log for the long listens: PL_LOG=file */
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+static uint32_t clock_s;                         /* (the REC section's) */
+static FILE *pl_log;
+static int pl_log_tried;
+static FILE *log_file(void)
+{
+    if (!pl_log_tried) {
+        const char *p = getenv("PL_LOG");
+        pl_log_tried = 1;
+        pl_log = p ? fopen(p, "w") : 0;
+    }
+    return pl_log;
+}
+#endif
+
 static const en_param_t PARAMS[P_NPARAMS] = {
     {"Density", 0, 100, 45}, {"Bright", 0, 100, 40}, {"Space", 0, 100, 60}, {"Echo", 0, 100, 40},
     {"Time", 0, 100, 42}, {"Feedback", 0, 100, 68}, {"Size", 0, 100, 69}, {"Wear", 0, 100, 20},
@@ -191,6 +209,10 @@ static void play_shaped(int role, int note, float vel, float pan, int32_t wait, 
     if (note > en_note_max)
         en_note_max = (uint8_t)note;
     en_notes++;
+#ifdef PLAT_HOST
+    if (log_file())
+        fprintf(pl_log, "N %.3f %d %d %.3f\n", (double)clock_s / EN_SR + (double)wait / EN_SR, role, note, (double)vel);
+#endif
 }
 
 static void play(int role, int note, float vel, float pan, int32_t wait)
@@ -1546,6 +1568,28 @@ void en_render(int32_t *out, uint32_t n, uint32_t gain_q12)
         fm_render(k, 1.6f);
         pulse_render(k);
         mix_out(out, k, gain * spl_gain * (1.0f - 0.45f * dusk), echo_send * spl_echo, rev_send, spl_wet);
+#ifdef PLAT_HOST
+        if (log_file()) {                        /* once a second: the loudness (RMS, peak), the state, where it is */
+            static double sq;
+            static float pk;
+            static uint32_t cnt;
+            uint32_t j;
+            for (j = 0; j < 2 * k; j++) {
+                float v = (float)out[j] * (1.0f / 8388608.0f);
+                sq += (double)v * v;
+                pk = fm_maxf(pk, fm_fabsf(v));
+            }
+            cnt += 2 * k;
+            if (cnt >= 2 * EN_SR) {
+                fprintf(pl_log, "S %.1f %.5f %.4f %.3f %.3f %.3f %.3f %d %d %d %d %d\n", (double)clock_s / EN_SR,
+                        sqrt(sq / cnt), (double)pk, (double)st[0], (double)st[1], (double)st[2], (double)st[3], root,
+                        scale_i, world, en_playing, (int)fm_minf(pu_level * acc * 100.0f, 999.0f));
+                sq = 0.0;
+                pk = 0.0f;
+                cnt = 0;
+            }
+        }
+#endif
         out += 2 * k;
         n -= k;
     }

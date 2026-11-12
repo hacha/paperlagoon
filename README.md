@@ -60,6 +60,7 @@ The water's line is the state: higher in light, rougher when folded.
 git submodule update --init --recursive
 ./build.sh --host                     # host simulator (a C compiler is enough)
 ./test.sh                             # every script in app/tests, judged by exit code (or: ./test.sh rec)
+PL_LOG=f.log app/build/host/paperlagoon_host script.txt out/   # a log for long listens: each note, and each second's loudness, state, root, scale
 ./build.sh --web                      # browser emulator (Emscripten)
 ./serve.sh [port]                     # serve it on http://localhost:8000/
 ./build.sh                            # device package (JieLi toolchain + AC79 SDK)
