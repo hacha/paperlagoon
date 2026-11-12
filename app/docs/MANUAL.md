@@ -4,7 +4,7 @@
 
 PaperLagoon is a generative environmental-music firmware for the M-VAVE FM-1. It plays by itself. You don't play it; you
 steer it from outside, the way you might change the light in a room. FM voices go through a tape echo and a plate
-reverb, and a generator of short motifs plays them, leaning on a hidden state that you can only touch from the side.
+reverb, and a generator of phrases plays them, leaning on a hidden state that you can only touch from the side.
 
 ![The lagoon: SHALLOWS OF MEMORY in the header, the kit TIN HARBOR below it, a thin line of water across the middle,
 and the four knobs Density, Bright, Space and Echo at the bottom](img/screen-lagoon.png "The lagoon, at rest")
@@ -76,10 +76,10 @@ Lights, on the global page, sets how bright they all are.
 | ARP | Goes to the chords. Press again for the pulse. Press again to go back. |
 | SEQ | Goes to the memory. Hold it to hold the music still, hold it again to let go. |
 | OCT− · OCT+ | Move the register of the music, two octaves either way. While REC is held they move the keys' octave instead. |
-| REC | Hold it and the keys play, and the music waits. Let go, and what you played is taken in as the music's own. |
+| REC | Hold it and the keys play, and the music waits. Let go, and what you played is taken in as the music's own: the motif is written whole at once, and in the attic the phrase becomes the keys. |
 | SEL | Hold it and K1 to K4 are the lagoon's four knobs, on any page. On the lagoon itself, they turn in finer steps. |
 | PRESETS | Picks the kit. Eight kits, each three voices. Edits to the voices are kept per kit. |
-| ALGORITHM | Picks the world. Five worlds. The change is a crossing. |
+| ALGORITHM | Picks the world. Seven worlds. The change is a crossing. |
 | K1 to K4 | The four knobs of the page that is shown. |
 | PLAY | Plays, or rests. |
 | SAVE | Keeps everything. Lit when something is not saved. |
@@ -175,7 +175,7 @@ breath (the shortest, about 50 to 100 seconds), the tide (about 120 to 230 secon
 ![The chords page: a walk over the chord, with Level, Stir, Spread and Wander](img/screen-chords.png "The chords")
 
 Press ARP. Broken chords under the music, played in the colour of the kit's low voice. Each world walks its chord
-in its own way: up and down, falling, scattered, rising and falling back, or like a pendulum.
+in its own way: up and down, falling, scattered, rising and falling back, like a pendulum, swaying, or a step and its shadow.
 
 - Level: how loud. At 0 there are none.
 - Stir: the grain of the notes. As the world leans it; a sparse world rings long.
@@ -186,7 +186,7 @@ in its own way: up and down, falling, scattered, rising and falling back, or lik
 
 ![The pulse page: THUMP, CLICK and BRUSH as rings, with Level, Stir, Wander and Weight](img/screen-pulse.png "The pulse")
 
-Press ARP again. A muffled beat: a low thump, a small click and a brush, laid on each world's own patterns. It stays
+Press ARP again. A muffled beat: a low thump, a small click and a brush, laid on each world's own patterns. In the attic there is no thump, only small clicks and the brush. At the stair there is a slow thump and two small clicks, and no brush. It stays
 a hazy pulse, and never goes to a dance. The thump stays on the beats, at most one to a beat.
 
 - Level: how loud. At 0 there is none.
@@ -202,15 +202,18 @@ wholly. They never cut off a note that is sounding.
 ![The memory page: THE MOTIF above and REMEMBERED below, with Repeat, Change, Length and Memory](img/screen-memory.png "THE MOTIF, REMEMBERED")
 
 What the music holds: the motif and the ones it remembers, the chord, the loops, the letter's line, the fountain's
-figure. What the knobs mean follows the world.
+figure, the attic's keys, the stair's centre. What the knobs mean follows the world. In the attic the page's heading is THE KEYS, and at the stair THE STAIR.
 
-- Repeat: how many times a motif plays through; how often a line is read again; how many rounds the fountain
-  makes before the figure may change.
-- Change: a note moved; a word exchanged; the figure's height, foot, length or start.
-- Length: the notes to a motif, a line or a figure; the drone's swells; the lengths of the loops.
-- Memory: how often an older motif, line or figure comes back.
+- Repeat: how many passes before each note of a motif comes or goes, and how long it stays whole; how often a line is
+  read again; how many rounds the fountain makes before the figure may change; how many gusts in a spell of the
+  attic; how many walks before the stair's centre may move.
+- Change: a note moved while the motif is whole; a word exchanged; the figure's height, foot, length or start; a key
+  changed between spells; the centre of the stair moved (and the shadow may change sides).
+- Length: the notes to a motif, a line or a figure; the drone's swells; the lengths of the loops; the strikes in a
+  gust; the longest phrase of the stair.
+- Memory: how often an older motif, line, figure, set of keys or centre comes back.
 
-Hold SEQ to hold the music: no new motif, chord, line, figure or scale. The changes already moving go on. Hold SEQ
+Hold SEQ to hold the music: no new motif, chord, line, figure, keys, centre or scale. The changes already moving go on. Hold SEQ
 again to let go.
 
 ### 4.10 The global page
@@ -246,7 +249,8 @@ At that moment the sound stirs too, at once. It smears, turns darker or clearer,
 whole is a little hushed or a little swollen. The music answers soon after, and in a second or two the stir is gone.
 Then the offering seeps in over some seconds, and it fades over minutes. What it changes is the scale, the register,
 the length of the rests, how long a motif is, how often the answer and the low voice come, an older motif folding
-back, and now and then a motif built on the pitch you offered.
+back, and now and then a motif built on the pitch you offered. In the attic an offering hangs a key of its pitch; at the
+stair it becomes the next centre.
 
 With Drift at 0 nothing stirs. Offer sets how great the stir is.
 
@@ -259,16 +263,32 @@ With Drift at 0 nothing stirs. Offer sets how great the stir is.
 ALGORITHM picks the world. Each is a place that exists nowhere, and each makes music in its own way. They never
 touch the knobs or the kit. The screen changes with the world.
 
-- SHALLOWS OF MEMORY: short motifs, repeated and a little changed.
+- SHALLOWS OF MEMORY: a motif is written in a note or two each pass, until it is whole. It is heard whole a few times:
+  the low voice under a pass now and then, the answer while it is whole. Then it fades from memory a note or two each
+  pass, until nothing is left. After a silence another is written. Light lifts it and bleed lets it ring. An offering is written in next; while a motif
+  fades, it puts a note back. In the margin the washing away is faster and the silences longer, and a fold writes the
+  motif out of order.
 - BEHIND THE HORIZON: a drone. Chords swell and fall back, a low tone lies under them, and now and then one note of a
   melody comes.
 - THE UNREAD LETTER: single points, far apart. A few pitches, the letter's words, each a leap from the last, at
   uneven distances. A long silence follows each line. In the margin some stay unread, written but not sounded.
-- SILENT FOUNTAIN: one figure that rises and falls back, round and round in soft eighths, changing a little now and
+- THE FOUNTAIN AFTER CLOSING: one figure that rises and falls back, round and round in soft eighths, changing a little now and
   then.
 
-  ![The fountain: SILENT FOUNTAIN in the header, a small ring on the water, points of light above it](img/screen-fountain.png "SILENT FOUNTAIN")
+  ![The fountain: THE FOUNTAIN AFTER CLOSING in the header, a small ring on the water, points of light above it](img/screen-fountain.png "THE FOUNTAIN AFTER CLOSING")
 - WHERE LIGHT BECOMES MOSS: four loops of unequal length, drifting in and out of step.
+- THE ATTIC OF LOOSE KEYS: five keys hanging close together, high, struck in gusts. A gust strikes two to ten times,
+  quickly, neighbour knocking neighbour (now and then one further off), rising and dying away. Between gusts there is a
+  stillness of some seconds. No beat. After a spell of gusts comes a longer calm; then a key is changed, or a new set
+  hangs. A strong gust may bring one deep tone under it. An offering hangs a key of its pitch, and its splash brings a
+  gust soon. Light lifts the keys and bleed lets them ring. The page of the memory is called THE KEYS. In the margin the attic is still for longer, and a fold makes
+  the gusts wilder.
+- A STAIR AND ITS SHADOW: two voices, slowly. The stair walks by steps away from a centre and back, each phrase one
+  step longer than the last (one note, two, three, up to the longest, three to seven), each note long. With every
+  note its shadow sounds: the nearest tone of the root's chord, under it (after a change, over it; in a fold it
+  alternates). The two never sound the same pitch. A rest comes between phrases, a long one after the longest; then
+  the stair turns the other way. The root, low and long, lies under each walk. An offering becomes the next centre,
+  and light lifts the centre; bleed lets the notes ring. The page of the memory is called THE STAIR. In the margin the rests grow longer.
 
 ### The kits
 
@@ -289,8 +309,8 @@ which takes a few seconds. The rule over the knobs and the header both say CROSS
 and a small wake runs under the header. The chords and the pulse fade. Then a breath, and the new world opens,
 sparse, and fills out over some seconds.
 
-![A crossing: SILENT FOUNTAIN in the header with CROSSING at its right, a wake under it, and wide rings on the
-water](img/screen-crossing.png "A crossing to SILENT FOUNTAIN")
+![A crossing: THE FOUNTAIN AFTER CLOSING in the header with CROSSING at its right, a wake under it, and wide rings on the
+water](img/screen-crossing.png "A crossing to THE FOUNTAIN AFTER CLOSING")
 
 If you pick again during a crossing the way changes. If you go back to the world you left, the crossing is
 cancelled.
