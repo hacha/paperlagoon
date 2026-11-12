@@ -237,13 +237,16 @@ typedef struct {
     int8_t answer;                               /* the answer, this far over the lead (semitones) */
     uint8_t alg;                                 /* ALG_* */
 } world_t;
-static const world_t WORLDS[EN_NWORLD] = {
+static const world_t WORLDS[] = {
     {"SHALLOWS OF MEMORY", {0.0f, 0.0f, 0.0f, 0.0f}, 0.80f, {65, 60, 70, 67}, 1.0f, 12, ALG_MOTIF},        /* 記憶の浅瀬 */
     {"BEHIND THE HORIZON", {-0.35f, 0.2f, 0.0f, 0.3f}, 0.95f, {58, 60, 63, 55}, 1.4f, 7, ALG_DRONE},        /* 水平線の裏側 */
     {"THE UNREAD LETTER", {0.0f, -0.2f, 0.55f, 0.6f}, 0.85f, {60, 65, 67, 62}, 1.0f, 12, ALG_LETTER},       /* 誰も読まない手紙 */
     {"SILENT FOUNTAIN", {0.35f, 0.35f, 0.0f, -0.3f}, 0.68f, {67, 72, 65, 70}, 0.65f, 19, ALG_FOUNTAIN},       /* 音のしない噴水 */
     {"WHERE LIGHT BECOMES MOSS", {0.2f, 0.4f, -0.3f, 0.1f}, 0.90f, {64, 69, 62, 67}, 2.0f, 12, ALG_LOOPS}, /* 光が苔になるところ */
 };
+/* every per-world table has one entry a world: a missing one would be zeros, silently (a check per table) */
+#define PER_WORLD(t) typedef char t##_per_world[sizeof t / sizeof t[0] == EN_NWORLD ? 1 : -1]
+PER_WORLD(WORLDS);
 #define WORLD_GLIDE_S 20.0f
 static volatile uint8_t world;
 volatile uint8_t en_alg;
@@ -396,7 +399,8 @@ static int8_t mot_deg[MOT_MAX], mot_dur[MOT_MAX];
 static int mot_len, mot_i, mot_reps, scale_i = 2, root = 65;
 static float root_due = 60.0f;                   /* seconds before the root may move (at a phrase's edge) */
 /* each world's root stays this long on average (s); a fold hastens it; held: it stays */
-static const float ROOT_STAY[EN_NWORLD] = {150.0f, 210.0f, 150.0f, 180.0f, 200.0f};
+static const float ROOT_STAY[] = {150.0f, 210.0f, 150.0f, 180.0f, 200.0f};
+PER_WORLD(ROOT_STAY);
 static float beat_len = 0.8f * EN_SR;            /* the world's beat (S_MARGIN: up to 15 % either way) */
 static float gen_left;                           /* samples to the next event */
 static uint8_t phrase_end;                       /* a phrase (a pass, a line, the fountain's rounds, a swell) ended:
@@ -1053,7 +1057,8 @@ static float tempo_set = 1.0f;
 /* the hush: in a long rest of the music (a phrase over, more than three beats to the next), the chords and the pulse
  * keep its silence, as far as the world keeps silences (the letter wholly), fading over two beats, back as the music
  * comes back (one beat) */
-static const float HUSH[EN_NWORLD] = {0.5f, 0.6f, 1.0f, 0.5f, 0.5f};
+static const float HUSH[] = {0.5f, 0.6f, 1.0f, 0.5f, 0.5f};
+PER_WORLD(HUSH);
 static uint8_t in_rest;
 static float hush = 1.0f;
 volatile uint8_t en_crossing;                    /* (UI) a crossing under way */
@@ -1136,7 +1141,8 @@ static void edges_step(uint32_t n)               /* once a chunk */
  *           coarser grain for a while, or rest. 0: the world's walk, at Stir's and Spread's own
  * Not every note sounds: fewer when sparse (Density), fewer in the margin. */
 static const float ARP_STEP[4] = {1.0f, 0.5f, 1.0f / 3.0f, 0.25f};
-static const float ARP_LEAN[EN_NWORLD] = {0.0f, -1.0f, -0.7f, 0.4f, 0.0f};   /* each world's grain, coarser or finer */
+static const float ARP_LEAN[] = {0.0f, -1.0f, -0.7f, 0.4f, 0.0f};   /* each world's grain, coarser or finer */
+PER_WORLD(ARP_LEAN);
 enum { WALK_UPDOWN, WALK_FALL, WALK_SCATTER, WALK_FOUNTAIN, WALK_PENDULUM };
 #define ARP_SEQ 48
 static float arp_left, arp_level, arp_busy = 0.4f, arp_spread = 0.25f, arp_wander = 0.3f, arp_gate = 0.5f;

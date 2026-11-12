@@ -993,11 +993,11 @@ static void draw_age(uint32_t now)
  * the grain now under it */
 static void draw_chords(void)
 {
-    static const char *const WALK[EN_NWORLD] = {"UP THE CHORD AND DOWN", "FALLING", "SCATTERED", "RISING, FALLING BACK",
-                                                "A PENDULUM"};
+    static const char *const WALK[] = {"UP THE CHORD AND DOWN", "FALLING", "SCATTERED", "RISING, FALLING BACK", "A PENDULUM"};
     static const char *const GRAIN[4] = {"QUARTERS", "EIGHTHS", "TRIPLETS", "SIXTEENTHS"};
     int32_t i, len = en_arp_len, m = en_arp_top ? en_arp_top : 1;
     int on = set.par[P_CH_LEVEL] > 0;
+    (void)sizeof(char[sizeof WALK / sizeof WALK[0] == EN_NWORLD ? 1 : -1]);   /* a walk a world */
     cv_begin(240, 144, C_BLACK);
     cv_text(10, 2, &FONT_XS, WALK[set.world % EN_NWORLD], C_GRAY);
     for (i = 0; i < len && i < 48; i++) {

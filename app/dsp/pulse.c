@@ -18,16 +18,18 @@
 typedef struct {
     uint8_t n, k;                                /* k hits over n steps (n 0: none) */
 } euclid_t;
-static const euclid_t PULSE_PAT[EN_NWORLD][3] = {   /* the thump, the click, the brush */
+static const euclid_t PULSE_PAT[][3] = {   /* the thump, the click, the brush */
     {{16, 2}, {16, 5}, {12, 5}},                 /* SHALLOWS OF MEMORY: halves under, clicks across */
     {{32, 1}, {0, 0}, {24, 3}},                  /* BEHIND THE HORIZON: a far, slow thump, long breaths */
     {{0, 0}, {13, 3}, {20, 2}},                  /* THE UNREAD LETTER: no thump, a clock that is not quite one */
     {{16, 3}, {8, 3}, {16, 8}},                  /* SILENT FOUNTAIN: three in sixteen, the brush on the eighths */
     {{32, 2}, {14, 4}, {9, 4}},                  /* WHERE LIGHT BECOMES MOSS: a thump a bar, the rest drifting */
 };
-static const uint8_t PULSE_ALT[EN_NWORLD][3] = {   /* each one's other length (Wander), its hits kept in proportion */
+static const uint8_t PULSE_ALT[][3] = {   /* each one's other length (Wander), its hits kept in proportion */
     {12, 10, 16}, {24, 0, 32}, {0, 11, 15}, {12, 6, 12}, {18, 15, 11},
 };
+PER_WORLD(PULSE_PAT);
+PER_WORLD(PULSE_ALT);
 static float pu_level, pu_busy, pu_wander = 0.3f, pu_weight = 0.5f;   /* the page's four: 0..2, -1..1, 0..1, 0..1 */
 static int8_t pu_dk[3];                          /* Wander: hits come or gone, -2..2 */
 static uint8_t pu_alt[3];                        /* Wander: the other length */
