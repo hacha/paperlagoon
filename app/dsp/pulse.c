@@ -6,7 +6,8 @@
  * on its own Euclidean pattern (k hits spread over n steps), the lengths unequal in some worlds so they drift against
  * each other; each world its own (some without the thump), and a second length for each. The page's four, plain:
  *   Level   all of it (0: none; 50 as made)
- *   Busy    hits taken from or added to the world's patterns (50: as they are)
+ *   Busy    hits taken from or added to the world's patterns (50: as they are; the thump never more than one a
+ *           beat)
  *   Wander  how far the patterns move with the music: now and then (more in a fold, less held, more with SEQ's
  *           Change) a hit comes or goes (fewer in the margin), a pattern turns, or takes its other length; at the end
  *           of a phrase the pulse may rest a bar or half. 0: the world's patterns, still
@@ -68,6 +69,8 @@ static void pu_pattern(int i, euclid_t *e)      /* a pattern now: the world's, i
     }
     k += (int)(pu_busy * 2.0f + (pu_busy >= 0.0f ? 0.5f : -0.5f)) + pu_dk[i];
     k = k < 1 ? 1 : k > n * 3 / 4 ? n * 3 / 4 : k;
+    if (i == 0 && k > (n + 2) / 4)               /* the thump: at most one a beat (four on the floor, no more) */
+        k = (n + 2) / 4;
     e->n = (uint8_t)n;
     e->k = (uint8_t)k;
 }
@@ -205,8 +208,8 @@ static void pulse_render(uint32_t n)             /* into the mix: the thump dry 
         }
         if (ai_amp >= 1e-4f) {
             float x = pu_noise();
-            ai_lp += 0.6f * (x - ai_lp);
-            ai_hp += 0.25f * (ai_lp - ai_hp);
+            ai_lp += 0.85f * (x - ai_lp);
+            ai_hp += 0.4f * (ai_lp - ai_hp);
             ai_att += (1.0f - ai_att) * 0.0015f;   /* ~15 ms in */
             ai = (ai_lp - ai_hp) * ai_amp * ai_att;
             ai_amp *= ai_dec;
