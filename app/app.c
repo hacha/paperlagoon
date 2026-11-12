@@ -1262,8 +1262,9 @@ static void draw(void)
 /* the card at boot: the title image's lagoon on the square screen. The name; under it the water's line, a drop
  * falling inside the great ring, landing, its rings spreading behind the ring (a key lit as it lands); a shimmer under
  * the line. About three seconds, or until anything is touched; the music has begun under it. */
-#define CARD_MS 3000u
-#define CARD_LAND_MS 900u                        /* the drop meets the water */
+#define CARD_MS 3600u
+#define CARD_DROP_MS 700u                        /* the drop lets go (the ring begins to fade) */
+#define CARD_LAND_MS 1600u                       /* the drop meets the water (the ring is gone) */
 #define CARD_WY 74                               /* the water's line in the lower band (240 x 144 at y 96) */
 #define CARD_R 50                                /* the great ring */
 static void card_ellipse(int32_t cx, int32_t cy, int32_t rx, int32_t ry, int dotted, uint16_t c)
@@ -1314,12 +1315,16 @@ static void draw_card(uint32_t t)
             card_ellipse(cx, wy, rx, rx * 17 / 100 + 1, i < 2,
                          i < 2 ? C_HI : g < 0.5f ? C_AMB : g < 0.9f ? C_GRAY : C_LINE);
         }
-    draw_ring(cx, wy, CARD_R, C_AMB);            /* the great ring, in front of all */
-    draw_ring(cx, wy, CARD_R - 1, C_AMB);
-    if (t < CARD_LAND_MS) {                      /* the drop, falling inside the ring, a faint trail over it */
-        float u = (float)t / (float)CARD_LAND_MS;
+    if (t < CARD_LAND_MS) {                      /* the great ring, fading from the moment the drop lets go */
+        float k = t < CARD_DROP_MS ? 1.0f : 1.0f - (float)(t - CARD_DROP_MS) / (float)(CARD_LAND_MS - CARD_DROP_MS);
+        uint16_t c = RGB((int)(60.0f * k), (int)(180.0f * k), (int)(235.0f * k));   /* the palette's cyan, dimmed */
+        draw_ring(cx, wy, CARD_R, c);
+        draw_ring(cx, wy, CARD_R - 1, c);
+    }
+    if (t < CARD_LAND_MS) {                      /* the drop, held, then falling inside the ring, a faint trail over it */
+        float u = t < CARD_DROP_MS ? 0.0f : (float)(t - CARD_DROP_MS) / (float)(CARD_LAND_MS - CARD_DROP_MS);
         int32_t top = wy - CARD_R + 8, y = top + (int32_t)((float)(wy - 2 - top) * u * u);
-        for (i = 1; i < 6; i++)
+        for (i = 1; i < 6 && t >= CARD_DROP_MS; i++)
             if (y - i * 3 > wy - CARD_R + 2)
                 cv_pset(cx, y - i * 3, i < 3 ? C_GRAY : C_LINE);
         cv_rect(cx - 1, y - 1, 3, 3, C_WHITE);
