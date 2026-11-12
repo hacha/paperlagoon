@@ -378,6 +378,16 @@ static void page_go(int p)
     ann_say(t, 0, ANN_NOW);
 }
 
+static void par_text(int p, int v, char *t)       /* a parameter's value as the screen says it */
+{
+    if (p == P_LIGHTS)                           /* the dim lights: off, low, high */
+        str_put(t, 12, v == 0 ? "OFF" : v == 1 ? "LOW" : "HIGH");
+    else if (p == P_SLEEP && !v)
+        str_put(t, 12, "OFF");
+    else
+        int_text(v, t);
+}
+
 static void param_step(int p, int knob, int32_t d)
 {
     const en_param_t *pi = en_param_info(p);
@@ -392,7 +402,7 @@ static void param_step(int p, int knob, int32_t d)
     en_set(p, (int)v);
     if (p == P_SLEEP)                            /* the sleep timer counts from when it is set */
         ui.play_at = plat_ms();
-    int_text(v, t);
+    par_text(p, (int)v, t);
     app_say(pi->name, t);
 }
 
@@ -657,7 +667,7 @@ static void draw_header(uint32_t now)
         cv_text(x + 8, y, big ? &FONT_B : &FONT_XS, ui.msg[1], C_HI);
     } else if (en_recording) {
         end = cv_text(10, 6, &FONT_B, "REC", C_WHITE);
-        cv_text(end + 8, 10, &FONT_XS, "the keys play; let go to give it", C_AMB);
+        cv_text(end + 8, 10, &FONT_XS, "THE KEYS PLAY; LET GO TO GIVE IT", C_AMB);
     } else {
         const char *s = en_crossing ? "CROSSING" : en_playing ? "PLAYING" : "RESTING";
         uint16_t c = C_WHITE;
@@ -685,6 +695,8 @@ static void draw_rule(void)
     int32_t xd = 231 - NPAGE * 5, xt = xd - 6 - text_w(&FONT_XS, name), xs = 0, i;
     if (ui.shift)
         ctx = ui.page == PG_LAGOON ? "SEL: FINE" : "SEL: LAGOON";
+    else if (en_crossing)                        /* (any page: a crossing under way) */
+        ctx = "CROSSING";
     else if (ui.page == PG_SEQ && en_held)
         ctx = "HELD";
     else if ((ui.page == PG_CHORDS && !set.par[P_CH_LEVEL]) || (ui.page == PG_PULSE && !set.par[P_PU_LEVEL]))
@@ -843,7 +855,7 @@ static void draw_voice(int role)
     }
     k = str_put(t, sizeof t, "1 : ");
     ratio_text(ratio, t + k);
-    cv_text(10, 4, &FONT_XS, "carrier : modulator", C_GRAY);
+    cv_text(10, 4, &FONT_XS, "CARRIER : MODULATOR", C_GRAY);
     cv_text(10, 18, &FONT_B, t, C_WHITE);
     if (en_voice_breath(set.kit, role)) {        /* the voice's air (the kit's, times Air): grains over the shape */
         static uint32_t seed = 0x51ED270Bu;
@@ -947,7 +959,7 @@ static void draw_age(uint32_t now)
                                 (int32_t)((seed >> 20) % 15u) - 7, C_DIM);
         }
         if (!air)
-            cv_text(x0, 128, &FONT_XS, "this kit has none", C_DIM);
+            cv_text(x0, 128, &FONT_XS, "NONE IN THIS KIT", C_DIM);
     }
     cv_blit(0, 36);
 }
@@ -968,8 +980,6 @@ static void draw_chords(void)
         int cur = on && i == en_arp_pos;
         cv_rect(x, y, cur ? 5 : 3, cur ? 5 : 3, cur ? C_WHITE : on ? C_HI : C_DIM);
     }
-    if (!len)
-        cv_text(10, 60, &FONT_XS, "silent", C_DIM);
     cv_text(10, 112, &FONT_XS, GRAIN[en_arp_div & 3], on ? C_HI : C_DIM);
     cv_blit(0, 36);
 }
@@ -992,7 +1002,7 @@ static void draw_pulse(uint32_t now)
         int lvl = on && (i == 0 ? w > 0 : w < 100);
         cv_text(cx - 22, 2, &FONT_XS, NAME[i], lvl ? C_GRAY : C_DIM);
         if (!n || !k) {
-            cv_text(cx - 12, cy - 6, &FONT_XS, "none", C_DIM);
+            cv_text(cx - 12, cy - 6, &FONT_XS, "NONE", C_DIM);
             continue;
         }
         draw_ring(cx, cy, 3, C_LINE);
@@ -1081,7 +1091,7 @@ static void draw_seq(void)
     cv_blit(0, 36);
 }
 
-/* the environment: where the music is (the world, its root, its beat, its colour) and what moves it */
+/* the environment: where the music is (the world, its root, its beat, its scale) and what moves it */
 static void draw_env(void)
 {
     static const char *const NOTE[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
@@ -1100,7 +1110,7 @@ static void draw_env(void)
     k = str_put(t + 6, 12, t);                   /* (t: the number, then " a minute") */
     str_put(t + 6 + k, 12, " A MINUTE");
     cv_text(70, 62, &FONT_B, t + 6, C_HI);
-    cv_text(10, 86, &FONT_XS, "COLOUR", C_GRAY);
+    cv_text(10, 86, &FONT_XS, "SCALE", C_GRAY);
     cv_text(70, 84, &FONT_XS, SCALE_NAME[en_scale % 5], C_HI);
     cv_text(10, 106, &FONT_XS, "OCTAVE", C_GRAY);
     int_text(set.oct, t);
@@ -1179,7 +1189,7 @@ static void draw_knobs(uint32_t now)
             name = p->name;
             v = set.par[pn] - p->lo;
             hi = p->hi - p->lo;
-            int_text(set.par[pn], t);
+            par_text(pn, set.par[pn], t);
         } else {
             v = set.tone[set.kit][PG_ROLE(ui.page)][i];
             hi = en_tone_hi((int)i);
