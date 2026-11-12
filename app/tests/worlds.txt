@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 hacha
-# the worlds (ALGORITHM): each its own way of making music, there at once; said, kept
+# the worlds (ALGORITHM): each its own way of making music; chosen at once (said, shown), reached by a crossing (the
+# music finishes its phrase, at most 8 s; the loops' 4 s), kept
 wait 600
 expect world 0
 expect alg 0
@@ -8,33 +9,50 @@ shot world0.png
 turn ALGO 1
 wait 100
 expect world 1
+expect crossing 1
+expect alg 0
+shot crossing.png
+wait 9000
+expect crossing 0
 expect alg 1
-shot world-said.png
 wait 2500
 expect voices >0
 wait 6000
 shot drone.png
 turn ALGO 3
-wait 30
+wait 9000
 expect world 4
 expect alg 2
 wait 2500
 expect voices >0
 wait 9000
 shot loops.png
+# from the loops, at most 4 s; a crossing goes on further when chosen again while under way
 turn ALGO 1
 wait 30
 expect world 0
-expect alg 0
+expect crossing 1
 turn ALGO 3
 wait 30
 expect world 3
+expect crossing 1
+wait 5000
+expect crossing 0
 expect alg 4
 wait 3000
 expect voices >0
 shot fountain.png
+# back where it is while under way: the crossing called off
 turn ALGO -1
 wait 30
+expect crossing 1
+turn ALGO 1
+wait 30
+expect world 3
+expect crossing 0
+expect alg 4
+turn ALGO -1
+wait 9000
 expect world 2
 expect alg 3
 wait 60000
@@ -45,4 +63,5 @@ wait 30
 reboot
 wait 600
 expect world 2
+expect alg 3
 expect kit 0

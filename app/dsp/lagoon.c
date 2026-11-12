@@ -28,7 +28,7 @@ static const en_param_t PARAMS[P_NPARAMS] = {
 };
 const en_param_t *en_param_info(int i) { return (i >= 0 && i < P_NPARAMS) ? &PARAMS[i] : &PARAMS[0]; }
 
-enum { C_SET, C_PLAY, C_SEED, C_PANIC, C_AUDITION, C_OFFER, C_WORLD, C_HOLD, C_OCT, C_REC, C_REC_NOTE };
+enum { C_SET, C_PLAY, C_SEED, C_PANIC, C_AUDITION, C_OFFER, C_WORLD, C_HOLD, C_OCT, C_REC, C_REC_NOTE, C_DUSK };
 void en_set(int p, int v) { post(C_SET, p, v); }
 void en_play(int on) { post(C_PLAY, on, 0); }
 void en_seed(uint32_t s) { post(C_SEED, 0, (int)(s & 0xFFFFu)); }
@@ -36,6 +36,8 @@ void en_panic(void) { post(C_PANIC, 0, 0); }
 void en_audition(int role) { post(C_AUDITION, role, 0); }
 void en_offer(int key, int strength) { post(C_OFFER, key, strength); }
 void en_set_world(int w) { post(C_WORLD, w, 0); }
+void en_set_world_now(int w) { post(C_WORLD, w, 1); }
+void en_dusk(int amount) { post(C_DUSK, amount < 0 ? 0 : amount, 0); }
 void en_hold(int on) { post(C_HOLD, on, 0); }
 void en_octave(int o) { post(C_OCT, o + 2, 0); }
 void en_rec(int on) { post(C_REC, on, 0); }
@@ -49,7 +51,8 @@ volatile uint32_t en_notes;
 volatile float en_cycle;
 
 static int16_t par[P_NPARAMS];
-static float density, bright;                    /* 0..1 */
+static float density, bright;                    /* 0..1 (density: as heard; dens_set: the knob's) */
+static float dens_set;
 static float echo_send, rev_send, pl_target = 0.8f;
 static float repeat = 0.5f, change = 0.5f, length = 0.5f, memory = 0.5f;   /* SEQ: 0..1 */
 static float echo_secs = 2.4f;
@@ -372,7 +375,8 @@ static int mot_len, mot_i, mot_reps, scale_i = 2, root = 65, root_wait;
 static float beat_len = 0.8f * EN_SR;            /* the world's beat (S_MARGIN: up to 15 % either way) */
 static float gen_left;                           /* samples to the next event */
 static uint8_t phrase_end;                       /* a phrase (a pass, a line, the fountain's rounds, a swell) ended:
-                                                  * bit 0 the pulse's to take (pulse.c), bit 1 the chords' */
+                                                  * bit 0 the pulse's to take (pulse.c), bit 1 the chords', bit 2 a
+                                                  * crossing's (to the next world) */
 volatile uint8_t en_scale;
 
 static int deg_note(int d)                       /* scale degree (0 the root) to a MIDI note */
@@ -537,7 +541,7 @@ static void motif_event(void)
         mot_i++;
         return;
     }
-    phrase_end = 3;
+    phrase_end = 7;
     {   /* the pass is over: a rest, then the motif again (perhaps changed) or a new one */
         float lean = fm_maxf(0.5f + 0.9f * st[S_MARGIN], 0.0f);   /* 0 short rests .. ~1.4 long */
         gen_left += beat_len * (2.0f + (1.0f - density) * 8.0f * (0.5f + lean) + 3.0f * frand());
@@ -602,7 +606,7 @@ static void drone_event(void)
         root_wander();
     }
     drone_k++;
-    phrase_end = 3;
+    phrase_end = 7;
     gap = (6.0f + 8.0f * frand()) * (1.0f + 0.6f * st[S_MARGIN]) * (1.0f - 0.3f * st[S_BLEED]) * (1.6f - density) *
           (0.5f + length);                       /* Length: the swells' length */
     gen_left += beat_len * gap;
@@ -794,7 +798,7 @@ static void letter_event(void)
         mot_i++;
         return;
     }
-    phrase_end = 3;
+    phrase_end = 7;
     {   /* the line is over: a long silence, then it is read again or the next is written */
         float lean = fm_maxf(0.5f + 0.9f * st[S_MARGIN], 0.0f);
         gen_left += beat_len * (4.0f + (1.0f - density) * 10.0f * (0.5f + lean) + 4.0f * frand());
@@ -926,7 +930,7 @@ static void fountain_event(void)
     beat_len = WORLDS[world].beat * tempo * EN_SR * (1.0f + 0.1f * st[S_MARGIN]);
     if (--mot_reps > 0 || en_held)
         return;
-    phrase_end = 3;
+    phrase_end = 7;
     mot_reps = 2 + (int)(repeat * 6.0f) + irand(3);
     if (gift_pc >= 0 || frand() < 0.9f * change + 0.3f * fm_maxf(st[S_FOLD], 0.0f)) {
         fountain_vary();
@@ -985,6 +989,88 @@ static void world_begin(void)                    /* a new world, at once: its ro
     en_arp_len = 0;                              /* the chords: the new world's walk */
     pulse_begin();
     gen_left = 0.3f * EN_SR;
+}
+
+/* --------------------------------------------------------- the edges --- */
+/* Nothing begins or ends at once (but a rest: PLAY stops the music there, the echoes and the plate ringing on).
+ *   a crossing  another world chosen while it plays: the music finishes its phrase in the world it is in (at most
+ *               CROSS_S; the loops have no phrases: CROSS_LOOPS_S), the chords and the pulse fading meanwhile (a bar),
+ *               then a breath (half a beat to one), then the new world, opening
+ *   opening     as it starts to play, and after a crossing: sparse at first (Density times OPEN_FROM), full in
+ *               OPEN_S (a crossing's: OPEN_CROSS_S); the chords and the pulse come in some bars later, over some more
+ *   dusk        (sleep's last minute, the app's): sparser, quieter, a little slower */
+#define CROSS_S 8.0f
+#define CROSS_LOOPS_S 4.0f
+#define OPEN_FROM 0.25f
+#define OPEN_S 25.0f
+#define OPEN_CROSS_S 14.0f
+static uint8_t world_to;                         /* where a crossing goes (world: none) */
+static float cross_left;                         /* samples left before it goes anyway */
+static float open_k = 1.0f, open_rate;           /* opening: 0..1, per sample */
+static float acc = 1.0f, acc_to = 1.0f, acc_rate, acc_wait;   /* the chords' and the pulse's share, 0..1 */
+static float dusk, dusk_to;                      /* 0..1 */
+static float tempo_set = 1.0f;
+volatile uint8_t en_crossing;                    /* (UI) a crossing under way */
+
+static void opening(float secs, float acc_wait_beats, float acc_beats)
+{
+    open_k = 0.0f;
+    open_rate = 1.0f / (secs * EN_SR);
+    acc = 0.0f;
+    acc_to = 1.0f;
+    acc_wait = acc_wait_beats * beat_len;
+    acc_rate = 1.0f / (acc_beats * beat_len);
+}
+
+static void cross_to(int w, int now)             /* (C_WORLD; now: no crossing, as at boot) */
+{
+    if (w == world) {                            /* back to where it is: the crossing called off */
+        world_to = world;
+        en_crossing = 0;
+        acc_to = 1.0f;
+        return;
+    }
+    world_to = (uint8_t)w;
+    if (!en_playing || now) {                    /* resting (or at boot): nothing to finish */
+        world = world_to;
+        world_begin();
+        en_crossing = 0;
+        return;
+    }
+    if (en_crossing)
+        return;                                  /* (already going: only further) */
+    en_crossing = 1;
+    phrase_end &= (uint8_t)~4u;
+    cross_left = (WORLDS[world].alg == ALG_LOOPS ? CROSS_LOOPS_S : CROSS_S) * EN_SR;
+    acc_to = 0.0f;                               /* the chords and the pulse fade over a bar */
+    acc_wait = 0.0f;
+    acc_rate = 1.0f / (4.0f * beat_len);
+}
+
+static void arrive(void)                         /* the crossing ends: a breath, then the new world, opening */
+{
+    world = world_to;
+    en_crossing = 0;
+    world_begin();
+    gen_left = beat_len * (0.5f + 0.5f * frand());
+    opening(OPEN_CROSS_S, 0.0f, 6.0f);
+    open_k = 0.3f;
+}
+
+static void edges_step(uint32_t n)               /* once a chunk */
+{
+    float d;
+    open_k = fm_minf(open_k + open_rate * (float)n, 1.0f);
+    if (acc_wait > 0.0f)
+        acc_wait -= (float)n;
+    else if (acc < acc_to)
+        acc = fm_minf(acc + acc_rate * (float)n, acc_to);
+    else if (acc > acc_to)
+        acc = fm_maxf(acc - acc_rate * (float)n, acc_to);
+    dusk += (dusk_to - dusk) * fm_minf((float)n * (1.0f / (2.0f * EN_SR)), 1.0f);
+    d = dusk;
+    density = dens_set * (OPEN_FROM + (1.0f - OPEN_FROM) * open_k) * (1.0f - 0.6f * d);
+    tempo = tempo_set * (1.0f + 0.12f * d);
 }
 
 /* ---------------------------------------------------------------- ARP --- */
@@ -1154,7 +1240,7 @@ static void arp_event(void)
     note = deg_note(cd - n + 2 * j);
     while (note > 88)
         note -= 12;
-    play_shaped(R_ANSWER, note, (0.16f + 0.08f * frand()) * arp_level, arp_i & 1 ? 0.35f : -0.35f, 0, arp_gate, 0.0f);
+    play_shaped(R_ANSWER, note, (0.16f + 0.08f * frand()) * arp_level * acc, arp_i & 1 ? 0.35f : -0.35f, 0, arp_gate, 0.0f);
     en_arp_beat++;
 }
 
@@ -1236,7 +1322,7 @@ static void apply(int p, int v)
     v = v < PARAMS[p].lo ? PARAMS[p].lo : v > PARAMS[p].hi ? PARAMS[p].hi : v;
     par[p] = (int16_t)v;
     switch (p) {
-    case P_DENSITY: density = (float)v * 0.01f; break;
+    case P_DENSITY: dens_set = (float)v * 0.01f; break;
     case P_BRIGHT: bright = (float)v * 0.01f; break;
     case P_SPACE: rev_send = 0.15f + (float)(v * v) * 0.0001f; break;   /* the plate's send */
     case P_ECHO: echo_send = (float)(v * v) * 0.0001f; break;
@@ -1268,7 +1354,7 @@ static void apply(int p, int v)
     case P_MEMORY: memory = (float)v * 0.01f; break;
     case P_DRIFT: drift = (float)v * 0.02f; break;                  /* the cycles' and offerings' sway: 0 .. 2 */
     case P_OFFER: offer_k = (float)v * 0.02f; break;
-    case P_TEMPO: tempo = fm_exp2f((float)(50 - v) * (1.0f / 60.0f)); break;   /* the beat: x1.8 .. x0.56 */
+    case P_TEMPO: tempo_set = fm_exp2f((float)(50 - v) * (1.0f / 60.0f)); break;   /* the beat: x1.8 .. x0.56 */
     case P_TRANSPOSE: transpose = v; break;
     case P_BREATH: depth[0] = (float)v * 0.02f; break;
     case P_TIDE: depth[1] = (float)v * 0.02f; break;
@@ -1289,9 +1375,17 @@ static void drain(void)
         switch (c >> 24) {
         case C_SET: apply((int)a, b); break;
         case C_PLAY:
-            if (a && !en_playing)
+            if (a && !en_playing) {
                 gen_left = 0.5f * EN_SR;
+                opening(OPEN_S, 12.0f, 8.0f);   /* the chords and the pulse three bars on, over two */
+            }
             en_playing = (uint8_t)(a != 0);
+            if (!en_playing && en_crossing) {    /* a rest: the crossing ends where it is going */
+                world = world_to;
+                en_crossing = 0;
+                world_begin();
+                acc = acc_to = 1.0f;
+            }
             break;
         case C_SEED:
             rng ^= (uint32_t)b * 2654435761u;
@@ -1303,12 +1397,11 @@ static void drain(void)
                 fmv[i].on = 0;
             break;
         case C_WORLD:
-            if (a < EN_NWORLD && a != world) {
-                world = (uint8_t)a;
-                world_begin();
-            }
+            if (a < EN_NWORLD && (a != world_to || (b && en_crossing)))
+                cross_to((int)a, b);
             break;
         case C_HOLD: en_held = (uint8_t)(a != 0); break;
+        case C_DUSK: dusk_to = (float)(a > 100 ? 100 : a) * 0.01f; break;
         case C_OCT: music_oct = (int)a - 2; break;
         case C_REC:
             if (a && !en_recording) {
@@ -1370,7 +1463,8 @@ void en_init(void)
     gift_pc = -1;
     mem_n = mem_w = 0;
     mot_len = 0;
-    world = 0;
+    world = world_to = 0;
+    en_crossing = 0;
     en_alg = ALG_MOTIF;
     wcycles = 1.0f;
     for (i = 0; i < EN_NSTATE; i++)
@@ -1381,6 +1475,8 @@ void en_init(void)
     pulse_begin();
     gen_left = 1.5f * EN_SR;
     en_playing = 1;                              /* it plays from the start */
+    dusk = dusk_to = 0.0f;
+    opening(OPEN_S, 12.0f, 8.0f);               /* .. opening, as whenever it begins */
 }
 
 /* ------------------------------------------------------------ the render --- */
@@ -1402,6 +1498,7 @@ static void control(uint32_t n)                  /* once a chunk: the slow thing
         spl_echo = spl_gain = spl_wet = 1.0f;
     }
     age_control(n, en_playing);
+    edges_step(n);
     pulse_ui();
     state_step(n);
     en_cycle = cyc[0];
@@ -1426,6 +1523,8 @@ void en_render(int32_t *out, uint32_t n, uint32_t gain_q12)
                                                   * a phrase is played in: REC) */
             if (gen_left <= 0.0f)
                 gen_event();
+            if (en_crossing && ((phrase_end & 4u) || cross_left <= 0.0f))
+                arrive();
             if (ARP_CHORDS && arp_left <= 0.0f)
                 arp_event();
             if (ARP_PULSE && pu_left <= 0.0f)
@@ -1437,6 +1536,7 @@ void en_render(int32_t *out, uint32_t n, uint32_t gain_q12)
             if (ARP_PULSE && (float)k > pu_left)
                 k = (uint32_t)pu_left + 1u;
             gen_left -= (float)k;
+            cross_left -= (float)k;
             arp_left -= (float)k;
             pu_left -= (float)k;
         }
@@ -1445,7 +1545,7 @@ void en_render(int32_t *out, uint32_t n, uint32_t gain_q12)
         mix_clear(k);
         fm_render(k, 1.6f);
         pulse_render(k);
-        mix_out(out, k, gain * spl_gain, echo_send * spl_echo, rev_send, spl_wet);
+        mix_out(out, k, gain * spl_gain * (1.0f - 0.45f * dusk), echo_send * spl_echo, rev_send, spl_wet);
         out += 2 * k;
         n -= k;
     }

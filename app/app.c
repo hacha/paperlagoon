@@ -22,7 +22,7 @@
  * phrase is taken in when it is let go (OCT- / OCT+ then move the keys' octave). SEL held: the knobs are the
  * lagoon's four on any page (on the lagoon, in finer steps); the strip shows it.
  * PRESETS: the kit (a set of three voices; the edits are kept per kit). ALGORITHM: the world (a place that exists
- * nowhere: it leans how the music goes, never the knobs). PLAY: play or rest. SAVE: keep it all.
+ * nowhere: it leans how the music goes, never the knobs; reached by a crossing: the header says CROSSING). PLAY: play or rest. SAVE: keep it all.
  * The keys play no notes: a press offers something to the hidden state (lagoon.h), which the music shows later and
  * loosely; the screen shows at once that something was given (a drop falling to the water, its rings), and the
  * state itself as the water's line, slowly. */
@@ -229,7 +229,7 @@ void app_init(void)
     en_set_kit(set.kit);
     if (set.world >= EN_NWORLD)
         set.world = 0;
-    en_set_world(set.world);
+    en_set_world_now(set.world);
     set.oct = (int8_t)clamp(set.oct, -2, 2);
     en_octave(set.oct);
     for (i = 0; i < EN_NKIT * EN_NROLE; i++)
@@ -659,11 +659,18 @@ static void draw_header(uint32_t now)
         end = cv_text(10, 6, &FONT_B, "REC", C_WHITE);
         cv_text(end + 8, 10, &FONT_XS, "the keys play; let go to give it", C_AMB);
     } else {
-        const char *s = en_playing ? "PLAYING" : "RESTING";
-        end = cv_text(10, 6, &FONT_B, en_world_name(set.world), C_WHITE);
+        const char *s = en_crossing ? "CROSSING" : en_playing ? "PLAYING" : "RESTING";
+        uint16_t c = C_WHITE;
+        if (en_crossing) {                       /* a crossing: the name not yet reached breathes, a wake runs under */
+            int32_t ph = (int32_t)(now % 1600u), b = ph < 800 ? ph : 1600 - ph, i;
+            c = b < 270 ? C_GRAY : b < 540 ? C_HI : C_WHITE;
+            for (i = 0; i < 5; i++)
+                cv_rect(10 + (int32_t)((now / 12u + (uint32_t)i * 47u) % 220u), 29, 6 - i, 1, i ? C_GRAY : C_HI);
+        }
+        end = cv_text(10, 6, &FONT_B, en_world_name(set.world), c);
         x = 230 - text_w(&FONT_XS, s);
         if (x > end + 8)                         /* where a long name leaves room */
-            cv_text(x, 10, &FONT_XS, s, en_playing ? C_HI : C_DIM);
+            cv_text(x, 10, &FONT_XS, s, en_crossing ? C_AMB : en_playing ? C_HI : C_DIM);
     }
     cv_blit(0, 0);
 }
@@ -1230,9 +1237,20 @@ void app_frame(void)
     ann_tick(now);
     if (!ui.play_at)
         ui.play_at = now ? now : 1u;
-    if (set.par[P_SLEEP] && en_playing && now - ui.play_at >= (uint32_t)set.par[P_SLEEP] * 60000u) {   /* asleep */
-        en_play(0);
-        app_say("SLEEP", "RESTING");
+    {                                            /* the sleep timer's last minute: dusk (sparser, quieter, slower) */
+        static int dusk_sent = -1;
+        int dk = 0;
+        uint32_t end = (uint32_t)set.par[P_SLEEP] * 60000u, t = now - ui.play_at;
+        if (set.par[P_SLEEP] && en_playing && t + 60000u > end)
+            dk = t >= end ? 100 : (int)(100u - (end - t) / 600u);
+        if (dk != dusk_sent) {
+            en_dusk(dk);
+            dusk_sent = dk;
+        }
+        if (set.par[P_SLEEP] && en_playing && t >= end) {   /* asleep */
+            en_play(0);
+            app_say("SLEEP", "RESTING");
+        }
     }
     if (ui.msg_until && now >= ui.msg_until) {
         ui.msg_until = 0;
@@ -1277,6 +1295,8 @@ int app_expect(const char *what, int *got)
         *got = (int)(h & 0x7FFFFFFF);
     } else if (!strcmp(what, "chordgrain"))      /* the chords' grain now: 0 quarters .. 3 sixteenths */
         *got = en_arp_div;
+    else if (!strcmp(what, "crossing"))          /* a crossing under way */
+        *got = en_crossing;
     else if (!strcmp(what, "splash"))            /* the splash now, 0..100 */
         *got = (int)(en_splash * 100.0f);
     else if (!strcmp(what, "pulsehits"))         /* the pulse's hits since boot */

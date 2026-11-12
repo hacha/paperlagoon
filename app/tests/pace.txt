@@ -4,7 +4,7 @@
 # points are few (about 21; the motifs about 37), the fountain's eighths many (about 220; notes count since boot)
 wait 300
 turn ALGO 2
-wait 30
+wait 9000
 expect alg 3
 wait 90000
 expect notes <30
@@ -12,7 +12,7 @@ expect notes >5
 reboot
 wait 300
 turn ALGO 3
-wait 30
+wait 9000
 expect alg 4
 wait 90000
 expect notes >170

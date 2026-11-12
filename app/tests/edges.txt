@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 hacha
+# the edges: it opens sparse (few notes in its first 20 s, more after); sleep's last minute closes it (dusk), then
+# it rests
+wait 20000
+expect notes <10
+wait 20000
+expect notes >10
+tap GLO
+wait 30
+turn K4 1
+wait 30
+expect param23 2
+wait 121000
+expect playing 0

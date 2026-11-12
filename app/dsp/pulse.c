@@ -148,8 +148,8 @@ static void pulse_event(void)                    /* a step: what sounds on it; t
     float gk[3];
     euclid_t pat;
     int i;
-    gk[0] = pu_level * fm_minf(2.0f * pu_weight, 1.5f);              /* Weight: the thump .. */
-    gk[1] = gk[2] = pu_level * fm_minf(2.0f * (1.0f - pu_weight), 1.5f);   /* .. against the click and the brush */
+    gk[0] = pu_level * acc * fm_minf(2.0f * pu_weight, 1.5f);        /* Weight: the thump .. (acc: an edge's) */
+    gk[1] = gk[2] = pu_level * acc * fm_minf(2.0f * (1.0f - pu_weight), 1.5f);   /* .. against the click and the brush */
     if (pu_step % 16u == 0u) {                   /* a bar: the patterns may move; a phrase's end: perhaps a rest */
         pulse_wander();
         if ((phrase_end & 1u) && pu_rnd() < 0.6f * pu_wander)
