@@ -993,7 +993,8 @@ static void draw_age(uint32_t now)
  * the grain now under it */
 static void draw_chords(void)
 {
-    static const char *const WALK[] = {"UP THE CHORD AND DOWN", "FALLING", "SCATTERED", "RISING, FALLING BACK", "A PENDULUM"};
+    static const char *const WALK[] = {"UP THE CHORD AND DOWN", "FALLING", "SCATTERED", "RISING, FALLING BACK", "A PENDULUM",
+                                        "REACHING FURTHER"};
     static const char *const GRAIN[4] = {"QUARTERS", "EIGHTHS", "TRIPLETS", "SIXTEENTHS"};
     int32_t i, len = en_arp_len, m = en_arp_top ? en_arp_top : 1;
     int on = set.par[P_CH_LEVEL] > 0;
@@ -1088,7 +1089,8 @@ static void draw_seq(void)
 {
     int32_t i;
     const char *what = en_alg == EN_ALG_DRONE ? "THE CHORD" : en_alg == EN_ALG_LOOPS ? "THE LOOPS" :
-                       en_alg == EN_ALG_LETTER ? "THE LINE" : en_alg == EN_ALG_FOUNTAIN ? "THE FIGURE" : "THE MOTIF";
+                       en_alg == EN_ALG_LETTER ? "THE LINE" : en_alg == EN_ALG_FOUNTAIN ? "THE FIGURE" :
+                       en_alg == EN_ALG_SANDBAR ? "THE WRITING" : "THE MOTIF";
     cv_begin(240, 144, C_BLACK);
     cv_text(10, 2, &FONT_XS, what, C_GRAY);
     if (en_alg == EN_ALG_LOOPS) {                           /* the loops: each its note, its length, where it is */
@@ -1432,6 +1434,11 @@ int app_expect(const char *what, int *got)
         *got = set_dirty;
     else if (!strcmp(what, "page"))              /* 0 the lagoon, 1..3 the voices */
         *got = ui.page;
+    else if (!strcmp(what, "sbnotes")) {         /* the sandbar: notes written now */
+        for (i = 0, *got = 0; i < 8; i++)
+            *got += en_sb_mask >> i & 1u;
+    } else if (!strcmp(what, "sbcycles"))        /* the sandbar: figures washed away wholly, since boot */
+        *got = (int)en_sb_gone;
     else if (!strcmp(what, "alg"))               /* the world's algorithm: 0 motifs, 1 drone, 2 loops */
         *got = en_alg;
     else if (!strcmp(what, "oct"))

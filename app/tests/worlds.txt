@@ -28,7 +28,7 @@ expect voices >0
 wait 9000
 shot loops.png
 # from the loops, at most 4 s; a crossing goes on further when chosen again while under way
-turn ALGO 1
+turn ALGO 2
 wait 30
 expect world 0
 expect crossing 1
@@ -65,3 +65,15 @@ wait 600
 expect world 2
 expect alg 3
 expect kit 0
+# the sandbar: a figure written in a note a pass, whole, then washed away; another after a silence
+turn ALGO 3
+wait 9000
+expect world 5
+expect alg 5
+wait 3000
+expect voices >0
+expect sbnotes >0
+wait 20000
+shot sandbar.png
+wait 240000
+expect sbcycles >0

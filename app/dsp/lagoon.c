@@ -227,7 +227,7 @@ static void play(int role, int note, float vel, float pan, int32_t wait)
  * the new world starts within a moment (what sounds rings out); only the state's lean glides. World 0 is the music
  * as it was before there were worlds. */
 enum { ALG_MOTIF = EN_ALG_MOTIF, ALG_DRONE = EN_ALG_DRONE, ALG_LOOPS = EN_ALG_LOOPS, ALG_LETTER = EN_ALG_LETTER,
-       ALG_FOUNTAIN = EN_ALG_FOUNTAIN };
+       ALG_FOUNTAIN = EN_ALG_FOUNTAIN, ALG_SANDBAR = EN_ALG_SANDBAR };
 typedef struct {
     const char *name;
     float bias[EN_NSTATE];                       /* the state's resting lean: light, bleed, fold, margin */
@@ -243,6 +243,7 @@ static const world_t WORLDS[] = {
     {"THE UNREAD LETTER", {0.0f, -0.2f, 0.55f, 0.6f}, 0.85f, {60, 65, 67, 62}, 1.0f, 12, ALG_LETTER},       /* 誰も読まない手紙 */
     {"SILENT FOUNTAIN", {0.35f, 0.35f, 0.0f, -0.3f}, 0.68f, {67, 72, 65, 70}, 0.65f, 19, ALG_FOUNTAIN},       /* 音のしない噴水 */
     {"WHERE LIGHT BECOMES MOSS", {0.2f, 0.4f, -0.3f, 0.1f}, 0.90f, {64, 69, 62, 67}, 2.0f, 12, ALG_LOOPS}, /* 光が苔になるところ */
+    {"THE SANDBAR AT DUSK", {-0.15f, 0.25f, -0.2f, 0.2f}, 0.78f, {62, 57, 64, 59}, 1.2f, 12, ALG_SANDBAR},   /* 夕暮れの砂州 */
 };
 /* every per-world table has one entry a world: a missing one would be zeros, silently (a check per table) */
 #define PER_WORLD(t) typedef char t##_per_world[sizeof t / sizeof t[0] == EN_NWORLD ? 1 : -1]
@@ -399,7 +400,7 @@ static int8_t mot_deg[MOT_MAX], mot_dur[MOT_MAX];
 static int mot_len, mot_i, mot_reps, scale_i = 2, root = 65;
 static float root_due = 60.0f;                   /* seconds before the root may move (at a phrase's edge) */
 /* each world's root stays this long on average (s); a fold hastens it; held: it stays */
-static const float ROOT_STAY[] = {150.0f, 210.0f, 150.0f, 180.0f, 200.0f};
+static const float ROOT_STAY[] = {150.0f, 210.0f, 150.0f, 180.0f, 200.0f, 170.0f};
 PER_WORLD(ROOT_STAY);
 static float beat_len = 0.8f * EN_SR;            /* the world's beat (S_MARGIN: up to 15 % either way) */
 static float gen_left;                           /* samples to the next event */
@@ -986,6 +987,187 @@ static void fountain_event(void)
     }
 }
 
+/* ------------------------------------------------------------ a sandbar --- */
+/* ALG_SANDBAR: a figure written on the sand and washed away. Its notes are written in one at a time, a pass for each
+ * (the passes keep the figure's time, the notes not yet written silent), until it is whole; it is heard whole a few
+ * times; then the water takes it, a note or two a pass, until nothing is left, and after a silence another is written.
+ * Repeat: passes before each note comes or goes, and how long it stays whole; Change: a note moved while it is whole;
+ * Length: its notes (4..7); Memory and the fold: an older figure written again. Light lifts it, bleed lets it ring, the
+ * margin washes it away faster (and lengthens the silences), the fold writes it out of order. An offering is written in
+ * next (whole or ebbing, it puts a note back). The figure is the motif's arrays (mot_*), as the letter's. */
+enum { SB_GROW, SB_WHOLE, SB_EBB, SB_GONE };
+static uint8_t sb_mask, sb_order[MOT_MAX], sb_phase, sb_hold;
+volatile uint8_t en_sb_mask, en_sb_phase;
+volatile uint32_t en_sb_gone;
+
+static int sb_count(void)
+{
+    int i, c = 0;
+    for (i = 0; i < mot_len; i++)
+        c += sb_mask >> i & 1u;
+    return c;
+}
+
+static void sandbar_ui(void)
+{
+    en_sb_mask = sb_mask;
+    en_sb_phase = sb_phase;
+}
+
+static void sandbar_write(void)                  /* a note written in: the offering's, or the next in its order */
+{
+    int i, p = -1, n = SCALE[scale_i][0];
+    for (i = 0; i < mot_len && p < 0; i++)
+        if (!(sb_mask >> sb_order[i] & 1u))
+            p = sb_order[i];
+    if (gift_pc >= 0) {
+        if (p < 0)                               /* whole: it takes a place */
+            p = irand(mot_len);
+        mot_deg[p] = (int8_t)(pc_degree(gift_pc) + n * (1 + irand(2)));
+        gift_pc = -1;
+        fig_motif();
+    }
+    if (p >= 0)
+        sb_mask |= (uint8_t)(1u << p);
+    sandbar_ui();
+}
+
+static void sandbar_erase(void)                  /* the water takes a note, or two in the margin */
+{
+    int k = 1 + (st[S_MARGIN] > 0.3f && frand() < st[S_MARGIN]), t;
+    while (k-- > 0 && sb_mask)
+        for (t = 0; t < 16; t++) {
+            int p = irand(mot_len);
+            if (sb_mask >> p & 1u) {
+                sb_mask &= (uint8_t)~(1u << p);
+                break;
+            }
+        }
+    sandbar_ui();
+}
+
+static void sandbar_new(void)
+{
+    static const int8_t DUR[5] = {1, 1, 2, 2, 3};
+    int i, n, d, lo, hi, leap = st[S_FOLD] > 0.3f ? 3 : 2;
+    scale_pick();
+    root_wander();
+    n = SCALE[scale_i][0];
+    lo = n / 3;
+    hi = 2 * n + 1;
+    if (mot_len)
+        motif_keep();
+    if (mem_n >= 2 && frand() < 0.24f * memory + 0.5f * fm_maxf(st[S_FOLD], 0.0f)) {   /* an older figure, again */
+        int m = (mem_w - 2 - irand(mem_n - 1) + 2 * MEM) % MEM;
+        mot_len = mem[m].len < 3 ? 3 : mem[m].len;
+        for (i = 0; i < mot_len; i++) {
+            mot_deg[i] = mem[m].deg[i];
+            mot_dur[i] = mem[m].dur[i] < 1 ? 1 : mem[m].dur[i];
+        }
+        en_recalls++;
+    } else {
+        mot_len = 3 + (int)(length * 4.0f) + irand(2) - margin_cut();   /* Length 50: 5..6 */
+        mot_len = mot_len < 4 ? 4 : mot_len > MOT_MAX ? MOT_MAX : mot_len;
+        d = (int)((float)n * (0.7f + 0.35f * st[S_LIGHT])) + irand(n / 2 + 1);
+        for (i = 0; i < mot_len; i++) {          /* mostly steps, now and then a leap */
+            int k = irand(5);
+            d = d < lo ? lo : d > hi ? hi : d;
+            mot_deg[i] = (int8_t)d;
+            if (st[S_BLEED] > 0.2f && frand() < st[S_BLEED])
+                k = k < 4 ? k + 1 : 4;
+            mot_dur[i] = DUR[k];
+            d += (irand(2) ? 1 : -1) * (frand() < 0.2f ? leap : 1);
+        }
+    }
+    for (i = 0; i < mot_len; i++)                /* the order it is written in: from the start, a little loosely; */
+        sb_order[i] = (uint8_t)i;                /* in a fold, anyhow */
+    for (i = 0; i < mot_len; i++) {
+        int j = st[S_FOLD] > 0.2f && frand() < 0.3f + st[S_FOLD] ? irand(mot_len) : i + (i + 1 < mot_len && frand() < 0.3f);
+        uint8_t t = sb_order[i];
+        sb_order[i] = sb_order[j];
+        sb_order[j] = t;
+    }
+    sb_mask = 0;
+    sb_phase = SB_GROW;
+    sb_hold = 1;
+    mot_i = 0;
+    fig_motif();
+    sandbar_write();                             /* the first note, at once */
+}
+
+static void sandbar_event(void)
+{
+    if (!sb_mask && sb_phase == SB_GROW)
+        sandbar_write();
+    if (mot_i < mot_len) {
+        if (sb_mask >> mot_i & 1u) {
+            int note = deg_note(mot_deg[mot_i]), c = sb_count();
+            float vel = (0.3f + 0.25f * (float)c / (float)mot_len) * (0.85f + 0.3f * frand());
+            while (note > 89)
+                note -= 12;
+            if (mot_i == 0 && frand() < (sb_phase == SB_WHOLE ? 0.6f : 0.2f) - 0.15f * st[S_LIGHT])
+                play_shaped(R_LOW, root - 24 + (irand(3) ? 0 : 7), 0.42f, 0.0f, 0, 1.3f, 0.0f);
+            play_shaped(R_LEAD, note, vel, -0.6f + 1.2f * (float)mot_i / (float)(mot_len - 1), irand(1200),
+                        1.0f + 0.7f * fm_maxf(st[S_BLEED], 0.0f), 0.0f);
+            if (sb_phase == SB_WHOLE && frand() < 0.06f + 0.2f * density + 0.1f * fm_maxf(st[S_BLEED], 0.0f)) {
+                int ans = note + WORLDS[world].answer;
+                while (ans > 93)
+                    ans -= 12;
+                play_shaped(R_ANSWER, ans, vel * 0.45f, 0.6f * (frand() * 2.0f - 1.0f),
+                            (int32_t)(beat_len * (1.0f + frand())), 1.1f, 0.0f);
+            }
+        }
+        gen_left += beat_len * (float)mot_dur[mot_i];
+        en_fig_pos = (uint8_t)mot_i;
+        mot_i++;
+        return;
+    }
+    phrase_end = 15;                             /* a pass is over: a breath, then the next */
+    {
+        float lean = fm_maxf(0.5f + 0.9f * st[S_MARGIN], 0.0f);
+        gen_left += beat_len * (1.5f + (1.0f - density) * 4.0f * (0.5f + lean) + 1.5f * frand());
+        beat_len = WORLDS[world].beat * tempo * EN_SR * (1.0f + 0.12f * st[S_MARGIN]);
+    }
+    mot_i = 0;
+    if (gift_pc >= 0 && sb_phase != SB_GROW)     /* an offering: a note put back */
+        sandbar_write();
+    if (en_held || --sb_hold > 0)
+        return;
+    sb_hold = (uint8_t)(1 + (frand() < 0.5f * repeat));
+    switch (sb_phase) {
+    case SB_GROW:
+        sandbar_write();
+        if (sb_count() >= mot_len) {
+            sb_phase = SB_WHOLE;
+            sb_hold = (uint8_t)(1 + (int)(repeat * 4.0f) + irand(2));
+        }
+        break;
+    case SB_WHOLE:
+        if (frand() < 0.6f * change + 0.3f * fm_maxf(st[S_FOLD], 0.0f)) {   /* a note moved, once, before the water */
+            int i = irand(mot_len), d = mot_deg[i] + (irand(2) ? 1 : -1);
+            mot_deg[i] = (int8_t)(d < 0 ? 0 : d);
+            fig_motif();
+        }
+        sb_phase = SB_EBB;
+        sandbar_erase();
+        break;
+    case SB_EBB:
+        sandbar_erase();
+        if (!sb_mask) {                          /* gone: a silence, then another is written */
+            float lean = fm_maxf(0.5f + 0.9f * st[S_MARGIN], 0.0f);
+            sb_phase = SB_GONE;
+            en_sb_gone++;
+            gen_left += beat_len * (3.0f + (1.0f - density) * 8.0f * (0.5f + lean) + 3.0f * frand());
+            sandbar_new();
+        }
+        break;
+    default:
+        sandbar_new();
+        break;
+    }
+    sandbar_ui();
+}
+
 /* ------------------------------------------------------- the dispatcher --- */
 static void gen_event(void)
 {
@@ -994,6 +1176,7 @@ static void gen_event(void)
     case ALG_LOOPS: loops_event(); break;
     case ALG_LETTER: letter_event(); break;
     case ALG_FOUNTAIN: fountain_event(); break;
+    case ALG_SANDBAR: sandbar_event(); break;
     default: motif_event(); break;
     }
     if (gen_left < 1.0f)                         /* every way on: the next event never before the next sample */
@@ -1024,6 +1207,10 @@ static void world_begin(void)                    /* a new world, at once: its ro
         mot_len = 0;
         fnt_k = 0;
         fountain_new();
+        break;
+    case ALG_SANDBAR:
+        mot_len = 0;
+        sandbar_new();
         break;
     default:
         mot_len = 0;
@@ -1057,7 +1244,7 @@ static float tempo_set = 1.0f;
 /* the hush: in a long rest of the music (a phrase over, more than three beats to the next), the chords and the pulse
  * keep its silence, as far as the world keeps silences (the letter wholly), fading over two beats, back as the music
  * comes back (one beat) */
-static const float HUSH[] = {0.5f, 0.6f, 1.0f, 0.5f, 0.5f};
+static const float HUSH[] = {0.5f, 0.6f, 1.0f, 0.5f, 0.5f, 0.7f};
 PER_WORLD(HUSH);
 static uint8_t in_rest;
 static float hush = 1.0f;
@@ -1141,7 +1328,7 @@ static void edges_step(uint32_t n)               /* once a chunk */
  *           coarser grain for a while, or rest. 0: the world's walk, at Stir's and Spread's own
  * Not every note sounds: fewer when sparse (Density), fewer in the margin. */
 static const float ARP_STEP[4] = {1.0f, 0.5f, 1.0f / 3.0f, 0.25f};
-static const float ARP_LEAN[] = {0.0f, -1.0f, -0.7f, 0.4f, 0.0f};   /* each world's grain, coarser or finer */
+static const float ARP_LEAN[] = {0.0f, -1.0f, -0.7f, 0.4f, 0.0f, -0.3f};   /* each world's grain, coarser or finer */
 PER_WORLD(ARP_LEAN);
 enum { WALK_UPDOWN, WALK_FALL, WALK_SCATTER, WALK_FOUNTAIN, WALK_PENDULUM };
 #define ARP_SEQ 48
@@ -1178,6 +1365,11 @@ static int arp_walk(uint8_t *q, int m)           /* the world's walk over tones 
             q[len++] = (uint8_t)k;
         for (k = m - 1; k > 0; k--)
             q[len++] = (uint8_t)k;
+        break;
+    case 5:                                      /* the sandbar: each wave reaching a little further, then back */
+        for (t = 1; t <= m && len + t + 1 <= ARP_SEQ; t++)
+            for (k = 0; k <= t; k++)
+                q[len++] = (uint8_t)k;
         break;
     case 4:                                      /* a pendulum about the middle (or where it turns) */
         c = (m * arp_turn + 2) / 4;
@@ -1375,6 +1567,12 @@ static void rec_take(void)
         mot_reps = reps_new() + 1;
         mot_i = 0;
         fig_motif();
+        if (WORLDS[world].alg == ALG_SANDBAR) {  /* the sandbar: written whole, at once */
+            sb_mask = (uint8_t)((1u << mot_len) - 1u);
+            sb_phase = SB_WHOLE;
+            sb_hold = 2;
+            sandbar_ui();
+        }
         break;
     }
     gen_left = beat_len;                         /* a breath, then it plays */
