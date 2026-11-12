@@ -2,8 +2,7 @@
 
 [日本語](https://github.com/hacha/paperlagoon/blob/main/app/docs/MANUAL.ja.md)
 
-PaperLagoon is a generative environmental-music firmware for the M-VAVE FM-1. It is made after the Japanese
-*kankyō ongaku* of the 1980s and, at most, Susumu Yokota's hazy pulse. It plays by itself. You don't play it; you
+PaperLagoon is a generative environmental-music firmware for the M-VAVE FM-1. It plays by itself. You don't play it; you
 steer it from outside, the way you might change the light in a room. FM voices go through a tape echo and a plate
 reverb, and a generator of short motifs plays them, leaning on a hidden state that you can only touch from the side.
 
@@ -187,8 +186,8 @@ in its own way: up and down, falling, scattered, rising and falling back, or lik
 
 ![The pulse page: THUMP, CLICK and BRUSH as rings, with Level, Stir, Wander and Weight](img/screen-pulse.png "The pulse")
 
-Press ARP again. A muffled beat: a low thump, a small click and a brush, laid on each world's own patterns. It goes
-no further than Yokota's, and never to a dance. The thump stays on the beats, at most one to a beat.
+Press ARP again. A muffled beat: a low thump, a small click and a brush, laid on each world's own patterns. It stays
+a hazy pulse, and never goes to a dance. The thump stays on the beats, at most one to a beat.
 
 - Level: how loud. At 0 there is none.
 - Stir: how many hits are taken away or added.

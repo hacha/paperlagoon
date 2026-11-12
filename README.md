@@ -2,8 +2,7 @@
 
 ![PaperLagoon](app/site/img/title.png)
 
-A generative environmental-music firmware for the M-VAVE FM-1, after 1980s Japanese *kankyō ongaku*
-(and, at most, Susumu Yokota's hazy pulse). It plays by itself; you steer it from outside.
+A generative environmental-music firmware for the M-VAVE FM-1. It plays by itself; you steer it from outside.
 
 FM voices through AMB-1's tape echo and plate, played in five worlds that a hidden state leans. The manual:
 [app/docs/MANUAL.md](app/docs/MANUAL.md) (日本語: [app/docs/MANUAL.ja.md](app/docs/MANUAL.ja.md)); the site, to try it in
@@ -20,7 +19,7 @@ the browser and install it: https://hacha.github.io/paperlagoon/
 | ENV | the environment: the world, its root, beat and scale; K1..K4 Drift (how far the cycles and offerings sway the music), Offer, Tempo, Transpose |
 | LFO | the cycles (breath, tide, long turn) as orbits: K1..K3 their depths, K4 Pace |
 | GLO | global: K1..K4 Tune, Level, Lights (the buttons' glow), Sleep (minutes; its last minute is a dusk, sparser, quieter, a little slower; then it rests) |
-| ARP | the chords: broken chords under the music, in the low voice's colour, each world walking the chord its own way (up and down, falling, scattered, rising and falling back, a pendulum); K1..K4 Level (0: none), Stir (the notes' grain, as the world leans it; sparse rings long), Spread (how wide: light reaches higher, a fold draws it in), Wander (how far the walk and its grain move with the music: 0 the world's own). Again: the pulse, a muffled beat (a low thump, a small click, a brush) on each world's own patterns; K1..K4 Level (0: none), Stir (hits taken or added), Wander (how far the patterns move with the music: 0 still), Weight (the thump against the click and the brush). Again: back. Both keep the music's silences (in a long rest they fade, wholly in the letter) and never cut a sounding note. At most Yokota's, never a dance |
+| ARP | the chords: broken chords under the music, in the low voice's colour, each world walking the chord its own way (up and down, falling, scattered, rising and falling back, a pendulum); K1..K4 Level (0: none), Stir (the notes' grain, as the world leans it; sparse rings long), Spread (how wide: light reaches higher, a fold draws it in), Wander (how far the walk and its grain move with the music: 0 the world's own). Again: the pulse, a muffled beat (a low thump, a small click, a brush) on each world's own patterns; K1..K4 Level (0: none), Stir (hits taken or added), Wander (how far the patterns move with the music: 0 still), Weight (the thump against the click and the brush). Again: back. Both keep the music's silences (in a long rest they fade, wholly in the letter) and never cut a sounding note. A hazy pulse at most, never a dance |
 | OCT- / OCT+ | the music's register, two octaves either way |
 | REC | held: the keys play (the music waits); let go: the phrase is taken in as the music's own (the motif, the drone's chord, the loops' notes). OCT- / OCT+ meanwhile move the keys' octave |
 | SEL | held: K1..K4 are the lagoon's four from any page (on the lagoon itself, in finer steps) |

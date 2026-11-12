@@ -17,7 +17,7 @@ credits = "Built on fm1-base and felucca-bsp, from Felucca by Leo Kuroshita (Hü
 
 # firmware.json, for firmware hubs (fm1-base docs/FIRMWARE-JSON.md)
 author = "hacha"
-description = "PaperLagoon is a generative environmental-music firmware for the M-VAVE FM-1, after 1980s Japanese kankyō ongaku. FM voices through a tape echo and a plate play by themselves, in five worlds that exist nowhere, each its own way of making music. You steer it from outside: the keys play no notes but offer something to a hidden state, which the music answers at once and then, slowly, for minutes. Soft broken chords and a muffled pulse can join it; a sleep timer lets it fall quiet."
+description = "PaperLagoon is a generative environmental-music firmware for the M-VAVE FM-1. FM voices through a tape echo and a plate play by themselves, in five worlds that exist nowhere, each its own way of making music. You steer it from outside: the keys play no notes but offer something to a hidden state, which the music answers at once and then, slowly, for minutes. Soft broken chords and a muffled pulse can join it; a sleep timer lets it fall quiet."
 tags = ["ambient", "generative", "fm"]
 install = "https://hacha.github.io/paperlagoon/install/"
 site = "https://hacha.github.io/paperlagoon/"

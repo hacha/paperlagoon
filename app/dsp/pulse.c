@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 hacha */
-/* The pulse (ARP's second page, PULSE): a muffled beat under the music, at most as Susumu Yokota's, never a dance.
+/* The pulse (ARP's second page, PULSE): a muffled beat under the music, a hazy pulse at most, never a dance.
  * Three sounds, none a drum kit's: a soft low thump (a sine falling in pitch, no attack's click), a small click
  * (noise in a narrow band, a few ms), and a brush (noise, high, breathed in and out). On sixteenths of the beat, each
  * on its own Euclidean pattern (k hits spread over n steps), the lengths unequal in some worlds so they drift against

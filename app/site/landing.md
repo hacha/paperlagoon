@@ -2,8 +2,7 @@
 
 ![PaperLagoon: a drop over the water, its rings and the great ring](img/title.png)
 
-PaperLagoon is a generative environmental-music firmware for the M-VAVE FM-1, after the Japanese *kankyō ongaku* of
-the 1980s. It plays by itself, and you steer it from outside. The keys play no notes: a press offers something to a
+PaperLagoon is a generative environmental-music firmware for the M-VAVE FM-1. It plays by itself, and you steer it from outside. The keys play no notes: a press offers something to a
 hidden state, a drop falls to the water, and the music answers, loosely, and then more slowly. Five worlds that exist
 nowhere, eight kits of FM voices, a tape echo and a plate, and a few slow cycles that keep it turning.
 
@@ -22,5 +21,5 @@ This is version {{VERSION}}. You install it at your own risk, and the installer 
 
 M-VAVE and FM-1 are trademarks of their owners. PaperLagoon is not affiliated with M-VAVE.
 
-日本語: 80年代の日本の環境音楽を手本にした、FM-1 のための自動生成ファームウェアです。鍵盤は音を鳴らさず、
+日本語: FM-1 のための、自動生成の環境音楽ファームウェアです。鍵盤は音を鳴らさず、
 押すと音楽に何かを捧げます。使い方は[日本語のマニュアル](https://github.com/hacha/paperlagoon/blob/main/app/docs/MANUAL.ja.md)をご覧ください。
