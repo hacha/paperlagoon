@@ -241,9 +241,9 @@ static const world_t WORLDS[] = {
     {"SHALLOWS OF MEMORY", {0.0f, 0.0f, 0.0f, 0.0f}, 0.80f, {65, 60, 70, 67}, 1.0f, 12, ALG_MOTIF},        /* 記憶の浅瀬 */
     {"BEHIND THE HORIZON", {-0.35f, 0.2f, 0.0f, 0.3f}, 0.95f, {58, 60, 63, 55}, 1.4f, 7, ALG_DRONE},        /* 水平線の裏側 */
     {"THE UNREAD LETTER", {0.0f, -0.2f, 0.55f, 0.6f}, 0.85f, {60, 65, 67, 62}, 1.0f, 12, ALG_LETTER},       /* 誰も読まない手紙 */
-    {"SILENT FOUNTAIN", {0.35f, 0.35f, 0.0f, -0.3f}, 0.68f, {67, 72, 65, 70}, 0.65f, 19, ALG_FOUNTAIN},       /* 音のしない噴水 */
+    {"THE FOUNTAIN AFTER CLOSING", {0.35f, 0.35f, 0.0f, -0.3f}, 0.68f, {67, 72, 65, 70}, 0.65f, 19, ALG_FOUNTAIN},       /* 閉園後の噴水 */
     {"WHERE LIGHT BECOMES MOSS", {0.2f, 0.4f, -0.3f, 0.1f}, 0.90f, {64, 69, 62, 67}, 2.0f, 12, ALG_LOOPS}, /* 光が苔になるところ */
-    {"A HALL WHERE THE WIND LIVES", {0.3f, -0.1f, 0.1f, 0.4f}, 0.70f, {69, 64, 71, 66}, 0.8f, 12, ALG_WIND},   /* 風の住む広間 */
+    {"THE ATTIC OF LOOSE KEYS", {0.3f, -0.1f, 0.1f, 0.4f}, 0.70f, {69, 64, 71, 66}, 0.8f, 12, ALG_WIND},   /* 緩んだ鍵の屋根裏 */
     {"TWO LINES UNDER SNOW", {-0.2f, 0.4f, -0.3f, 0.1f}, 1.00f, {60, 55, 62, 57}, 1.5f, 12, ALG_TWO},       /* 雪の下の二本の線 */
 };
 /* every per-world table has one entry a world: a missing one would be zeros, silently (a check per table) */
