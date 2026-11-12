@@ -59,7 +59,7 @@ enum { S_LIGHT, S_BLEED, S_FOLD, S_MARGIN, EN_NSTATE };
 void en_offer(int key, int strength);
 
 /* worlds (ALGORITHM): places that exist nowhere; each leans the state, the beat, the roots, the cycles (lagoon.c) */
-#define EN_NWORLD 6
+#define EN_NWORLD 9
 const char *en_world_name(int world);
 void en_set_world(int world);
 void en_set_world_now(int world);       /* there at once, no crossing (at boot) */
@@ -90,9 +90,11 @@ extern volatile int8_t en_fig_deg[EN_FIG], en_fig_dur[EN_FIG];
 extern volatile uint8_t en_fig_len, en_fig_pos, en_fig_scale;
 extern volatile int8_t en_mem_deg[4][EN_FIG], en_mem_dur[4][EN_FIG];
 extern volatile uint8_t en_mem_len[4];
-enum { EN_ALG_MOTIF, EN_ALG_DRONE, EN_ALG_LOOPS, EN_ALG_LETTER, EN_ALG_FOUNTAIN, EN_ALG_SANDBAR };
+enum { EN_ALG_MOTIF, EN_ALG_DRONE, EN_ALG_LOOPS, EN_ALG_LETTER, EN_ALG_FOUNTAIN, EN_ALG_SANDBAR, EN_ALG_WIND,
+       EN_ALG_TWO, EN_ALG_MIRRORS };
 extern volatile uint8_t en_alg;                /* the world's way of making music: EN_ALG_* (motifs, a drone, loops, a
-                                                * letter's single points, a fountain's figure, a sandbar's writing) */
+                                                * letter's single points, a fountain's figure, a sandbar's writing, the wind's chimes,
+                                                * two lines, a melody and its slower mirrors) */
 extern volatile float en_loop_ph[4];           /* the loops (en_alg 2): each one's way round, 0..1 */
 extern volatile uint8_t en_sb_mask;            /* the sandbar (en_alg 5): which of the figure's notes are written now */
 extern volatile uint8_t en_sb_phase;           /* 0 written in, 1 whole, 2 washed away, 3 gone */
