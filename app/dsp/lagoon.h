@@ -22,7 +22,7 @@ enum { P_DENSITY, P_BRIGHT, P_SPACE, P_ECHO,
        P_DRIFT, P_OFFER, P_TEMPO, P_TRANSPOSE,     /* the environment (ENV) */
        P_BREATH, P_TIDE, P_TURN, P_PACE,           /* the cycles (LFO) */
        P_TUNE, P_LEVEL, P_LIGHTS, P_SLEEP,         /* global (GLO): P_LIGHTS and P_SLEEP are the UI's */
-       P_HAZE, P_HISS, P_DROPOUT, P_BLUR,          /* the age (FX, again): over the whole mix (age.c) */
+       P_HAZE, P_HISS, P_DROPOUT, P_AIR,           /* the age (FX, again): over the whole mix (age.c); the voices' air */
        P_NPARAMS };
 typedef struct {
     const char *name;
@@ -45,7 +45,7 @@ float en_ratio(int color);
 void en_set_kit(int kit);
 void en_set_tone(int kit, int role, int field, int value);
 void en_voice_shape(int kit, int role, float *ratio, float *att_ms, float *t60);   /* for the screen */
-int en_voice_breath(int kit, int role);    /* a kit's voice's breath, 0..100 (fixed by the kit; the screen) */
+int en_voice_breath(int kit, int role);    /* a voice's air now, 0..170 (the kit's, times Air; the screen) */
 void en_audition(int role);
 void en_octave(int oct);               /* the music's register: -2..2 octaves (OCT- / OCT+) */
 void en_arp(int on);                   /* the pulse of broken chords (ARP) */

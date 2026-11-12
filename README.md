@@ -13,7 +13,7 @@ hidden state leans. Tested in the host simulator; runs on an FM-1 (installed wit
 | SELECT | turns through the pages: 1 the lagoon, 2..4 the kit's voices, 5 the effects, 6 the age, 7 the environment, 8 the cycles, 9 the memory, 10 global (as HYP-1: on the rule over the knobs, the page's name and a short bar a page, the one shown lit; the header keeps the world) |
 | HOME | the lagoon (lit there) |
 | EDIT | the voices (lit there); again: the next voice; held: the voice as the kit has it |
-| FX | the effects: K1..K4 Time (the tape's loop), Feedback, Size (the plate), Wear (the tape's age). Again: the age, over the whole sound: K1..K4 Haze (the band narrows, the loud parts round off), Hiss (a breathing floor of noise, while it plays), Dropout (the sound thins now and then, darker, as worn tape), Blur (a late, wandering copy smears it); again: back |
+| FX | the effects: K1..K4 Time (the tape's loop), Feedback, Size (the plate), Wear (the tape's age; it blurs the whole sound too: a late, wandering copy). Again: the age: K1..K4 Haze (the band narrows, the loud parts round off), Hiss (a breathing floor of noise, while it plays), Dropout (the sound thins now and then, darker, as worn tape), Air (the voices' breath, times 0..2: 50 as the kit has it); again: back |
 | ENV | the environment: the world, its root, beat and colour; K1..K4 Drift (how far the cycles and offerings sway the music), Offer, Tempo, Transpose |
 | LFO | the cycles (breath, tide, long turn) as orbits: K1..K3 their depths, K4 Pace |
 | GLO | global: K1..K4 Tune, Level, Lights (the buttons' glow), Sleep (minutes; then it rests) |
@@ -34,7 +34,8 @@ Every button glows dim; the one whose page shows is lit, and so are PLAY when pl
 
 Kits: PAPER LAGOON, WOODEN RAIN, GLASS ORCHARD, SLOW BREATH, IRON SNOW, HAZE ARCHIVE, DUST PIPES, FOG LANTERN.
 Some voices have breath (air beside the tone, a rough modulation, a pitch that wanders: worn, hazy), fixed by the kit
-(a little in SLOW BREATH and HAZE ARCHIVE, much in DUST PIPES and FOG LANTERN); a voice's page shows it.
+(a little in SLOW BREATH and HAZE ARCHIVE, much in DUST PIPES and FOG LANTERN), scaled by Air (FX, again); a voice's
+page shows it.
 
 Worlds, each its own way of making music (heard at once; the screen changes with it):
 SHALLOWS OF MEMORY (short motifs, repeated and changed), BEHIND THE HORIZON (a drone: chords that swell and fall

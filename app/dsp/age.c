@@ -1,18 +1,19 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 hacha */
-/* The age (FX's second page): what time does to a recording, over the whole of it (the voices, the echoes, the
- * plate), before the last soft clip. Four, each plain, each 0 for none:
+/* The age: what time does to a recording, over the whole of it (the voices, the echoes, the plate), before the last
+ * soft clip. Three on FX's second page (AGE; its fourth, Air, is the voices' breath: lagoon.c), one with the tape's Wear;
+ * each plain, each 0 for none:
  *   Haze     the band narrows (the highs go first, then the lows) and the loud parts round off
  *   Hiss     a floor of noise under it, breathing slowly; only while the music plays (it fades in and out with it)
  *   Dropout  now and then the sound thins for a moment, darker, one side more than the other, as worn tape loses
  *            its coat; the more, the more often and the deeper
- *   Blur     the sound smears: a copy of it a little late, its lateness wandering, fed back a little, as a head that
- *            does not sit still
+ *   blur     (with Wear, FX) the sound smears: a copy of it a little late, its lateness wandering, fed back a
+ *            little, as a head that does not sit still
  * Order: blur, the hiss joins, the haze (so the hiss is narrowed with the rest), the dropout (over the hiss too).
  * #included by amb_parts.c after echo.c (one -O2 unit): uses sine(), s16() and fastmath.h. Its chance is its own
  * (age_rnd), so how much hiss or dropout there is never changes what the music chooses. Cheap per sample:
  * a few one-pole filters, two noises, two delay taps, one sine. */
-static float age_haze, age_hiss, age_drop, age_blur;  /* 0..1: the four (P_HAZE ..) */
+static float age_haze, age_hiss, age_drop, age_blur;  /* 0..1: P_HAZE, P_HISS, P_DROPOUT; the blur from P_WEAR */
 volatile float en_age_drop;                      /* (UI) a dropout now, 0..1 */
 static uint32_t age_seed = 0x2545F491u;
 static inline float age_rnd(void)                /* 0..1, apart from the music's frand() */

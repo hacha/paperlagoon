@@ -117,6 +117,7 @@ void app_init(void)
         set.world = ld.v5.world;
         set.oct = ld.v5.oct;
         set.arp = ld.v5.arp;
+        set.par[P_AIR] = en_param_info(P_AIR)->def;   /* (its place was Blur's) */
         for (i = 0; i < (int)sizeof ld.v5.tone; i++)
             ((int8_t *)set.tone)[i] = ((const int8_t *)ld.v5.tone)[i];
     } else if (n == (int)sizeof(settings4_t) && ld.v4.magic == SET_MAGIC_4) {   /* older records: carried over */
@@ -758,10 +759,10 @@ static void draw_voice(int role)
     ratio_text(ratio, t + k);
     cv_text(10, 4, &FONT_XS, "carrier : modulator", C_GRAY);
     cv_text(10, 18, &FONT_B, t, C_WHITE);
-    if (en_voice_breath(set.kit, role)) {        /* the kit's breath in this voice: grains over the shape */
+    if (en_voice_breath(set.kit, role)) {        /* the voice's air (the kit's, times Air): grains over the shape */
         static uint32_t seed = 0x51ED270Bu;
         int32_t b = en_voice_breath(set.kit, role), y1 = 0;
-        cv_text(150, 64, &FONT_XS, "BREATH", C_GRAY);
+        cv_text(150, 64, &FONT_XS, "AIR", C_GRAY);
         int_text(b, t);
         cv_text(206, 64, &FONT_XS, t, C_HI);
         for (i = 0; i < b * 2; i++) {
@@ -815,14 +816,14 @@ static void draw_fx(uint32_t now)
 
 /* the age: each of the four as what it does. Haze: the band left (low to high, a line between its ends); Hiss: a
  * field of grains, as many as it is loud; Dropout: a strip of tape, worn in places, broken while a dropout passes;
- * Blur: a wave and its late copy */
+ * Air: a tone with air round it, as much as the voices have (the kit's breath, times Air) */
 static void draw_age(uint32_t now)
 {
     static uint32_t seed = 0x9E3779B9u;
     float haze = (float)set.par[P_HAZE] * 0.01f, hiss = (float)set.par[P_HISS] * 0.01f;
-    float drop = (float)set.par[P_DROPOUT] * 0.01f, blur = (float)set.par[P_BLUR] * 0.01f, e = en_age_drop;
+    float drop = (float)set.par[P_DROPOUT] * 0.01f, e = en_age_drop;
     float t = (float)now * 0.001f;
-    int32_t i, x0 = 76, w = 154, lo, hi;
+    int32_t i, x, x0 = 76, w = 154, lo, hi;
     cv_begin(240, 144, C_BLACK);
     cv_text(10, 4, &FONT_XS, "HAZE", C_GRAY);    /* the band: 20 Hz .. 20 kHz across, what is left lit */
     lo = x0 + (int32_t)((float)w * 0.33f * haze * haze);
@@ -845,14 +846,22 @@ static void draw_age(uint32_t now)
     }
     if (e > 0.02f)
         cv_rect(x0 + w / 2 - 1, 76, 2, 11, C_WHITE);
-    cv_text(10, 112, &FONT_XS, "BLUR", C_GRAY);  /* a wave, and its copy a little late, wandering */
-    for (i = 0; i < w; i++) {
-        float ph = (float)i * 0.09f - t * 1.2f;
-        int32_t y = 118 + (int32_t)(8.0f * fm_sinf(ph));
-        int32_t yb = 118 + (int32_t)(8.0f * fm_sinf(ph - blur * (1.2f + 0.5f * fm_sinf(t * 0.6f))));
-        if (blur > 0.01f)
-            cv_pset(x0 + i, yb + 1, C_DIM);
-        cv_pset(x0 + i, y, C_HI);
+    cv_text(10, 112, &FONT_XS, "AIR", C_GRAY);   /* a tone, and air round it (the kit's breath, times this) */
+    {
+        int32_t air = 0, r;
+        for (r = 0; r < EN_NROLE; r++)
+            air += en_voice_breath(set.kit, r);
+        air = air * 3 / EN_NROLE;
+        for (i = 0; i < w; i++)
+            cv_pset(x0 + i, 118 + (int32_t)(6.0f * fm_sinf((float)i * 0.09f - t * 1.2f)), C_HI);
+        for (i = 0; i < air; i++) {
+            seed = seed * 1664525u + 1013904223u;
+            x = (int32_t)((seed >> 8) % (uint32_t)w);
+            cv_pset(x0 + x, 118 + (int32_t)(6.0f * fm_sinf((float)x * 0.09f - t * 1.2f)) +
+                                (int32_t)((seed >> 20) % 15u) - 7, C_DIM);
+        }
+        if (!air)
+            cv_text(x0, 128, &FONT_XS, "this kit has none", C_DIM);
     }
     cv_blit(0, 36);
 }

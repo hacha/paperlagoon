@@ -20,9 +20,9 @@ static const en_param_t PARAMS[P_NPARAMS] = {
     {"Time", 0, 100, 42}, {"Feedback", 0, 100, 68}, {"Size", 0, 100, 69}, {"Wear", 0, 100, 20},
     {"Repeat", 0, 100, 50}, {"Change", 0, 100, 50}, {"Length", 0, 100, 50}, {"Memory", 0, 100, 50},
     {"Drift", 0, 100, 50}, {"Offer", 0, 100, 50}, {"Tempo", 0, 100, 50}, {"Transpose", -12, 12, 0},
-    {"Breath", 0, 100, 50}, {"Tide", 0, 100, 50}, {"Turn", 0, 100, 50}, {"Pace", 0, 100, 50},
+    {"Air", 0, 100, 50}, {"Tide", 0, 100, 50}, {"Turn", 0, 100, 50}, {"Pace", 0, 100, 50},
     {"Tune", -50, 50, 0}, {"Level", 0, 100, 70}, {"Lights", 0, 2, 1}, {"Sleep", 0, 120, 0},
-    {"Haze", 0, 100, 15}, {"Hiss", 0, 100, 20}, {"Dropout", 0, 100, 5}, {"Blur", 0, 100, 10},
+    {"Haze", 0, 100, 15}, {"Hiss", 0, 100, 20}, {"Dropout", 0, 100, 5}, {"Air", 0, 100, 50},
 };
 const en_param_t *en_param_info(int i) { return (i >= 0 && i < P_NPARAMS) ? &PARAMS[i] : &PARAMS[0]; }
 
@@ -111,6 +111,7 @@ static const char *const ROLE_NAME[EN_NROLE] = {"LEAD", "ANSWER", "LOW"};
 static const char *const TONE_NAME[EN_NTONE] = {"Color", "Bright", "Decay", "Soft"};
 
 static volatile uint8_t kit;
+static float breath_k = 1.0f;                    /* Air (AGE): the kits' breath, times this */
 static volatile int8_t tone[EN_NKIT][EN_NROLE][EN_NTONE];   /* the edits (en_tone_default: as KITS has them) */
 volatile uint8_t en_voice_role[EN_NVOICE];
 volatile uint8_t en_note_max;
@@ -146,10 +147,13 @@ static void voice_patch(int k, int role, fm_patch_t *pt)
     pt->dry = b->dry;
     pt->esend = b->esend;
     pt->rsend = b->rsend;
-    pt->breath = (float)b->breath * 0.01f;
+    pt->breath = (float)b->breath * 0.01f * breath_k;
 }
 
-int en_voice_breath(int k, int role) { return KITS[(unsigned)k % EN_NKIT].v[(unsigned)role % EN_NROLE].breath; }
+int en_voice_breath(int k, int role)
+{
+    return (int)((float)KITS[(unsigned)k % EN_NKIT].v[(unsigned)role % EN_NROLE].breath * breath_k + 0.5f);
+}
 
 void en_voice_shape(int k, int role, float *ratio, float *att_ms, float *t60)
 {
@@ -1054,11 +1058,14 @@ static void apply(int p, int v)
         break;
     case P_FEEDBACK: echo_fb = 0.2f + 0.0072f * (float)v; break;      /* 0.2 .. 0.92 */
     case P_SIZE: pl_target = 0.5f + 0.0047f * (float)v; break;        /* the plate's decay */
-    case P_WEAR: echo_wear = (float)v * 0.01f; break;                 /* the tape's age: wow, flutter, dark */
+    case P_WEAR:                                 /* the tape's age: wow, flutter, dark; and the whole sound blurred */
+        echo_wear = (float)v * 0.01f;
+        age_blur = 0.6f * echo_wear;
+        break;
     case P_HAZE: age_haze = (float)v * 0.01f; break;                  /* the age, over the whole mix (age.c) */
     case P_HISS: age_hiss = (float)v * 0.01f; break;
     case P_DROPOUT: age_drop = (float)v * 0.01f; break;
-    case P_BLUR: age_blur = (float)v * 0.01f; break;
+    case P_AIR: breath_k = (float)v * 0.02f; break;                /* the kits' air (breath), times 0 .. 2 (50: as is) */
     case P_REPEAT: repeat = (float)v * 0.01f; break;
     case P_CHANGE: change = (float)v * 0.01f; break;
     case P_LENGTH: length = (float)v * 0.01f; break;

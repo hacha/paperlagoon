@@ -155,7 +155,7 @@ static int fm_start(const fm_patch_t *pt, int note, float vel, float pan, int32_
     {   /* (PaperLagoon) the breath: the air a band of noise round the note (an octave up for a high one's sake: under
          * 6 kHz), its level steadied against the band's width; a rough modulation; a pitch that wanders a little */
         float fc = fm_minf(mtof((float)note) * 1.5f, 6000.0f), sf = 2.0f * fm_sinf(FM_PI * fc * (1.0f / EN_SR));
-        float b = fm_clampf(pt->breath, 0.0f, 1.0f);
+        float b = fm_clampf(pt->breath, 0.0f, 1.7f);
         v->sf = sf;
         v->bl = 0.9f * b * fm_rsqrtf(sf * 40.0f);
         v->bn = 0.05f * b * b;
