@@ -34,7 +34,7 @@ const en_param_t *en_param_info(int i);
 
 /* tones: sets of three voices (kits), one chosen at a time; each voice's four settings can be edited, per kit.
  * The UI writes them (en_set_kit, en_set_tone: single bytes); the render reads them as a note starts */
-#define EN_NKIT 8
+#define EN_NKIT 10
 enum { R_LEAD, R_ANSWER, R_LOW, EN_NROLE };
 enum { T_COLOR, T_BRIGHT, T_DECAY, T_SOFT, EN_NTONE };
 #define EN_NRATIO 12                   /* T_COLOR: 0..EN_NRATIO-1, the modulator's ratio (en_ratio); the rest 0..100 */
@@ -59,7 +59,7 @@ enum { S_LIGHT, S_BLEED, S_FOLD, S_MARGIN, EN_NSTATE };
 void en_offer(int key, int strength);
 
 /* worlds (ALGORITHM): places that exist nowhere; each leans the state, the beat, the roots, the cycles (lagoon.c) */
-#define EN_NWORLD 5
+#define EN_NWORLD 7
 const char *en_world_name(int world);
 void en_set_world(int world);
 void en_set_world_now(int world);       /* there at once, no crossing (at boot) */
@@ -90,10 +90,15 @@ extern volatile int8_t en_fig_deg[EN_FIG], en_fig_dur[EN_FIG];
 extern volatile uint8_t en_fig_len, en_fig_pos, en_fig_scale;
 extern volatile int8_t en_mem_deg[4][EN_FIG], en_mem_dur[4][EN_FIG];
 extern volatile uint8_t en_mem_len[4];
-enum { EN_ALG_MOTIF, EN_ALG_DRONE, EN_ALG_LOOPS, EN_ALG_LETTER, EN_ALG_FOUNTAIN };
-extern volatile uint8_t en_alg;                /* the world's way of making music: EN_ALG_* (motifs, a drone, loops, a
-                                                * letter's single points, a fountain's figure) */
+enum { EN_ALG_MOTIF, EN_ALG_DRONE, EN_ALG_LOOPS, EN_ALG_LETTER, EN_ALG_FOUNTAIN, EN_ALG_WIND, EN_ALG_TWO };
+extern volatile uint8_t en_alg;                /* the world's way of making music: EN_ALG_* (motifs written in and washed
+                                                * away, a drone, loops, a letter's single points, a fountain's figure, the wind's
+                                                * chimes, two lines) */
 extern volatile float en_loop_ph[4];           /* the loops (en_alg 2): each one's way round, 0..1 */
+extern volatile uint8_t en_sb_mask;            /* the motifs (en_alg 0): which of the motif's notes are written now */
+extern volatile uint8_t en_sb_phase;           /* 0 written in, 1 whole, 2 washed away, 3 gone */
+extern volatile uint8_t en_two_over;           /* the stair (en_alg 6): its shadow over it (1) or under (0) */
+extern volatile uint32_t en_sb_gone;           /* motifs washed away wholly, since boot */
 
 /* commands (main loop -> render) */
 void en_init(void);

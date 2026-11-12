@@ -4,7 +4,7 @@
 
 A generative environmental-music firmware for the M-VAVE FM-1. It plays by itself; you steer it from outside.
 
-FM voices through AMB-1's tape echo and plate, played in five worlds that a hidden state leans. The manual:
+FM voices through AMB-1's tape echo and plate, played in seven worlds that a hidden state leans. The manual:
 [app/docs/MANUAL.md](app/docs/MANUAL.md) (日本語: [app/docs/MANUAL.ja.md](app/docs/MANUAL.ja.md)); the site, to try it in
 the browser and install it: https://hacha.github.io/paperlagoon/
 
@@ -19,13 +19,13 @@ the browser and install it: https://hacha.github.io/paperlagoon/
 | ENV | the environment: the world, its root, beat and scale; K1..K4 Drift (how far the cycles and offerings sway the music), Offer, Tempo, Transpose |
 | LFO | the cycles (breath, tide, long turn) as orbits: K1..K3 their depths, K4 Pace |
 | GLO | global: K1..K4 Tune, Level, Lights (the buttons' glow), Sleep (minutes; its last minute is a dusk, sparser, quieter, a little slower; then it rests) |
-| ARP | the chords: broken chords under the music, in the low voice's colour, each world walking the chord its own way (up and down, falling, scattered, rising and falling back, a pendulum); K1..K4 Level (0: none), Stir (the notes' grain, as the world leans it; sparse rings long), Spread (how wide: light reaches higher, a fold draws it in), Wander (how far the walk and its grain move with the music: 0 the world's own). Again: the pulse, a muffled beat (a low thump, a small click, a brush) on each world's own patterns; K1..K4 Level (0: none), Stir (hits taken or added), Wander (how far the patterns move with the music: 0 still), Weight (the thump against the click and the brush). Again: back. Both keep the music's silences (in a long rest they fade, wholly in the letter) and never cut a sounding note. A hazy pulse at most, never a dance |
+| ARP | the chords: broken chords under the music, in the low voice's colour, each world walking the chord its own way (up and down, falling, scattered, rising and falling back, a pendulum, swaying, a step and its shadow); K1..K4 Level (0: none), Stir (the notes' grain, as the world leans it; sparse rings long), Spread (how wide: light reaches higher, a fold draws it in), Wander (how far the walk and its grain move with the music: 0 the world's own). Again: the pulse, a muffled beat (a low thump, a small click, a brush) on each world's own patterns (the attic: no thump; the stair: a slow thump, two clicks, no brush); K1..K4 Level (0: none), Stir (hits taken or added), Wander (how far the patterns move with the music: 0 still), Weight (the thump against the click and the brush). Again: back. Both keep the music's silences (in a long rest they fade, wholly in the letter) and never cut a sounding note. A hazy pulse at most, never a dance |
 | OCT- / OCT+ | the music's register, two octaves either way |
-| REC | held: the keys play (the music waits); let go: the phrase is taken in as the music's own (the motif, the drone's chord, the loops' notes). OCT- / OCT+ meanwhile move the keys' octave |
+| REC | held: the keys play (the music waits); let go: the phrase is taken in as the music's own (the motif, written whole at once; the drone's chord, the loops' notes, the attic's keys). OCT- / OCT+ meanwhile move the keys' octave |
 | SEL | held: K1..K4 are the lagoon's four from any page (on the lagoon itself, in finer steps) |
-| SEQ | the memory: what the music holds (the motif and the ones remembered, the chord, the loops, the letter's line, the fountain's figure); K1..K4 Repeat, Change, Length, Memory. Held: hold it (no new motif, chord, line, figure or scale), held again: let go |
-| PRESETS | the kit: eight sets of three voices (lead, answer, low); edits are kept per kit |
-| ALGORITHM | the world: five places that exist nowhere, each its own way of making music (never the knobs nor the kit). Chosen at once, reached by a crossing: the music finishes its phrase where it is (a few seconds; the header says CROSSING, the name breathing, a wake running under it), the chords and the pulse fading, then a breath, and the new world opens |
+| SEQ | the memory: what the music holds (the motif and the ones remembered, the chord, the loops, the letter's line, the fountain's figure, the attic's keys, the stair's centre); K1..K4 Repeat, Change, Length, Memory. Held: hold it (no new motif, chord, line, figure, keys, centre or scale), held again: let go |
+| PRESETS | the kit: ten sets of three voices (lead, answer, low); edits are kept per kit |
+| ALGORITHM | the world: seven places that exist nowhere, each its own way of making music (never the knobs nor the kit). Chosen at once, reached by a crossing: the music finishes its phrase where it is (a few seconds; the header says CROSSING, the name breathing, a wake running under it), the chords and the pulse fading, then a breath, and the new world opens |
 | K1..K4 | the lagoon: Density, Bright, Space, Echo. A voice: Color (the FM ratio), Bright, Decay, Soft (the attack) |
 | PLAY | plays or rests. It opens: sparse at first, full in some 25 s, the chords and the pulse coming in a few bars later. A rest is at once (the echoes and the plate ring on) |
 | SAVE | keeps all of it (lit when something is not saved) |
@@ -34,21 +34,22 @@ Every button glows dim; the one whose page shows is lit, and so are PLAY when pl
 
 | Keys | play no notes (but under REC): a press *offers* something to a hidden state (held: a little more, again and again). When its drop meets the water the offering splashes: the sound stirs at once (smeared, darker or opener, the echoes and the plate swelling, hushed or swollen), the music answers soon, and in a second or two it is gone; then it seeps in slowly |
 
-Kits: TIN HARBOR, WOODEN RAIN, GLASS ORCHARD, SLOW BREATH, IRON SNOW, HAZE ARCHIVE, DUST PIPES, FOG LANTERN.
+Kits: TIN HARBOR, WOODEN RAIN, GLASS ORCHARD, SLOW BREATH, IRON SNOW, HAZE ARCHIVE, DUST PIPES, FOG LANTERN, CHALK GARDEN, BRASS EVENING.
 Some voices have breath (air beside the tone, a rough modulation, a pitch that wanders: worn, hazy), fixed by the kit
-(a little in SLOW BREATH and HAZE ARCHIVE, much in DUST PIPES and FOG LANTERN), scaled by Air (FX, again); a voice's
+(a little in SLOW BREATH and HAZE ARCHIVE, much in DUST PIPES, FOG LANTERN and CHALK GARDEN), scaled by Air (FX, again); a voice's
 page shows it.
 
 Worlds, each its own way of making music (heard at once; the screen changes with it):
-SHALLOWS OF MEMORY (short motifs, repeated and changed), BEHIND THE HORIZON (a drone: chords that swell and fall
+SHALLOWS OF MEMORY (a motif written in a note or two each pass until whole, heard whole, then faded a note or two each pass until nothing is left; a silence, another), BEHIND THE HORIZON (a drone: chords that swell and fall
 back, a low tone under them, now and then one note of a melody), THE UNREAD LETTER (single points, far apart: a few
 pitches, the letter's words, each a leap from the last, at uneven distances; a long silence after each line; in the
-margin some stay unread), SILENT FOUNTAIN (one figure that rises and falls back, round and round in soft eighths,
-changing a little now and then), WHERE LIGHT BECOMES MOSS (four loops of unequal length, drifting in and out of step).
+margin some stay unread), THE FOUNTAIN AFTER CLOSING (one figure that rises and falls back, round and round in soft eighths,
+changing a little now and then), WHERE LIGHT BECOMES MOSS (four loops of unequal length, drifting in and out of step), THE ATTIC OF LOOSE KEYS (five keys close together, high, struck in gusts of 2–10, neighbour knocking neighbour, rising and dying away; stillness between gusts, no beat; after a spell a longer calm, then a key changed or a new set hung; a strong gust may bring one deep tone), A STAIR AND ITS SHADOW (two voices, slowly: a walk by steps from a centre and back, each phrase one step longer, each note long; with every note its shadow, the nearest tone of the root's chord, under it or over, never the same pitch; rests between, a long one after the longest, then the stair turns; the root low and long under each walk).
 
-SEQ's knobs, world by world: Repeat (a motif's passes; a line read again; the fountain's rounds before it may change),
-Change (a note moved; a word exchanged; the figure's height, foot, length or start), Length (notes to a motif, a line,
-a figure; the drone's swells; the loops' lengths), Memory (how often an older motif, line or figure comes back).
+SEQ's knobs, world by world: Repeat (the passes before a motif's note comes or goes, and how long it stays whole; a line read again; the fountain's rounds before it may change; the gusts in a spell; the walks before the centre may move),
+Change (a note moved while the motif is whole; a word exchanged; the figure's height, foot, length or start; a key changed between spells; the centre moved, the shadow maybe changing sides), Length (notes to a motif, a line,
+a figure; the drone's swells; the loops' lengths; strikes in a gust; the longest phrase of the stair), Memory (how often an older motif, line, figure, set of keys or centre comes back).
+An offering: written into the motif next (it puts a note back while one fades), hung as a key of its pitch (its splash brings a gust), made the next centre.
 
 The music leans on four hidden quantities, named for paper (light, bleed, fold, margin; never shown), which three slow cycles of unequal length
 (their lengths wander, about 50–100, 120–230 and 300–600 s) keep turning. An offering seeps into them over some seconds and fades over minutes; what it

@@ -3,8 +3,8 @@
 ![PaperLagoon: a drop over the water, its rings and the great ring](img/title.png)
 
 PaperLagoon is a generative environmental-music firmware for the M-VAVE FM-1. It plays by itself, and you steer it from outside. The keys play no notes: a press offers something to a
-hidden state, a drop falls to the water, and the music answers, loosely, and then more slowly. Five worlds that exist
-nowhere, eight kits of FM voices, a tape echo and a plate, and a few slow cycles that keep it turning.
+hidden state, a drop falls to the water, and the music answers, loosely, and then more slowly. Seven worlds that exist
+nowhere, ten kits of FM voices, a tape echo and a plate, and a few slow cycles that keep it turning.
 
 ![The lagoon: a drop falls toward the water under SHALLOWS OF MEMORY](manual/img/screen-drop.png "PaperLagoon on the FM-1's screen")
 

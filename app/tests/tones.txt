@@ -33,7 +33,7 @@ wait 30
 expect kit 1
 turn PRESET -2
 wait 30
-expect kit 7
+expect kit 9
 turn PRESET 1
 wait 30
 expect kit 0

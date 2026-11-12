@@ -44,3 +44,11 @@ wait 1600
 shot screen-crossing.png
 wait 12000
 shot screen-fountain.png
+turn ALGO 2
+wait 30000
+tapkey 20
+wait 700
+shot screen-attic.png
+turn ALGO 1
+wait 30000
+shot screen-stair.png

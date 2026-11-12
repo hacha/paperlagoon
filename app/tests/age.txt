@@ -19,7 +19,7 @@ expect param25 100
 expect param26 100
 expect param27 100
 wait 8000
-expect voices >0
+expect notes >2
 shot age.png
 peakreset
 wait 10000
