@@ -1,5 +1,7 @@
 # PaperLagoon
 
+![PaperLagoon: a drop over the water, its rings and the great ring](img/title.png)
+
 PaperLagoon is a generative environmental-music firmware for the M-VAVE FM-1, after the Japanese *kankyō ongaku* of
 the 1980s. It plays by itself, and you steer it from outside. The keys play no notes: a press offers something to a
 hidden state, a drop falls to the water, and the music answers, loosely, and then more slowly. Five worlds that exist

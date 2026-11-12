@@ -1,5 +1,7 @@
 # PaperLagoon
 
+![PaperLagoon](app/site/img/title.png)
+
 A generative environmental-music firmware for the M-VAVE FM-1, after 1980s Japanese *kankyō ongaku*
 (and, at most, Susumu Yokota's hazy pulse). It plays by itself; you steer it from outside.
 

@@ -5,7 +5,7 @@ PaperLagoon as a whole is distributed under **GPL-3.0-only** (LICENSE). Its part
 | Part | From | Licence |
 | --- | --- | --- |
 | `app/app.c`, `app/app.h`, `app/dsp/lagoon.c`, `app/dsp/lagoon.h`, `app/dsp/age.c`, `app/dsp/pulse.c`, `app/words.tsv`, `app/tests/`, `serve.sh`, `install.sh`, `test.sh` | PaperLagoon, by hacha | GPL-3.0-only |
-| `app/docs/` (the manuals and their screenshots), `app/site/`, `app/fm1.toml`, `README.md` | PaperLagoon, by hacha | GPL-3.0-only |
+| `app/docs/` (the manuals and their screenshots), `app/site/` (the front page, the title image and `title.py`, which draws it), `app/fm1.toml`, `README.md` | PaperLagoon, by hacha | GPL-3.0-only |
 | `app/dsp/amb_parts.c` (the command queue, random numbers, sine table, slow modulators, two-operator FM voice, output mix) | [AMB-1](https://github.com/charlesvestal/fm1-amb) by Charles Vestal, with changes | MPL-2.0 |
 | `app/dsp/plate.c` (Dattorro's plate) | [AMB-1](https://github.com/charlesvestal/fm1-amb) by Charles Vestal, its plate after FoMni | MPL-2.0 |
 | `app/dsp/echo.c` (tape echo and Echoplex) | [AMB-1](https://github.com/charlesvestal/fm1-amb) by Charles Vestal, with changes | MPL-2.0 |
