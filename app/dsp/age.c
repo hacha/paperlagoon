@@ -61,7 +61,7 @@ static void age_control(uint32_t n, int playing)
     hz_h = hz > 0.005f ? age_onepole(20.0f + 300.0f * hz * hz) : 0.0f;
     hz_round = 0.9f * hz;
     age_bl = fm_minf(age_blur + age_spl_blur, 1.0f);
-    hs_level += ((playing ? 0.03f * age_hiss * age_hiss : 0.0f) - hs_level) * fm_minf(t * 0.7f, 1.0f);
+    hs_level += ((playing ? 0.019f * age_hiss * age_hiss : 0.0f) - hs_level) * fm_minf(t * 0.7f, 1.0f);
     hs_ph += t * 0.071f;                         /* the breath: ~14 s */
     if (hs_ph >= 1.0f)
         hs_ph -= 1.0f;
@@ -118,8 +118,8 @@ static inline void age_px(float *l, float *r)
             bl_w = 0;
     }
     for (c = 0; c < 2; c++) {
-        if (hs_level > 1e-6f) {                  /* the hiss, its highs softened a little */
-            hs_lp[c] += 0.55f * ((age_rnd() * 2.0f - 1.0f) - hs_lp[c]);
+        if (hs_level > 1e-6f) {                  /* the hiss, its highs softened */
+            hs_lp[c] += 0.4f * ((age_rnd() * 2.0f - 1.0f) - hs_lp[c]);
             x[c] += hs_level * (0.75f + 0.25f * sine(hs_ph + 0.5f * (float)c)) * hs_lp[c];
         }
         if (hz_a < 1.0f) {
