@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 hacha
+# the age (FX again): its page, its four, kept across a reboot; the music still sounds through it all at full
+wait 600
+tap FX
+wait 30
+expect page 4
+tap FX
+wait 30
+expect page 5
+expect param24 15
+turn K1 43
+turn K2 45
+turn K3 48
+turn K4 45
+wait 30
+expect param24 100
+expect param25 100
+expect param26 100
+expect param27 100
+wait 8000
+expect voices >0
+shot age.png
+peakreset
+wait 10000
+expect peak_db_max >-40
+tap FX
+wait 30
+expect page 4
+tap SAVE
+wait 30
+reboot
+wait 600
+expect param26 100

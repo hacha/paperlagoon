@@ -25,7 +25,8 @@
  * state itself as the water's line, slowly. */
 #include "fastmath.h"
 
-#define SET_MAGIC 0x344C504Bu            /* "PLL4": the settings record; PLL3 and PLL2 (fewer parameters) carry over */
+#define SET_MAGIC 0x354C504Bu            /* "PLL5": the settings record; PLL4, PLL3, PLL2 (fewer parameters) carry over */
+#define SET_MAGIC_4 0x344C504Bu
 #define SET_MAGIC_3 0x334C504Bu
 #define SET_MAGIC_2 0x324C504Bu
 typedef struct {
@@ -36,6 +37,14 @@ typedef struct {
     uint8_t arp;                                 /* the pulse on */
     int8_t tone[EN_NKIT][EN_NROLE][EN_NTONE];
 } settings_t;
+typedef struct {                                 /* PLL4: twenty-four parameters (before the age) */
+    uint32_t magic;
+    int16_t par[24];
+    uint8_t kit, world;
+    int8_t oct;
+    uint8_t arp;
+    int8_t tone[EN_NKIT][EN_NROLE][EN_NTONE];
+} settings4_t;
 typedef struct {                                 /* PLL3: twelve parameters */
     uint32_t magic;
     int16_t par[12];
@@ -77,15 +86,26 @@ void app_init(void)
 {
     int i, f;
     static union {
-        settings_t v4;
+        settings_t v5;
+        settings4_t v4;
         settings3_t v3;
         settings2_t v2;
     } ld;
     int n;
     en_init();
     n = plat_store_load(OBJ_SETTINGS, &ld, sizeof ld);
-    if (n == (int)sizeof(settings_t) && ld.v4.magic == SET_MAGIC) {
-        set = ld.v4;
+    if (n == (int)sizeof(settings_t) && ld.v5.magic == SET_MAGIC) {
+        set = ld.v5;
+    } else if (n == (int)sizeof(settings4_t) && ld.v4.magic == SET_MAGIC_4) {   /* older records: carried over */
+        settings_defaults();
+        for (i = 0; i < 24; i++)
+            set.par[i] = ld.v4.par[i];
+        set.kit = ld.v4.kit;
+        set.world = ld.v4.world;
+        set.oct = ld.v4.oct;
+        set.arp = ld.v4.arp;
+        for (i = 0; i < (int)sizeof set.tone; i++)
+            ((int8_t *)set.tone)[i] = ((const int8_t *)ld.v4.tone)[i];
     } else if (n == (int)sizeof(settings3_t) && ld.v3.magic == SET_MAGIC_3) {   /* older records: carried over */
         settings_defaults();
         for (i = 0; i < 12; i++)
@@ -139,20 +159,21 @@ void app_panic(void)
 }
 
 /* ------------------------------------------------------------------ UI --- */
-enum { PG_LAGOON, PG_LEAD, PG_ANSWER, PG_LOW, PG_FX, PG_ENV, PG_LFO, PG_SEQ, PG_GLO, NPAGE };
+enum { PG_LAGOON, PG_LEAD, PG_ANSWER, PG_LOW, PG_FX, PG_AGE, PG_ENV, PG_LFO, PG_SEQ, PG_GLO, NPAGE };
+#define PG_GROUP(p) (PG_VOICE(p) ? 1 : (p) == PG_FX || (p) == PG_AGE ? 2 : 0)   /* pages one button walks */
 #define PG_ROLE(p) ((p) - PG_LEAD)               /* a voice page's R_* */
 #define PG_VOICE(p) ((p) >= PG_LEAD && (p) <= PG_LOW)
 #define HOLD_MS 800u                             /* EDIT or SEQ held this long: its second use */
 
 static int page_par(int p)                       /* a page's first parameter (P_*), or -1 (a voice page) */
 {
-    return p == PG_LAGOON ? P_DENSITY : p == PG_FX ? P_TIME : p == PG_SEQ ? P_REPEAT : p == PG_ENV ? P_DRIFT :
+    return p == PG_LAGOON ? P_DENSITY : p == PG_FX ? P_TIME : p == PG_AGE ? P_HAZE : p == PG_SEQ ? P_REPEAT : p == PG_ENV ? P_DRIFT :
            p == PG_LFO ? P_BREATH : p == PG_GLO ? P_TUNE : -1;
 }
 
 static const char *page_name(int p)
 {
-    return p == PG_LAGOON ? "LAGOON" : p == PG_FX ? "EFFECTS" : p == PG_SEQ ? "MEMORY" : p == PG_ENV ? "ENVIRONMENT" :
+    return p == PG_LAGOON ? "LAGOON" : p == PG_FX ? "EFFECTS" : p == PG_AGE ? "AGE" : p == PG_SEQ ? "MEMORY" : p == PG_ENV ? "ENVIRONMENT" :
            p == PG_LFO ? "CYCLES" : p == PG_GLO ? "GLOBAL" : en_role_name(PG_ROLE(p));
 }
 
@@ -397,8 +418,8 @@ static void input(void)
     }
     if (down & 1u << B_HOME)
         page_go(PG_LAGOON);
-    if (down & 1u << B_FX)
-        page_go(PG_FX);
+    if (down & 1u << B_FX)                       /* the effects; again: the age, and back */
+        page_go(ui.page == PG_FX ? PG_AGE : PG_FX);
     if (down & 1u << B_ENV)
         page_go(PG_ENV);
     if (down & 1u << B_LFO)
@@ -498,7 +519,7 @@ static void input(void)
     ui.keys = keys;
     ui.btn = btn;
     {   /* lit: the page's button, playing, unsaved, held; dim: every button that has a page or a use */
-        uint32_t page_btn = ui.page == PG_LAGOON ? 1u << B_HOME : ui.page == PG_FX ? 1u << B_FX :
+        uint32_t page_btn = ui.page == PG_LAGOON ? 1u << B_HOME : ui.page == PG_FX || ui.page == PG_AGE ? 1u << B_FX :
                             ui.page == PG_SEQ ? 1u << B_SEQ : ui.page == PG_ENV ? 1u << B_ENV :
                             ui.page == PG_LFO ? 1u << B_LFO : ui.page == PG_GLO ? 1u << B_GLO : 1u << B_EDIT;
         uint32_t lit = btn | page_btn | (set_dirty ? 1u << B_SAVE : 0u) | (en_playing ? 1u << B_PLAY : 0u) |
@@ -578,7 +599,7 @@ static void draw_rule(void)
         cv_rect(xs, 5, xt - 6 - xs, 1, C_LINE);
     cv_text(xt, 0, &FONT_XS, name, C_HI);
     for (i = 0; i < NPAGE; i++) {
-        int cur = i == (int32_t)ui.page, group = PG_VOICE(i) && PG_VOICE(ui.page);
+        int cur = i == (int32_t)ui.page, group = PG_GROUP(i) && PG_GROUP(i) == PG_GROUP(ui.page);
         cv_rect(xd + i * 5, cur ? 2 : 3, 3, cur ? 7 : 5, cur ? C_HI : group ? C_GRAY : C_LINE);
     }
 }
@@ -750,6 +771,50 @@ static void draw_fx(uint32_t now)
             cv_rect(12 + x, 134 - h, 1, h, f > 0.5f ? C_HI : C_DIM);
     }
     cv_rect(10, 134, 220, 1, C_LINE);
+    cv_blit(0, 36);
+}
+
+/* the age: each of the four as what it does. Haze: the band left (low to high, a line between its ends); Hiss: a
+ * field of grains, as many as it is loud; Dropout: a strip of tape, worn in places, broken while a dropout passes;
+ * Blur: a wave and its late copy */
+static void draw_age(uint32_t now)
+{
+    static uint32_t seed = 0x9E3779B9u;
+    float haze = (float)set.par[P_HAZE] * 0.01f, hiss = (float)set.par[P_HISS] * 0.01f;
+    float drop = (float)set.par[P_DROPOUT] * 0.01f, blur = (float)set.par[P_BLUR] * 0.01f, e = en_age_drop;
+    float t = (float)now * 0.001f;
+    int32_t i, x0 = 76, w = 154, lo, hi;
+    cv_begin(240, 144, C_BLACK);
+    cv_text(10, 4, &FONT_XS, "HAZE", C_GRAY);    /* the band: 20 Hz .. 20 kHz across, what is left lit */
+    lo = x0 + (int32_t)((float)w * 0.33f * haze * haze);
+    hi = x0 + w - (int32_t)((float)w * 0.3f * haze);
+    cv_rect(x0, 12, w, 1, C_LINE);
+    cv_rect(lo, 10, hi - lo, 5, C_HI);
+    cv_text(10, 40, &FONT_XS, "HISS", C_GRAY);   /* grains, new each frame */
+    for (i = 0; i < (int32_t)(hiss * hiss * 220.0f) + (hiss > 0.0f); i++) {
+        seed = seed * 1664525u + 1013904223u;
+        cv_pset(x0 + (int32_t)((seed >> 8) % (uint32_t)w), 38 + (int32_t)((seed >> 20) % 16u),
+                (seed & 0x30u) ? C_DIM : C_GRAY);
+    }
+    cv_text(10, 76, &FONT_XS, "DROPOUT", C_GRAY);   /* the tape: worn spots, a break while one passes */
+    for (i = 0; i < w; i += 2) {
+        uint32_t hsh = (uint32_t)(i * 2654435761u) >> 24;
+        int worn = (float)hsh < 256.0f * 0.25f * drop;
+        int brk = e > 0.02f && i > w / 2 - (int32_t)(e * 40.0f) && i < w / 2 + (int32_t)(e * 40.0f);
+        if (!brk)
+            cv_rect(x0 + i, 80, 2, 3, worn ? C_DIM : C_HI);
+    }
+    if (e > 0.02f)
+        cv_rect(x0 + w / 2 - 1, 76, 2, 11, C_WHITE);
+    cv_text(10, 112, &FONT_XS, "BLUR", C_GRAY);  /* a wave, and its copy a little late, wandering */
+    for (i = 0; i < w; i++) {
+        float ph = (float)i * 0.09f - t * 1.2f;
+        int32_t y = 118 + (int32_t)(8.0f * fm_sinf(ph));
+        int32_t yb = 118 + (int32_t)(8.0f * fm_sinf(ph - blur * (1.2f + 0.5f * fm_sinf(t * 0.6f))));
+        if (blur > 0.01f)
+            cv_pset(x0 + i, yb + 1, C_DIM);
+        cv_pset(x0 + i, y, C_HI);
+    }
     cv_blit(0, 36);
 }
 
@@ -948,6 +1013,8 @@ static void draw(void)
         draw_lagoon(now);
     else if (ui.page == PG_FX)
         draw_fx(now);
+    else if (ui.page == PG_AGE)
+        draw_age(now);
     else if (ui.page == PG_SEQ)
         draw_seq();
     else if (ui.page == PG_ENV)

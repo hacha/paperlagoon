@@ -22,6 +22,7 @@ static const en_param_t PARAMS[P_NPARAMS] = {
     {"Drift", 0, 100, 50}, {"Offer", 0, 100, 50}, {"Tempo", 0, 100, 50}, {"Transpose", -12, 12, 0},
     {"Breath", 0, 100, 50}, {"Tide", 0, 100, 50}, {"Turn", 0, 100, 50}, {"Pace", 0, 100, 50},
     {"Tune", -50, 50, 0}, {"Level", 0, 100, 70}, {"Lights", 0, 2, 1}, {"Sleep", 0, 120, 0},
+    {"Haze", 0, 100, 15}, {"Hiss", 0, 100, 20}, {"Dropout", 0, 100, 5}, {"Blur", 0, 100, 10},
 };
 const en_param_t *en_param_info(int i) { return (i >= 0 && i < P_NPARAMS) ? &PARAMS[i] : &PARAMS[0]; }
 
@@ -1043,6 +1044,10 @@ static void apply(int p, int v)
     case P_FEEDBACK: echo_fb = 0.2f + 0.0072f * (float)v; break;      /* 0.2 .. 0.92 */
     case P_SIZE: pl_target = 0.5f + 0.0047f * (float)v; break;        /* the plate's decay */
     case P_WEAR: echo_wear = (float)v * 0.01f; break;                 /* the tape's age: wow, flutter, dark */
+    case P_HAZE: age_haze = (float)v * 0.01f; break;                  /* the age, over the whole mix (age.c) */
+    case P_HISS: age_hiss = (float)v * 0.01f; break;
+    case P_DROPOUT: age_drop = (float)v * 0.01f; break;
+    case P_BLUR: age_blur = (float)v * 0.01f; break;
     case P_REPEAT: repeat = (float)v * 0.01f; break;
     case P_CHANGE: change = (float)v * 0.01f; break;
     case P_LENGTH: length = (float)v * 0.01f; break;
@@ -1134,6 +1139,7 @@ void en_init(void)
     sine_init();
     plate_init();
     echo_init();
+    age_init();
     mods_init();
     q_r = q_w = 0;
     for (i = 0; i < NFM; i++)
@@ -1173,6 +1179,7 @@ static void control(uint32_t n)                  /* once a chunk: the slow thing
     mods_step(n);
     echo_control(n, 0.5f, modv, en_playing);   /* (and echo_wear: P_WEAR) */
     plate_tick(pl_target);
+    age_control(n, en_playing);
     state_step(n);
     en_cycle = cyc[0];
     en_cyc[0] = cyc[0];

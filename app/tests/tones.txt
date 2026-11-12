@@ -9,7 +9,7 @@ wait 30
 expect page 1
 turn SELECT 9
 wait 30
-expect page 8
+expect page 9
 turn SELECT -9
 wait 30
 expect page 0

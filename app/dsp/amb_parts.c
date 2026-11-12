@@ -6,7 +6,7 @@
  * bell, its settings now given by the caller rather than read from AMB-1's parameters and loops) and the output
  * stage (the voices' sends through the echo and the plate, AMB-1's render_chunk() mix).
  * #included by lagoon.c (one -O2 unit), after fastmath.h, EN_SR, EN_POOL and BARRIER(); it #includes plate.c and
- * echo.c itself. */
+ * echo.c itself (and, PaperLagoon, age.c: the age over the whole mix, before the soft clip). */
 
 /* ------------------------------------------------------------ commands --- */
 #define QN 64u
@@ -55,6 +55,7 @@ static void sine_init(void)
 
 #include "plate.c"
 #include "echo.c"
+#include "age.c"                                  /* (PaperLagoon) */
 
 /* ------------------------------------------------- slow random motion --- */
 #define NMOD 4                                  /* (AMB-1 has nine) here the echo's four */
@@ -209,6 +210,7 @@ static void mix_out(int32_t *out, uint32_t n, float gain, float eg, float rg)
         reverb((rsend[j] * rg + (el + er + xl + xr) * 0.35f * rg) * 0.8f, &wl, &wr);
         l = (mixl[j] + 0.75f * el + 0.3f * xl + 1.3f * wl) * 0.36f * gain;
         r = (mixr[j] + 0.75f * er + 0.3f * xr + 1.3f * wr) * 0.36f * gain;
+        age_px(&l, &r);                          /* (PaperLagoon) the age: haze, hiss, dropout, blur */
         out[2 * j] = (int32_t)(fm_tanhf(l) * 8300000.0f);
         out[2 * j + 1] = (int32_t)(fm_tanhf(r) * 8300000.0f);
     }

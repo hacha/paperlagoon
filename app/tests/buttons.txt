@@ -4,7 +4,7 @@
 wait 600
 tap ENV
 wait 30
-expect page 5
+expect page 6
 turn K4 3
 wait 30
 expect param15 3
@@ -12,7 +12,7 @@ wait 1000
 shot env.png
 tap LFO
 wait 30
-expect page 6
+expect page 7
 turn K4 10
 wait 30
 expect param19 70
@@ -20,7 +20,7 @@ wait 1000
 shot lfo.png
 tap GLO
 wait 30
-expect page 8
+expect page 9
 turn K3 1
 wait 30
 expect param22 2

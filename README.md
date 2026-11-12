@@ -10,10 +10,10 @@ hidden state leans. Tested in the host simulator; runs on an FM-1 (installed wit
 
 | Control | Does |
 |---|---|
-| SELECT | turns through the pages: 1 the lagoon, 2..4 the kit's voices, 5 the effects, 6 the environment, 7 the cycles, 8 the memory, 9 global (as HYP-1: on the rule over the knobs, the page's name and a short bar a page, the one shown lit; the header keeps the world) |
+| SELECT | turns through the pages: 1 the lagoon, 2..4 the kit's voices, 5 the effects, 6 the age, 7 the environment, 8 the cycles, 9 the memory, 10 global (as HYP-1: on the rule over the knobs, the page's name and a short bar a page, the one shown lit; the header keeps the world) |
 | HOME | the lagoon (lit there) |
 | EDIT | the voices (lit there); again: the next voice; held: the voice as the kit has it |
-| FX | the effects: K1..K4 Time (the tape's loop), Feedback, Size (the plate), Wear (the tape's age) |
+| FX | the effects: K1..K4 Time (the tape's loop), Feedback, Size (the plate), Wear (the tape's age). Again: the age, over the whole sound: K1..K4 Haze (the band narrows, the loud parts round off), Hiss (a breathing floor of noise, while it plays), Dropout (the sound thins now and then, darker, as worn tape), Blur (a late, wandering copy smears it); again: back |
 | ENV | the environment: the world, its root, beat and colour; K1..K4 Drift (how far the cycles and offerings sway the music), Offer, Tempo, Transpose |
 | LFO | the cycles (breath, tide, long turn) as orbits: K1..K3 their depths, K4 Pace |
 | GLO | global: K1..K4 Tune, Level, Lights (the buttons' glow), Sleep (minutes; then it rests) |

@@ -22,6 +22,7 @@ enum { P_DENSITY, P_BRIGHT, P_SPACE, P_ECHO,
        P_DRIFT, P_OFFER, P_TEMPO, P_TRANSPOSE,     /* the environment (ENV) */
        P_BREATH, P_TIDE, P_TURN, P_PACE,           /* the cycles (LFO) */
        P_TUNE, P_LEVEL, P_LIGHTS, P_SLEEP,         /* global (GLO): P_LIGHTS and P_SLEEP are the UI's */
+       P_HAZE, P_HISS, P_DROPOUT, P_BLUR,          /* the age (FX, again): over the whole mix (age.c) */
        P_NPARAMS };
 typedef struct {
     const char *name;
@@ -101,5 +102,6 @@ extern volatile float en_offset[EN_NSTATE];    /* what the offerings have moved 
 extern volatile uint8_t en_note_max;           /* the highest note played since boot */
 extern volatile float en_period[3];            /* the three cycles' lengths now (s): they wander */
 extern volatile uint32_t en_offers;
+extern volatile float en_age_drop;             /* a dropout now (the age), 0..1 */
 extern volatile uint32_t en_recalls;           /* motifs folded back from the memory, since boot */            /* offerings since boot (presses) */
 extern volatile uint8_t en_scale;              /* the scale of the motif now (0 the coolest .. 4) */   /* R_*: which voice of the kit each FM voice plays */
