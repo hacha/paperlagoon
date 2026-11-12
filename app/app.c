@@ -12,8 +12,8 @@
  *   6 the age (FX again)     over the whole sound: K1..K4 Haze, Hiss, Dropout, Air (the voices' breath)
  *   7 the environment (ENV)  K1..K4 Drift (how far the cycles and offerings sway it), Offer, Tempo, Transpose
  *   8 the cycles (LFO)       the breath, the tide, the long turn: K1..K3 their depths, K4 Pace
- *   9 the chords (ARP)       broken chords under the music: K1..K4 Level (0: none), Busy, Spread, Wander
- *  10 the pulse (ARP again)  a muffled beat: K1..K4 Level (0: none), Busy, Wander, Weight
+ *   9 the chords (ARP)       broken chords under the music: K1..K4 Level (0: none), Stir, Spread, Wander
+ *  10 the pulse (ARP again)  a muffled beat: K1..K4 Level (0: none), Stir, Wander, Weight
  *  11 the memory (SEQ)       what the music holds (a motif and the ones remembered, a chord, the loops):
  *                            K1..K4 Repeat, Change, Length, Memory. SEQ held: hold it (no new motif, chord or
  *                            colour; the changes go on), held again: let go
@@ -146,7 +146,7 @@ void app_init(void)
         set = ld.v8;
     } else if (n == (int)sizeof(settings_t) && ld.v8.magic == SET_MAGIC_8) {   /* PLL8: the same, but the chords'
                                                                                   * Speed (0..3) and Range (1..3) as
-                                                                                  * Busy and Spread; Gate gone */
+                                                                                  * Stir and Spread; Gate gone */
         int sp = ld.v8.par[P_CH_BUSY], rg = ld.v8.par[P_CH_SPREAD];
         set = ld.v8;
         set.magic = SET_MAGIC;

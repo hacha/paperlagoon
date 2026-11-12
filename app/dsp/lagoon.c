@@ -41,8 +41,8 @@ static const en_param_t PARAMS[P_NPARAMS] = {
     {"Breath", 0, 100, 50}, {"Tide", 0, 100, 50}, {"Turn", 0, 100, 50}, {"Pace", 0, 100, 50},
     {"Tune", -50, 50, 0}, {"Level", 0, 100, 70}, {"Lights", 0, 2, 1}, {"Sleep", 0, 120, 0},
     {"Haze", 0, 100, 15}, {"Hiss", 0, 100, 20}, {"Dropout", 0, 100, 5}, {"Air", 0, 100, 50},
-    {"Level", 0, 100, 0}, {"Busy", 0, 100, 40}, {"Spread", 0, 100, 25}, {"Wander", 0, 100, 30},
-    {"Level", 0, 100, 0}, {"Busy", 0, 100, 50}, {"Wander", 0, 100, 30}, {"Weight", 0, 100, 50},
+    {"Level", 0, 100, 0}, {"Stir", 0, 100, 40}, {"Spread", 0, 100, 25}, {"Wander", 0, 100, 30},
+    {"Level", 0, 100, 0}, {"Stir", 0, 100, 50}, {"Wander", 0, 100, 30}, {"Weight", 0, 100, 50},
 };
 const en_param_t *en_param_info(int i) { return (i >= 0 && i < P_NPARAMS) ? &PARAMS[i] : &PARAMS[0]; }
 
@@ -1129,11 +1129,11 @@ static void edges_step(uint32_t n)               /* once a chunk */
  * own way (SHALLOWS up and down; HORIZON falling, slow; LETTER scattered, far apart; FOUNTAIN rising and falling back
  * part way; MOSS a pendulum about the middle). The knobs only lean it; the music sets the rest:
  *   Level   all of it (0: none; 50 as made)
- *   Busy    the notes' grain (quarters .. sixteenths, as the world leans it); sparse rings long, busy is short
+ *   Stir    the notes' grain (quarters .. sixteenths, as the world leans it); still rings long, astir is short
  *   Spread  how wide (about 1 .. 3 octaves): light reaches higher, a fold draws it in, the margin thins it
  *   Wander  how far the walk and its grain move with the music: at a phrase's end (more in a fold, less held, more
  *           with SEQ's Change) it may start elsewhere, turn over, skip, turn back elsewhere, take a finer or a
- *           coarser grain for a while, or rest. 0: the world's walk, at Busy's and Spread's own
+ *           coarser grain for a while, or rest. 0: the world's walk, at Stir's and Spread's own
  * Not every note sounds: fewer when sparse (Density), fewer in the margin. */
 static const float ARP_STEP[4] = {1.0f, 0.5f, 1.0f / 3.0f, 0.25f};
 static const float ARP_LEAN[EN_NWORLD] = {0.0f, -1.0f, -0.7f, 0.4f, 0.0f};   /* each world's grain, coarser or finer */
@@ -1271,7 +1271,7 @@ static void arp_event(void)
         phrase_end &= (uint8_t)~2u;
         arp_phrase();
     }
-    c = 3.0f * arp_busy + ARP_LEAN[world];       /* the grain: Busy, as the world leans it */
+    c = 3.0f * arp_busy + ARP_LEAN[world];       /* the grain: Stir, as the world leans it */
     d = (int)(c + 0.5f) + arp_dev;
     arp_div = d < 0 ? 0 : d > 3 ? 3 : d;
     en_arp_div = (uint8_t)arp_div;

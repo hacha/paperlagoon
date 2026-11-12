@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 hacha
-# CHORDS: Busy leans the grain, Wander 0 keeps it (SHALLOWS: Busy 40 eighths, 100 sixteenths, 0 quarters)
+# CHORDS: Stir leans the grain, Wander 0 keeps it (SHALLOWS: Stir 40 eighths, 100 sixteenths, 0 quarters)
 wait 300
 tap ARP
 wait 30

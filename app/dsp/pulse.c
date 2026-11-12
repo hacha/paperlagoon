@@ -7,7 +7,7 @@
  * each other; each world its own (some without the thump), and a second length for each. The thump alone keeps to
  * the beats: its pattern is over beats, from the bar's head, never turned nor lengthened, at most four on the floor. The page's four, plain:
  *   Level   all of it (0: none; 50 as made)
- *   Busy    hits taken from or added to the world's patterns (50: as they are)
+ *   Stir    hits taken from or added to the world's patterns (50: as they are)
  *   Wander  how far the patterns move with the music: now and then (more in a fold, less held, more with SEQ's
  *           Change) a hit comes or goes (fewer in the margin), a pattern turns, or takes its other length; at the end
  *           of a phrase the pulse may rest a bar or half. 0: the world's patterns, still
@@ -56,7 +56,7 @@ static float ai_amp, ai_att, ai_dec, ai_hp, ai_lp, ai_pan;   /* the brush: level
 #define TH_PDEC 0.9985f                          /* the pitch's fall: ~15 ms */
 #define CK_DEC 0.985f                            /* ~10 ms */
 
-static void pu_pattern(int i, euclid_t *e)      /* a pattern now: the world's, its length, Busy and Wander's hits */
+static void pu_pattern(int i, euclid_t *e)      /* a pattern now: the world's, its length, Stir and Wander's hits */
 {
     const euclid_t *b = &PULSE_PAT[world][i];
     int n = b->n, k = b->k, alt = PULSE_ALT[world][i];
