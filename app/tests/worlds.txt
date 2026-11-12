@@ -26,11 +26,20 @@ turn ALGO 1
 wait 30
 expect world 0
 expect alg 0
-turn ALGO 2
+turn ALGO 3
 wait 30
-expect alg 0
+expect world 3
+expect alg 4
+wait 3000
+expect voices >0
+shot fountain.png
+turn ALGO -1
+wait 30
+expect world 2
+expect alg 3
 wait 60000
 expect notes >8
+shot letter.png
 tap SAVE
 wait 30
 reboot

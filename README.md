@@ -36,9 +36,14 @@ Kits: PAPER LAGOON, WOODEN RAIN, GLASS ORCHARD, SLOW BREATH, IRON SNOW, HAZE ARC
 
 Worlds, each its own way of making music (heard at once; the screen changes with it):
 SHALLOWS OF MEMORY (short motifs, repeated and changed), BEHIND THE HORIZON (a drone: chords that swell and fall
-back, a low tone under them, now and then one note of a melody), THE UNREAD LETTER (motifs, sparse; older ones come
-back), SILENT FOUNTAIN (motifs, bright and quick), WHERE LIGHT BECOMES MOSS (four loops of unequal length, drifting
-in and out of step). THE UNREAD LETTER and SILENT FOUNTAIN are to get their own ways too.
+back, a low tone under them, now and then one note of a melody), THE UNREAD LETTER (single points, far apart: a few
+pitches, the letter's words, each a leap from the last, at uneven distances; a long silence after each line; in the
+margin some stay unread), SILENT FOUNTAIN (one figure that rises and falls back, round and round in soft eighths,
+changing a little now and then), WHERE LIGHT BECOMES MOSS (four loops of unequal length, drifting in and out of step).
+
+SEQ's knobs, world by world: Repeat (a motif's passes; a line read again; the fountain's rounds before it may change),
+Change (a note moved; a word exchanged; the figure's height, foot, length or start), Length (notes to a motif, a line,
+a figure; the drone's swells; the loops' lengths), Memory (how often an older motif, line or figure comes back).
 
 The music leans on four hidden quantities, named for paper (light, bleed, fold, margin; never shown), which three slow cycles of unequal length
 (their lengths wander, about 50–100, 120–230 and 300–600 s) keep turning. An offering seeps into them over some seconds and fades over minutes; what it

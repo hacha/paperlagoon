@@ -74,7 +74,9 @@ extern volatile int8_t en_fig_deg[EN_FIG], en_fig_dur[EN_FIG];
 extern volatile uint8_t en_fig_len, en_fig_pos, en_fig_scale;
 extern volatile int8_t en_mem_deg[4][EN_FIG], en_mem_dur[4][EN_FIG];
 extern volatile uint8_t en_mem_len[4];
-extern volatile uint8_t en_alg;                /* the world's way of making music: 0 motifs, 1 a drone, 2 loops */
+enum { EN_ALG_MOTIF, EN_ALG_DRONE, EN_ALG_LOOPS, EN_ALG_LETTER, EN_ALG_FOUNTAIN };
+extern volatile uint8_t en_alg;                /* the world's way of making music: EN_ALG_* (motifs, a drone, loops, a
+                                                * letter's single points, a fountain's figure) */
 extern volatile float en_loop_ph[4];           /* the loops (en_alg 2): each one's way round, 0..1 */
 
 /* commands (main loop -> render) */

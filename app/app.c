@@ -605,13 +605,13 @@ static void draw_lagoon(uint32_t now)
     int32_t hy = 80 - (int32_t)(light * 26.0f), x, gap = 6 - (int32_t)(bleed * 3.0f);
     cv_begin(240, 144, C_BLACK);
     cv_text(10, 2, &FONT_XS, en_kit_name(set.kit), C_GRAY);
-    if (en_alg == 1)                             /* the drone: a heavy, slow water */
+    if (en_alg == EN_ALG_DRONE)                             /* the drone: a heavy, slow water */
         speed *= 0.5f;
     for (x = 0; x < 240; x += gap < 2 ? 2 : gap) {
         float y = (float)hy + amp * fm_sinf((float)x * 0.045f + t * speed) +
                   0.5f * amp * fm_sinf((float)x * 0.11f - t * speed * 1.7f);
         cv_pset(x, (int32_t)y, C_LINE);
-        if (en_alg == 1) {
+        if (en_alg == EN_ALG_DRONE) {
             cv_pset(x + gap / 2, (int32_t)y + 3, C_LINE);
             cv_pset(x, (int32_t)y + 6, C_LINE);
         }
@@ -624,10 +624,19 @@ static void draw_lagoon(uint32_t now)
             continue;
         x = 20 + ((int32_t)en_voice_note[i] - 41) * 4;
         x = x < 10 ? 10 : x > 230 ? 230 : x;
-        if (en_alg == 1) {                       /* the drone: bands that swell with the sound and sink with it */
+        if (en_alg == EN_ALG_DRONE) {                       /* the drone: bands that swell with the sound and sink with it */
             int32_t rx = 6 + (int32_t)(g * 54.0f);
             draw_ellipse(x, hy + 3, rx, g > 0.5f ? C_HI : g > 0.2f ? C_AMB : C_DIM);
             draw_ellipse(x, hy + 3, rx * 2 / 3, g > 0.5f ? C_AMB : C_DIM);
+            continue;
+        }
+        if (en_alg == EN_ALG_LETTER) {           /* the letter: each word a point lifting off the water, a small ring */
+            cv_rect(x, hy - 8 - (int32_t)((1.0f - g) * 44.0f), 2, 2, g > 0.5f ? C_WHITE : g > 0.2f ? C_HI : C_DIM);
+            draw_ring(x, hy, 3 + (int32_t)((1.0f - g) * 16.0f), g > 0.3f ? C_AMB : C_DIM);
+            continue;
+        }
+        if (en_alg == EN_ALG_FOUNTAIN) {         /* the fountain: small rings where its drops fall */
+            draw_ellipse(x, hy, 3 + (int32_t)((1.0f - g) * 18.0f), g > 0.3f ? C_GRAY : C_DIM);
             continue;
         }
         r = 4 + (int32_t)((1.0f - g) * 56.0f);
@@ -635,7 +644,20 @@ static void draw_lagoon(uint32_t now)
         if (g > 0.6f)
             draw_ring(x, hy, r / 2, C_AMB);
     }
-    if (en_alg == 2)                             /* the loops: four buoys, a light going round each */
+    if (en_alg == EN_ALG_FOUNTAIN && en_fig_len) {   /* the fountain: its figure as drops over the water, one lit */
+        int32_t lo = 99, hi = -99, n = en_fig_len > EN_FIG ? EN_FIG : en_fig_len, x0 = 120 - (n - 1) * 8;
+        for (i = 0; i < (uint32_t)n; i++) {
+            lo = en_fig_deg[i] < lo ? en_fig_deg[i] : lo;
+            hi = en_fig_deg[i] > hi ? en_fig_deg[i] : hi;
+        }
+        for (i = 0; i < (uint32_t)n; i++) {
+            int32_t y = hy - 10 - 34 * (en_fig_deg[i] - lo) / (hi > lo ? hi - lo : 1);
+            int cur = i == en_fig_pos;
+            cv_rect(x0 + (int32_t)i * 16 - (cur ? 1 : 0), y - (cur ? 1 : 0), cur ? 4 : 2, cur ? 4 : 2,
+                    cur ? C_WHITE : C_HI);
+        }
+    }
+    if (en_alg == EN_ALG_LOOPS)                             /* the loops: four buoys, a light going round each */
         for (i = 0; i < 4; i++) {
             float ph = en_loop_ph[i], a = ph * FM_TWO_PI - FM_PI / 2.0f;
             int32_t bx = 36 + (int32_t)i * 56, by = hy - 26;
@@ -741,9 +763,10 @@ static void k_append_s(char *t)                  /* " S" after a number */
     t[k] = 0;
 }
 
-/* a figure: notes as bars, across by their lengths, up by their degrees; one lit */
+/* a figure: notes as bars, across by their lengths, up by their degrees; one lit. points: each a point where it
+ * starts (the letter's words, far apart), not a bar */
 static void draw_fig(int32_t x0, int32_t y0, int32_t w, int32_t h, const volatile int8_t *deg,
-                     const volatile int8_t *dur, int n, int lit, uint16_t c)
+                     const volatile int8_t *dur, int n, int lit, uint16_t c, int points)
 {
     int32_t i, total = 0, lo = 99, hi = -99, x = x0;
     for (i = 0; i < n; i++) {
@@ -758,7 +781,10 @@ static void draw_fig(int32_t x0, int32_t y0, int32_t w, int32_t h, const volatil
     for (i = 0; i < n; i++) {
         int32_t bw = w * (dur[i] > 0 ? dur[i] : 1) / total;
         int32_t y = y0 + h - 3 - (h - 4) * (deg[i] - lo) / (hi - lo);
-        cv_rect(x, y, bw > 3 ? bw - 2 : 1, 3, i == lit ? C_WHITE : c);
+        if (points)
+            cv_rect(x, y - 1, 3, 3, i == lit ? C_WHITE : c);
+        else
+            cv_rect(x, y, bw > 3 ? bw - 2 : 1, 3, i == lit ? C_WHITE : c);
         x += bw;
     }
 }
@@ -767,29 +793,31 @@ static void draw_fig(int32_t x0, int32_t y0, int32_t w, int32_t h, const volatil
 static void draw_seq(void)
 {
     int32_t i;
-    const char *what = en_alg == 1 ? "THE CHORD" : en_alg == 2 ? "THE LOOPS" : "THE MOTIF";
+    const char *what = en_alg == EN_ALG_DRONE ? "THE CHORD" : en_alg == EN_ALG_LOOPS ? "THE LOOPS" :
+                       en_alg == EN_ALG_LETTER ? "THE LINE" : en_alg == EN_ALG_FOUNTAIN ? "THE FIGURE" : "THE MOTIF";
     cv_begin(240, 144, C_BLACK);
     cv_text(10, 2, &FONT_XS, what, C_GRAY);
-    if (en_alg == 2) {                           /* the loops: each its note, its length, where it is */
+    if (en_alg == EN_ALG_LOOPS) {                           /* the loops: each its note, its length, where it is */
         for (i = 0; i < 4 && i < en_fig_len; i++) {
             int32_t y = 26 + i * 16, w = 14 * en_fig_dur[i];
             w = w > 210 ? 210 : w;
             cv_rect(14, y, w, 1, C_LINE);
             cv_rect(14 + (int32_t)(en_loop_ph[i] * (float)w), y - 2, 3, 5, C_HI);
         }
-    } else if (en_alg == 1) {                    /* the chord: its tones at once, stacked by degree */
+    } else if (en_alg == EN_ALG_DRONE) {                    /* the chord: its tones at once, stacked by degree */
         for (i = 0; i < en_fig_len && i < EN_FIG; i++) {
             int32_t d = en_fig_deg[i] - en_fig_scale, y = 76 - 4 * (d < 0 ? 0 : d > 14 ? 14 : d);
             cv_rect(40, y, 160, 3, i ? C_HI : C_WHITE);
         }
     } else {
-        draw_fig(14, 18, 212, 64, en_fig_deg, en_fig_dur, en_fig_len, en_fig_pos, C_HI);
+        draw_fig(14, 18, 212, 64, en_fig_deg, en_fig_dur, en_fig_len, en_fig_pos, C_HI, en_alg == EN_ALG_LETTER);
     }
-    if (en_alg == 0) {                           /* the motifs remembered */
+    if (en_alg != EN_ALG_DRONE && en_alg != EN_ALG_LOOPS) {   /* the motifs (lines, figures) remembered */
         cv_text(10, 92, &FONT_XS, "REMEMBERED", C_GRAY);
         for (i = 0; i < 4; i++)
             if (en_mem_len[i])
-                draw_fig(12 + i * 56, 108, 50, 30, en_mem_deg[i], en_mem_dur[i], en_mem_len[i], -1, C_DIM);
+                draw_fig(12 + i * 56, 108, 50, 30, en_mem_deg[i], en_mem_dur[i], en_mem_len[i], -1, C_DIM,
+                         en_alg == EN_ALG_LETTER);
     }
     cv_blit(0, 36);
 }
