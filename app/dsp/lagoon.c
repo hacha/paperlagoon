@@ -393,7 +393,10 @@ static const int8_t SCALE[NSCALE][8] = {         /* the length first, then the s
 };
 #define MOT_MAX 7
 static int8_t mot_deg[MOT_MAX], mot_dur[MOT_MAX];
-static int mot_len, mot_i, mot_reps, scale_i = 2, root = 65, root_wait;
+static int mot_len, mot_i, mot_reps, scale_i = 2, root = 65;
+static float root_due = 60.0f;                   /* seconds before the root may move (at a phrase's edge) */
+/* each world's root stays this long on average (s); a fold hastens it; held: it stays */
+static const float ROOT_STAY[EN_NWORLD] = {150.0f, 210.0f, 150.0f, 180.0f, 200.0f};
 static float beat_len = 0.8f * EN_SR;            /* the world's beat (S_MARGIN: up to 15 % either way) */
 static float gen_left;                           /* samples to the next event */
 static uint8_t phrase_end;                       /* a phrase (a pass, a line, the fountain's rounds, a swell) ended:
@@ -478,12 +481,23 @@ static void scale_pick(void)                     /* the scale from the state: S_
     en_scale = (uint8_t)scale_i;
 }
 
-static void root_wander(void)
+static void root_wander(void)                    /* (at a phrase's edge) the root moves, when it is due: to another
+                                                  * of the world's */
 {
-    if (--root_wait <= 0 && frand() < 0.12f + 0.25f * fm_maxf(st[S_FOLD], 0.0f)) {
-        root = WORLDS[world].roots[irand(4)];
-        root_wait = 3;
-    }
+    int r;
+    if (root_due > 0.0f || en_held)
+        return;
+    do
+        r = WORLDS[world].roots[irand(4)];
+    while (r == root);
+    root = r;
+    root_due = ROOT_STAY[world] * (0.6f + 0.8f * frand());
+}
+
+static void root_tick(uint32_t n)                /* (control) its time runs, faster in a fold */
+{
+    if (!en_held && en_playing)
+        root_due -= (float)n * (1.0f / EN_SR) * (1.0f + 0.8f * fm_maxf(st[S_FOLD], 0.0f));
 }
 
 static void motif_new(void)
@@ -623,7 +637,7 @@ static void drone_event(void)
         drone_deg += STEP[irand(4)];
         drone_deg = drone_deg < 0 ? 0 : drone_deg > n ? n : drone_deg;
     }
-    if (drone_k % 4 == 3 && !en_held) {          /* now and then, a new colour and root */
+    if ((drone_k % 4 == 3 || root_due <= 0.0f) && !en_held) {   /* now and then, a new colour; the root when due */
         scale_pick();
         root_wander();
     }
@@ -716,7 +730,8 @@ static void loops_event(void)
     en_fig_len = NLOOP;
     en_fig_scale = (uint8_t)n;
     gen_left = fm_maxf(next, 1.0f);
-    if (!en_held && frand() < 0.03f) {           /* rarely, the colour turns under them */
+    if (!en_held && (root_due <= 0.0f || frand() < 0.03f)) {   /* rarely, the colour turns under them; the root
+                                                               * when due */
         scale_pick();
         root_wander();
     }
@@ -956,7 +971,7 @@ static void fountain_event(void)
     mot_reps = 2 + (int)(repeat * 6.0f) + irand(3);
     if (gift_pc >= 0 || frand() < 0.9f * change + 0.3f * fm_maxf(st[S_FOLD], 0.0f)) {
         fountain_vary();
-        if (++fnt_changes % 6 == 0) {            /* now and then, a new colour and root under it */
+        if (++fnt_changes % 6 == 0 || root_due <= 0.0f) {   /* now and then, a new colour; the root when due */
             scale_pick();
             root_wander();
         }
@@ -983,7 +998,7 @@ static void world_begin(void)                    /* a new world, at once: its ro
 {
     const world_t *w = &WORLDS[world];
     root = w->roots[0];
-    root_wait = 2;
+    root_due = ROOT_STAY[world] * (0.5f + 0.5f * frand());
     beat_len = w->beat * tempo * EN_SR;
     en_alg = w->alg;
     scale_pick();
@@ -1492,7 +1507,7 @@ void en_init(void)
     for (i = 0; i < EN_NSTATE; i++)
         wbias[i] = 0.0f;
     root = WORLDS[0].roots[0];
-    root_wait = 2;
+    root_due = 60.0f;
     motif_new();
     pulse_begin();
     gen_left = 1.5f * EN_SR;
@@ -1521,6 +1536,7 @@ static void control(uint32_t n)                  /* once a chunk: the slow thing
     }
     age_control(n, en_playing);
     edges_step(n);
+    root_tick(n);
     pulse_ui();
     state_step(n);
     en_cycle = cyc[0];
