@@ -670,7 +670,7 @@ static void draw_header(uint32_t now)
         cv_text(end + 8, 10, &FONT_XS, "THE KEYS PLAY; LET GO TO GIVE IT", C_AMB);
     } else {
         const char *s = en_crossing ? "CROSSING" : en_playing ? "PLAYING" : "RESTING";
-        uint16_t c = C_WHITE;
+        uint16_t c = en_playing ? C_WHITE : C_GRAY;   /* resting: the name greyed (a long one leaves no room to say) */
         if (en_crossing) {                       /* a crossing: the name not yet reached breathes, a wake runs under */
             int32_t ph = (int32_t)(now % 1600u), b = ph < 800 ? ph : 1600 - ph, i;
             c = b < 270 ? C_GRAY : b < 540 ? C_HI : C_WHITE;
