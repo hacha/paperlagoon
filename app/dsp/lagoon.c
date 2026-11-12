@@ -23,7 +23,7 @@ static const en_param_t PARAMS[P_NPARAMS] = {
     {"Air", 0, 100, 50}, {"Tide", 0, 100, 50}, {"Turn", 0, 100, 50}, {"Pace", 0, 100, 50},
     {"Tune", -50, 50, 0}, {"Level", 0, 100, 70}, {"Lights", 0, 2, 1}, {"Sleep", 0, 120, 0},
     {"Haze", 0, 100, 15}, {"Hiss", 0, 100, 20}, {"Dropout", 0, 100, 5}, {"Air", 0, 100, 50},
-    {"Level", 0, 100, 0}, {"Speed", 0, 3, 1}, {"Range", 1, 3, 1}, {"Gate", 0, 100, 30},
+    {"Level", 0, 100, 0}, {"Busy", 0, 100, 40}, {"Spread", 0, 100, 25}, {"Wander", 0, 100, 30},
     {"Level", 0, 100, 0}, {"Busy", 0, 100, 50}, {"Wander", 0, 100, 30}, {"Weight", 0, 100, 50},
 };
 const en_param_t *en_param_info(int i) { return (i >= 0 && i < P_NPARAMS) ? &PARAMS[i] : &PARAMS[0]; }
@@ -337,7 +337,7 @@ static int mot_len, mot_i, mot_reps, scale_i = 2, root = 65, root_wait;
 static float beat_len = 0.8f * EN_SR;            /* the world's beat (S_MARGIN: up to 15 % either way) */
 static float gen_left;                           /* samples to the next event */
 static uint8_t phrase_end;                       /* a phrase (a pass, a line, the fountain's rounds, a swell) ended:
-                                                  * the pulse may rest (pulse.c) */
+                                                  * bit 0 the pulse's to take (pulse.c), bit 1 the chords' */
 volatile uint8_t en_scale;
 
 static int deg_note(int d)                       /* scale degree (0 the root) to a MIDI note */
@@ -502,7 +502,7 @@ static void motif_event(void)
         mot_i++;
         return;
     }
-    phrase_end = 1;
+    phrase_end = 3;
     {   /* the pass is over: a rest, then the motif again (perhaps changed) or a new one */
         float lean = fm_maxf(0.5f + 0.9f * st[S_MARGIN], 0.0f);   /* 0 short rests .. ~1.4 long */
         gen_left += beat_len * (2.0f + (1.0f - density) * 8.0f * (0.5f + lean) + 3.0f * frand());
@@ -567,7 +567,7 @@ static void drone_event(void)
         root_wander();
     }
     drone_k++;
-    phrase_end = 1;
+    phrase_end = 3;
     gap = (6.0f + 8.0f * frand()) * (1.0f + 0.6f * st[S_MARGIN]) * (1.0f - 0.3f * st[S_BLEED]) * (1.6f - density) *
           (0.5f + length);                       /* Length: the swells' length */
     gen_left += beat_len * gap;
@@ -759,7 +759,7 @@ static void letter_event(void)
         mot_i++;
         return;
     }
-    phrase_end = 1;
+    phrase_end = 3;
     {   /* the line is over: a long silence, then it is read again or the next is written */
         float lean = fm_maxf(0.5f + 0.9f * st[S_MARGIN], 0.0f);
         gen_left += beat_len * (4.0f + (1.0f - density) * 10.0f * (0.5f + lean) + 4.0f * frand());
@@ -891,7 +891,7 @@ static void fountain_event(void)
     beat_len = WORLDS[world].beat * tempo * EN_SR * (1.0f + 0.1f * st[S_MARGIN]);
     if (--mot_reps > 0 || en_held)
         return;
-    phrase_end = 1;
+    phrase_end = 3;
     mot_reps = 2 + (int)(repeat * 6.0f) + irand(3);
     if (gift_pc >= 0 || frand() < 0.9f * change + 0.3f * fm_maxf(st[S_FOLD], 0.0f)) {
         fountain_vary();
@@ -947,38 +947,173 @@ static void world_begin(void)                    /* a new world, at once: its ro
         motif_new();
         break;
     }
+    en_arp_len = 0;                              /* the chords: the new world's walk */
     pulse_begin();
     gen_left = 0.3f * EN_SR;
 }
 
 /* ---------------------------------------------------------------- ARP --- */
-/* Broken chords under the music (ARP's first page, CHORDS): soft, the answer's voice, up and down the chord the
- * music stands on (the motif's note, the drone's chord, the first loop's note), from an octave under. Not every one
- * sounds: fewer when sparse (Density), fewer in the margin. The page's four, plain: Level (0: none), Speed (quarters,
- * eighths, triplets, sixteenths of the beat), Range (the way up: 1..3 octaves), Gate (each note short .. ringing) */
+/* Broken chords under the music (ARP's first page, CHORDS): soft, the answer's voice, over the chord the music stands
+ * on (the motif's note, the drone's chord, the first loop's note), from an octave under. Each world walks its tones its
+ * own way (SHALLOWS up and down; HORIZON falling, slow; LETTER scattered, far apart; FOUNTAIN rising and falling back
+ * part way; MOSS a pendulum about the middle). The knobs only lean it; the music sets the rest:
+ *   Level   all of it (0: none; 50 as made)
+ *   Busy    the notes' grain (quarters .. sixteenths, as the world leans it); sparse rings long, busy is short
+ *   Spread  how wide (about 1 .. 3 octaves): light reaches higher, a fold draws it in, the margin thins it
+ *   Wander  how far the walk and its grain move with the music: at a phrase's end (more in a fold, less held, more
+ *           with SEQ's Change) it may start elsewhere, turn over, skip, turn back elsewhere, take a finer or a
+ *           coarser grain for a while, or rest. 0: the world's walk, at Busy's and Spread's own
+ * Not every note sounds: fewer when sparse (Density), fewer in the margin. */
 static const float ARP_STEP[4] = {1.0f, 0.5f, 1.0f / 3.0f, 0.25f};
-static float arp_left, arp_level, arp_gate = 0.28f;
-static int arp_i, arp_speed = 1, arp_range = 1;
-volatile uint8_t en_arp_beat, en_arp_pos, en_arp_len;
+static const float ARP_LEAN[EN_NWORLD] = {0.0f, -1.0f, -0.7f, 0.4f, 0.0f};   /* each world's grain, coarser or finer */
+enum { WALK_UPDOWN, WALK_FALL, WALK_SCATTER, WALK_FOUNTAIN, WALK_PENDULUM };
+#define ARP_SEQ 48
+static float arp_left, arp_level, arp_busy = 0.4f, arp_spread = 0.25f, arp_wander = 0.3f, arp_gate = 0.5f;
+static int arp_i, arp_div = 1, arp_dev, arp_rest;
+static uint8_t arp_rot, arp_flip, arp_skip, arp_turn = 2;   /* Wander: the start, upside down, every other, where it
+                                                         * turns back (in quarters of the way) */
+static uint8_t arp_seq[ARP_SEQ];
+volatile uint8_t en_arp_beat, en_arp_pos, en_arp_len, en_arp_top, en_arp_div;
+volatile uint8_t en_arp_seq[ARP_SEQ];
+
+static int arp_walk(uint8_t *q, int m)           /* the world's walk over tones 0..m, as Wander has turned it */
+{
+    int len = 0, k, t, c, a;
+    switch (world) {
+    case 1:                                      /* falling */
+        for (k = m; k >= 0; k--)
+            q[len++] = (uint8_t)k;
+        break;
+    case 2:                                      /* scattered: a stride across the tones */
+        t = m / 2 + 1;
+        while (t > 1 && (m + 1) % t == 0)
+            t++;
+        for (k = 0; k <= m; k++)
+            q[len++] = (uint8_t)(k * t % (m + 1));
+        break;
+    case 3:                                      /* the fountain: up, back part way, up again, down */
+        t = m * arp_turn / 4;
+        for (k = 0; k <= m; k++)
+            q[len++] = (uint8_t)k;
+        for (k = m - 1; k > t; k--)
+            q[len++] = (uint8_t)k;
+        for (k = t; k < m; k++)
+            q[len++] = (uint8_t)k;
+        for (k = m - 1; k > 0; k--)
+            q[len++] = (uint8_t)k;
+        break;
+    case 4:                                      /* a pendulum about the middle (or where it turns) */
+        c = (m * arp_turn + 2) / 4;
+        a = c < m - c ? c : m - c;
+        a = a < 1 ? 1 : a;
+        for (k = 0; k < a; k++)
+            q[len++] = (uint8_t)(c + k);
+        for (k = a; k > -a; k--)
+            q[len++] = (uint8_t)(c + k);
+        for (k = -a; k < 0; k++)
+            q[len++] = (uint8_t)(c + k);
+        break;
+    default:                                     /* up and down */
+        for (k = 0; k <= m; k++)
+            q[len++] = (uint8_t)k;
+        for (k = m - 1; k > 0; k--)
+            q[len++] = (uint8_t)k;
+        break;
+    }
+    if (arp_skip && len > 4) {                   /* every other */
+        for (k = 0; 2 * k < len; k++)
+            q[k] = q[2 * k];
+        len = k;
+    }
+    if (arp_flip)
+        for (k = 0; k < len; k++)
+            q[k] = (uint8_t)(m - q[k]);
+    return len;
+}
+
+static void arp_phrase(void);
+static void arp_pass(void)                       /* a pass begins: its width, its walk (the loops have no phrases:
+                                                  * there each pass is one) */
+{
+    float lean = arp_wander * (0.8f * st[S_LIGHT] - 0.6f * fm_maxf(st[S_FOLD], 0.0f) - 0.5f * fm_maxf(st[S_MARGIN], 0.0f));
+    float oct = fm_clampf(1.0f + 2.0f * arp_spread + lean, 0.6f, 3.0f);
+    int n = SCALE[scale_i][0], m = (int)((float)n * oct * 0.5f + 0.5f), len, k;
+    uint8_t q[ARP_SEQ * 2];
+    if (WORLDS[world].alg == ALG_LOOPS && en_arp_len)
+        arp_phrase();
+    m = m < 2 ? 2 : m > 20 ? 20 : m;
+    while ((len = arp_walk(q, m)) > ARP_SEQ)     /* (narrower, to fit) */
+        m--;
+    for (k = 0; k < len; k++)                    /* turned to its start */
+        arp_seq[k] = en_arp_seq[k] = q[(k + arp_rot) % len];
+    en_arp_len = (uint8_t)len;
+    en_arp_top = (uint8_t)m;
+    arp_i = 0;
+}
+
+static void arp_phrase(void)                     /* a phrase ended: the walk and its grain may move (Wander) */
+{
+    float fold = fm_maxf(st[S_FOLD], 0.0f), margin = fm_maxf(st[S_MARGIN], 0.0f);
+    if (arp_wander < 0.01f) {                    /* still: the world's own */
+        arp_rot = arp_flip = arp_skip = 0;
+        arp_turn = 2;
+        arp_dev = 0;
+        return;
+    }
+    if (en_held)
+        return;
+    if (frand() < 0.4f)                          /* a borrowed grain wears off */
+        arp_dev = 0;
+    if (frand() < arp_wander * (0.35f + 0.5f * fold) * (0.5f + change)) {
+        int t = (int)(frand() * 8.0f);
+        if (t < 3)
+            arp_rot = (uint8_t)(arp_rot + 1 + (int)(frand() * 3.0f));
+        else if (t < 5)
+            arp_flip ^= 1u;
+        else if (t < 7)
+            arp_skip ^= 1u;
+        else
+            arp_turn = (uint8_t)(1 + (int)(frand() * 2.999f));
+    }
+    if (frand() < arp_wander * (0.3f + 0.4f * fold) * (0.5f + change))   /* finer in a fold, coarser in the margin */
+        arp_dev = margin > 0.2f ? -1 : fold > 0.2f ? 1 : frand() < 0.5f ? -1 : 1;
+    if (frand() < 0.5f * arp_wander * (0.5f + margin))
+        arp_rest = 2 + (int)(frand() * 4.0f);    /* a breath: some steps' silence */
+}
 
 static void arp_event(void)
 {
-    int n = SCALE[scale_i][0], cd, note, m = (n * arp_range + 1) / 2, j;   /* m: the chord's tones up the range */
+    int n = SCALE[scale_i][0], cd, note, j, d;
     float skip = fm_clampf(0.1f + 0.5f * (1.0f - density) + 0.3f * fm_maxf(st[S_MARGIN], 0.0f), 0.0f, 0.85f);
-    float step = beat_len * ARP_STEP[arp_speed & 3];
+    float step, c;
+    if (phrase_end & 2u) {
+        phrase_end &= (uint8_t)~2u;
+        arp_phrase();
+    }
+    c = 3.0f * arp_busy + ARP_LEAN[world];       /* the grain: Busy, as the world leans it */
+    d = (int)(c + 0.5f) + arp_dev;
+    arp_div = d < 0 ? 0 : d > 3 ? 3 : d;
+    en_arp_div = (uint8_t)arp_div;
+    step = beat_len * ARP_STEP[arp_div];
     arp_left += step;
     if (arp_left < 1.0f)
         arp_left = step;
+    /* each note rings as the grain is coarse; bleed lengthens it */
+    arp_gate = (0.18f + 1.4f * ARP_STEP[arp_div] * (1.2f - arp_busy)) * (1.0f + 0.5f * fm_maxf(st[S_BLEED], 0.0f));
     if (WORLDS[world].alg == ALG_DRONE)
         cd = drone_chord;
     else if (WORLDS[world].alg == ALG_LOOPS)
         cd = loop[0].deg[0];
     else
         cd = mot_len ? mot_deg[(mot_i + mot_len - 1) % mot_len] : n;
-    arp_i = (arp_i + 1) % (2 * m);               /* up the chord's tones, then down */
-    j = arp_i <= m ? arp_i : 2 * m - arp_i;
+    if (++arp_i >= en_arp_len || !en_arp_len)
+        arp_pass();
+    j = arp_seq[arp_i];
     en_arp_pos = (uint8_t)arp_i;
-    en_arp_len = (uint8_t)(2 * m);
+    if (arp_rest) {
+        arp_rest--;
+        return;
+    }
     if (frand() < skip)
         return;
     note = deg_note(cd - n + 2 * j);
@@ -1085,9 +1220,9 @@ static void apply(int p, int v)
     case P_DROPOUT: age_drop = (float)v * 0.01f; break;
     case P_AIR: breath_k = (float)v * 0.02f; break;                /* the kits' air (breath), times 0 .. 2 (50: as is) */
     case P_CH_LEVEL: arp_level = (float)v * 0.02f; break;           /* the chords: 0 none, 50 as made, 100 twice */
-    case P_CH_SPEED: arp_speed = v; break;                          /* quarters, eighths, triplets, sixteenths */
-    case P_CH_RANGE: arp_range = v; break;                          /* 1 .. 3 octaves */
-    case P_CH_GATE: arp_gate = 0.1f * fm_exp2f((float)v * 0.05f); break;   /* the notes' length: 0.1 .. 3.2 */
+    case P_CH_BUSY: arp_busy = (float)v * 0.01f; break;               /* the chords' grain (and so their length) */
+    case P_CH_SPREAD: arp_spread = (float)v * 0.01f; break;           /* their width: about 1 .. 3 octaves */
+    case P_CH_WANDER: arp_wander = (float)v * 0.01f; break;
     case P_PU_LEVEL: pu_level = (float)v * 0.02f; break;            /* the pulse (pulse.c) */
     case P_PU_BUSY: pu_busy = (float)(v - 50) * 0.02f; break;
     case P_PU_WANDER: pu_wander = (float)v * 0.01f; break;

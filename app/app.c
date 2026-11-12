@@ -12,7 +12,7 @@
  *   6 the age (FX again)     over the whole sound: K1..K4 Haze, Hiss, Dropout, Air (the voices' breath)
  *   7 the environment (ENV)  K1..K4 Drift (how far the cycles and offerings sway it), Offer, Tempo, Transpose
  *   8 the cycles (LFO)       the breath, the tide, the long turn: K1..K3 their depths, K4 Pace
- *   9 the chords (ARP)       broken chords under the music: K1..K4 Level (0: none), Speed, Range, Gate
+ *   9 the chords (ARP)       broken chords under the music: K1..K4 Level (0: none), Busy, Spread, Wander
  *  10 the pulse (ARP again)  a muffled beat: K1..K4 Level (0: none), Busy, Wander, Weight
  *  11 the memory (SEQ)       what the music holds (a motif and the ones remembered, a chord, the loops):
  *                            K1..K4 Repeat, Change, Length, Memory. SEQ held: hold it (no new motif, chord or
@@ -28,8 +28,10 @@
  * state itself as the water's line, slowly. */
 #include "fastmath.h"
 
-#define SET_MAGIC 0x384C504Bu            /* "PLL8": the settings record; PLL7 .. PLL2 (fewer parameters; before PLL6 six
-                                         * kits; ARP a switch, later levels) carry over */
+#define SET_MAGIC 0x394C504Bu            /* "PLL9": the settings record; PLL8 .. PLL2 (fewer parameters; before PLL6 six
+                                         * kits; ARP a switch, later levels; before PLL9 the chords' Speed, Range,
+                                         * Gate) carry over */
+#define SET_MAGIC_8 0x384C504Bu
 #define SET_MAGIC_7 0x374C504Bu
 #define SET_MAGIC_6 0x364C504Bu
 #define SET_MAGIC_5 0x354C504Bu
@@ -142,6 +144,15 @@ void app_init(void)
     n = plat_store_load(OBJ_SETTINGS, &ld, sizeof ld);
     if (n == (int)sizeof(settings_t) && ld.v8.magic == SET_MAGIC) {
         set = ld.v8;
+    } else if (n == (int)sizeof(settings_t) && ld.v8.magic == SET_MAGIC_8) {   /* PLL8: the same, but the chords'
+                                                                                  * Speed (0..3) and Range (1..3) as
+                                                                                  * Busy and Spread; Gate gone */
+        int sp = ld.v8.par[P_CH_BUSY], rg = ld.v8.par[P_CH_SPREAD];
+        set = ld.v8;
+        set.magic = SET_MAGIC;
+        set.par[P_CH_BUSY] = (int16_t)(clamp(sp, 0, 3) * 100 / 3);
+        set.par[P_CH_SPREAD] = (int16_t)((clamp(rg, 1, 3) - 1) * 50);
+        set.par[P_CH_WANDER] = en_param_info(P_CH_WANDER)->def;
     } else if (n == (int)sizeof(settings7_t) && ld.v7.magic == SET_MAGIC_7) {   /* older records: carried over */
         settings_defaults();
         for (i = 0; i < 28; i++)
@@ -934,22 +945,25 @@ static void draw_age(uint32_t now)
     cv_blit(0, 36);
 }
 
-/* the chords: their way up the chord's tones and back down (Range), a place each, the one now lit; the speed and the
- * notes' length (Gate) under it */
+/* the chords: their walk over the chord's tones (the world's, as Wander turns it), a place a step, the one now lit;
+ * the grain now under it */
 static void draw_chords(void)
 {
-    static const char *const SPEED[4] = {"QUARTERS", "EIGHTHS", "TRIPLETS", "SIXTEENTHS"};
-    int32_t i, len = en_arp_len ? en_arp_len : 2 * ((5 * set.par[P_CH_RANGE] + 1) / 2), m = len / 2;
+    static const char *const WALK[EN_NWORLD] = {"UP THE CHORD AND DOWN", "FALLING", "SCATTERED", "RISING, FALLING BACK",
+                                                "A PENDULUM"};
+    static const char *const GRAIN[4] = {"QUARTERS", "EIGHTHS", "TRIPLETS", "SIXTEENTHS"};
+    int32_t i, len = en_arp_len, m = en_arp_top ? en_arp_top : 1;
     int on = set.par[P_CH_LEVEL] > 0;
     cv_begin(240, 144, C_BLACK);
-    cv_text(10, 2, &FONT_XS, "UP THE CHORD AND DOWN", C_GRAY);
+    cv_text(10, 2, &FONT_XS, WALK[set.world % EN_NWORLD], C_GRAY);
     for (i = 0; i < len && i < 48; i++) {
-        int32_t j = i <= m ? i : len - i, x = 14 + i * 212 / len, y = 96 - j * 72 / (m ? m : 1);
+        int32_t x = 14 + i * 212 / len, y = 96 - (int32_t)en_arp_seq[i] * 72 / m;
         int cur = on && i == en_arp_pos;
         cv_rect(x, y, cur ? 5 : 3, cur ? 5 : 3, cur ? C_WHITE : on ? C_HI : C_DIM);
     }
-    cv_text(10, 112, &FONT_XS, SPEED[set.par[P_CH_SPEED] & 3], on ? C_HI : C_DIM);
-    cv_rect(120, 118, 4 + set.par[P_CH_GATE], 2, on ? C_HI : C_DIM);   /* the notes' length */
+    if (!len)
+        cv_text(10, 60, &FONT_XS, "silent", C_DIM);
+    cv_text(10, 112, &FONT_XS, GRAIN[en_arp_div & 3], on ? C_HI : C_DIM);
     cv_blit(0, 36);
 }
 
@@ -1158,10 +1172,7 @@ static void draw_knobs(uint32_t now)
             name = p->name;
             v = set.par[pn] - p->lo;
             hi = p->hi - p->lo;
-            if (pn == P_CH_SPEED)                /* the chords' speed: a note's length */
-                str_put(t, sizeof t, set.par[pn] == 0 ? "1/4" : set.par[pn] == 1 ? "1/8" : set.par[pn] == 2 ? "1/12" : "1/16");
-            else
-                int_text(set.par[pn], t);
+            int_text(set.par[pn], t);
         } else {
             v = set.tone[set.kit][PG_ROLE(ui.page)][i];
             hi = en_tone_hi((int)i);
@@ -1259,6 +1270,13 @@ int app_expect(const char *what, int *got)
         *got = (int)(((uint32_t)en_pulse_n[0] * 31u + en_pulse_k[0] * 7u + en_pulse_rot[0]) * 1000000u +
                      ((uint32_t)en_pulse_n[1] * 31u + en_pulse_k[1] * 7u + en_pulse_rot[1]) * 1000u +
                      ((uint32_t)en_pulse_n[2] * 31u + en_pulse_k[2] * 7u + en_pulse_rot[2]) % 1000u) & 0x7FFFFFFF;
+    else if (!strcmp(what, "chordwalk")) {       /* the chords' walk now, as one number */
+        uint32_t h = en_arp_len, k;
+        for (k = 0; k < en_arp_len; k++)
+            h = h * 31u + en_arp_seq[k];
+        *got = (int)(h & 0x7FFFFFFF);
+    } else if (!strcmp(what, "chordgrain"))      /* the chords' grain now: 0 quarters .. 3 sixteenths */
+        *got = en_arp_div;
     else if (!strcmp(what, "pulsehits"))         /* the pulse's hits since boot */
         *got = (int)en_pulse_hits;
     else if (!strcmp(what, "arpbeats"))          /* the pulse's notes (a count, mod 256) */

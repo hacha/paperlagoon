@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 hacha
+# CHORDS: Busy leans the grain, Wander 0 keeps it (SHALLOWS: Busy 40 eighths, 100 sixteenths, 0 quarters)
+wait 300
+tap ARP
+wait 30
+expect page 8
+turn K1 25
+turn K4 -15
+wait 30
+expect param31 0
+wait 4000
+expect chordgrain 1
+turn K2 30
+wait 6000
+expect param29 100
+expect chordgrain 3
+turn K2 -50
+wait 6000
+expect chordgrain 0
+expect arpbeats >3
+shot chords-walk.png

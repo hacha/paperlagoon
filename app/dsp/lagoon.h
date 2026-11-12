@@ -23,7 +23,7 @@ enum { P_DENSITY, P_BRIGHT, P_SPACE, P_ECHO,
        P_BREATH, P_TIDE, P_TURN, P_PACE,           /* the cycles (LFO) */
        P_TUNE, P_LEVEL, P_LIGHTS, P_SLEEP,         /* global (GLO): P_LIGHTS and P_SLEEP are the UI's */
        P_HAZE, P_HISS, P_DROPOUT, P_AIR,           /* the age (FX, again): over the whole mix (age.c); the voices' air */
-       P_CH_LEVEL, P_CH_SPEED, P_CH_RANGE, P_CH_GATE,   /* ARP: the broken chords (CHORDS; Level 0: none) */
+       P_CH_LEVEL, P_CH_BUSY, P_CH_SPREAD, P_CH_WANDER, /* ARP: the broken chords (CHORDS; Level 0: none) */
        P_PU_LEVEL, P_PU_BUSY, P_PU_WANDER, P_PU_WEIGHT, /* ARP again: the pulse (PULSE; Level 0: none) */
        P_NPARAMS };
 typedef struct {
@@ -63,8 +63,11 @@ void en_offer(int key, int strength);
 const char *en_world_name(int world);
 void en_set_world(int world);           /* there at once; only the state's lean glides */  /* key 0..26 (F3..G5); strength 100 a press, less while it is held */
 extern volatile uint8_t en_arp_beat;           /* a count of the chords' notes (the screen's tick) */
-extern volatile uint8_t en_arp_pos;            /* where the chords are in their way up and down, and its length */
-extern volatile uint8_t en_arp_len;
+extern volatile uint8_t en_arp_pos;            /* where the chords are in their walk, its length, its tones */
+extern volatile uint8_t en_arp_len;            /* (en_arp_seq: each step's tone, 0..en_arp_top) */
+extern volatile uint8_t en_arp_top;
+extern volatile uint8_t en_arp_seq[48];
+extern volatile uint8_t en_arp_div;            /* the grain now: 0 quarters, 1 eighths, 2 triplets, 3 sixteenths */
 extern volatile uint32_t en_pulse_hits;        /* the pulse's hits since boot */
 extern volatile uint8_t en_pulse_last;         /* the last: 0 the thump, 1 a click, 2 the brush */
 extern volatile uint8_t en_pulse_n[3], en_pulse_k[3], en_pulse_rot[3];   /* the patterns now: k hits over n steps, turned */

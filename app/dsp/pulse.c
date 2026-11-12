@@ -143,9 +143,9 @@ static void pulse_event(void)                    /* a step: what sounds on it; t
     gk[1] = gk[2] = pu_level * fm_minf(2.0f * (1.0f - pu_weight), 1.5f);   /* .. against the click and the brush */
     if (pu_step % 16u == 0u) {                   /* a bar: the patterns may move; a phrase's end: perhaps a rest */
         pulse_wander();
-        if (phrase_end && pu_rnd() < 0.6f * pu_wander)
+        if ((phrase_end & 1u) && pu_rnd() < 0.6f * pu_wander)
             pu_rest = pu_rnd() < 0.5f ? 8 : 16;
-        phrase_end = 0;
+        phrase_end &= (uint8_t)~1u;
     }
     for (i = 0; i < 3 && !pu_rest; i++) {
         pu_pattern(i, &pat);
