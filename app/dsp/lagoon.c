@@ -227,8 +227,7 @@ static void play(int role, int note, float vel, float pan, int32_t wait)
  * the new world starts within a moment (what sounds rings out); only the state's lean glides. World 0 is the music
  * as it was before there were worlds. */
 enum { ALG_MOTIF = EN_ALG_MOTIF, ALG_DRONE = EN_ALG_DRONE, ALG_LOOPS = EN_ALG_LOOPS, ALG_LETTER = EN_ALG_LETTER,
-       ALG_FOUNTAIN = EN_ALG_FOUNTAIN, ALG_SANDBAR = EN_ALG_SANDBAR, ALG_WIND = EN_ALG_WIND, ALG_TWO = EN_ALG_TWO,
-       ALG_MIRRORS = EN_ALG_MIRRORS };
+       ALG_FOUNTAIN = EN_ALG_FOUNTAIN, ALG_WIND = EN_ALG_WIND, ALG_TWO = EN_ALG_TWO };
 typedef struct {
     const char *name;
     float bias[EN_NSTATE];                       /* the state's resting lean: light, bleed, fold, margin */
@@ -244,10 +243,8 @@ static const world_t WORLDS[] = {
     {"THE UNREAD LETTER", {0.0f, -0.2f, 0.55f, 0.6f}, 0.85f, {60, 65, 67, 62}, 1.0f, 12, ALG_LETTER},       /* 誰も読まない手紙 */
     {"SILENT FOUNTAIN", {0.35f, 0.35f, 0.0f, -0.3f}, 0.68f, {67, 72, 65, 70}, 0.65f, 19, ALG_FOUNTAIN},       /* 音のしない噴水 */
     {"WHERE LIGHT BECOMES MOSS", {0.2f, 0.4f, -0.3f, 0.1f}, 0.90f, {64, 69, 62, 67}, 2.0f, 12, ALG_LOOPS}, /* 光が苔になるところ */
-    {"THE SANDBAR AT DUSK", {-0.15f, 0.25f, -0.2f, 0.2f}, 0.78f, {62, 57, 64, 59}, 1.2f, 12, ALG_SANDBAR},   /* 夕暮れの砂州 */
     {"A HALL WHERE THE WIND LIVES", {0.3f, -0.1f, 0.1f, 0.4f}, 0.70f, {69, 64, 71, 66}, 0.8f, 12, ALG_WIND},   /* 風の住む広間 */
     {"TWO LINES UNDER SNOW", {-0.2f, 0.4f, -0.3f, 0.1f}, 1.00f, {60, 55, 62, 57}, 1.5f, 12, ALG_TWO},       /* 雪の下の二本の線 */
-    {"THE CORRIDOR OF SLOW MIRRORS", {0.1f, 0.2f, 0.2f, -0.1f}, 0.80f, {63, 58, 65, 60}, 1.0f, 12, ALG_MIRRORS}, /* 遅い鏡の回廊 */
 };
 /* every per-world table has one entry a world: a missing one would be zeros, silently (a check per table) */
 #define PER_WORLD(t) typedef char t##_per_world[sizeof t / sizeof t[0] == EN_NWORLD ? 1 : -1]
@@ -386,9 +383,8 @@ static void state_step(uint32_t n)
 }
 
 /* -------------------------------------------------- the generator --- */
-/* A motif of 3..5 notes on a scale over a root, each a beat or a few long, played a few times with small changes,
- * a rest after each pass (Density shortens it, S_MARGIN lengthens it), a low tone under a pass now and then, the
- * answer an octave up now and then. A new motif takes its scale from the state (S_LIGHT: darker .. brighter; S_FOLD
+/* The scales, the roots and the memory every world shares; the motifs themselves (written in, washed away) are below.
+ * A rest after each pass (Density shortens it, S_MARGIN lengthens it). A new motif takes its scale from the state (S_LIGHT: darker .. brighter; S_FOLD
  * lets in the fourth and seventh), and sometimes the pitch of the last offering, changed into the scale; or, the
  * deeper the fold, one of the last few motifs comes back (its degrees read in the scale of now). */
 #define NSCALE 5
@@ -404,7 +400,7 @@ static int8_t mot_deg[MOT_MAX], mot_dur[MOT_MAX];
 static int mot_len, mot_i, mot_reps, scale_i = 2, root = 65;
 static float root_due = 60.0f;                   /* seconds before the root may move (at a phrase's edge) */
 /* each world's root stays this long on average (s); a fold hastens it; held: it stays */
-static const float ROOT_STAY[] = {150.0f, 210.0f, 150.0f, 180.0f, 200.0f, 170.0f, 160.0f, 240.0f, 180.0f};
+static const float ROOT_STAY[] = {150.0f, 210.0f, 150.0f, 180.0f, 200.0f, 160.0f, 240.0f};
 PER_WORLD(ROOT_STAY);
 static float beat_len = 0.8f * EN_SR;            /* the world's beat (S_MARGIN: up to 15 % either way) */
 static float gen_left;                           /* samples to the next event */
@@ -507,100 +503,6 @@ static void root_tick(uint32_t n)                /* (control) its time runs, fas
 {
     if (!en_held && en_playing)
         root_due -= (float)n * (1.0f / EN_SR) * (1.0f + 0.8f * fm_maxf(st[S_FOLD], 0.0f));
-}
-
-static void motif_new(void)
-{
-    static const int8_t DUR[6] = {1, 1, 2, 2, 3, 4};
-    int i, n, d, lo, hi, step = st[S_FOLD] > 0.3f ? 3 : 2;
-    scale_pick();
-    root_wander();
-    n = SCALE[scale_i][0];
-    lo = n / 5;                                  /* the register: a degree range of two octaves, raised by light */
-    hi = 2 * n;
-    d = (int)((float)n * (0.6f + 0.35f * st[S_LIGHT])) + irand(n * 4 / 5 + 1);
-    if (mot_len)
-        motif_keep();
-    if (gift_pc >= 0 && frand() < 0.6f) {        /* the offering, come back changed */
-        d = pc_degree(gift_pc) + n * (1 + irand(2));
-        gift_pc = -1;
-    } else if (mem_n >= 2 && frand() < 0.24f * memory + 0.6f * fm_maxf(st[S_FOLD], 0.0f)) {   /* an older one folds back */
-        int m = (mem_w - 2 - irand(mem_n - 1) + 2 * MEM) % MEM;   /* not the one just ended */
-        mot_len = mem[m].len - margin_cut();
-        mot_len = mot_len < 2 ? 2 : mot_len;
-        for (i = 0; i < mot_len; i++) {
-            mot_deg[i] = (int8_t)(mem[m].deg[i] < lo ? lo : mem[m].deg[i] > hi ? hi : mem[m].deg[i]);
-            mot_dur[i] = mem[m].dur[i];
-        }
-        mot_reps = reps_new();
-        mot_i = 0;
-        en_recalls++;
-        fig_motif();
-        return;
-    }
-    mot_len = 1 + (int)(length * 4.0f) + irand(3) - margin_cut();   /* Length 50: 3..5 */
-    mot_len = mot_len < 2 ? 2 : mot_len > MOT_MAX ? MOT_MAX : mot_len;
-    for (i = 0; i < mot_len; i++) {
-        int k = irand(6);
-        d = d < lo ? lo : d > hi ? hi : d;
-        mot_deg[i] = (int8_t)d;
-        if (st[S_BLEED] > 0.2f && frand() < st[S_BLEED])
-            k = k < 5 ? k + 1 : 5;               /* bleed: longer notes */
-        mot_dur[i] = DUR[k];
-        d += irand(2) ? 1 + irand(step) : -(1 + irand(step));
-    }
-    mot_reps = reps_new() - (st[S_FOLD] > 0.5f ? 1 : 0);
-    mot_reps = mot_reps < 1 ? 1 : mot_reps;
-    mot_i = 0;
-    fig_motif();
-}
-
-static void motif_vary(void)
-{
-    fig_vary_pending = 1;
-    int n = SCALE[scale_i][0], i = irand(mot_len), d = mot_deg[i] + (irand(2) ? 1 : -1);
-    mot_deg[i] = (int8_t)(d < n / 5 ? n / 5 : d > 2 * n ? 2 * n : d);
-    if (frand() < 0.3f) {                        /* or two notes trade places in time */
-        int j = irand(mot_len), t = mot_dur[i];
-        mot_dur[i] = mot_dur[j];
-        mot_dur[j] = (int8_t)t;
-    }
-}
-
-static void motif_event(void)
-{
-    if (mot_i < mot_len) {
-        int note = deg_note(mot_deg[mot_i]), ans;
-        float vel = 0.45f + 0.35f * frand();
-        while (note > 89)                        /* the ceiling: the lead to F6, the answer to A6 */
-            note -= 12;
-        for (ans = note + WORLDS[world].answer; ans > 93; ans -= 12)
-            ;
-        if (mot_i == 0 && frand() < 0.5f - 0.25f * st[S_LIGHT])   /* a low tone under the pass: root or fifth */
-            play(R_LOW, root - 24 + (irand(3) ? 0 : 7), 0.5f, 0.0f, 0);
-        play(R_LEAD, note, vel, -0.3f + 0.6f * frand(), irand(1500));   /* a hand: up to 34 ms late */
-        if (frand() < 0.08f + 0.3f * density + 0.12f * st[S_BLEED])   /* the answer, an octave up, a little later */
-            play(R_ANSWER, ans, vel * 0.5f, 0.6f * (frand() * 2.0f - 1.0f), (int32_t)(beat_len * (0.5f + frand())));
-        gen_left += beat_len * (float)mot_dur[mot_i];
-        en_fig_pos = (uint8_t)mot_i;
-        mot_i++;
-        return;
-    }
-    phrase_end = 15;
-    {   /* the pass is over: a rest, then the motif again (perhaps changed) or a new one */
-        float lean = fm_maxf(0.5f + 0.9f * st[S_MARGIN], 0.0f);   /* 0 short rests .. ~1.4 long */
-        gen_left += beat_len * (2.0f + (1.0f - density) * 8.0f * (0.5f + lean) + 3.0f * frand());
-        beat_len = WORLDS[world].beat * tempo * EN_SR * (1.0f + 0.15f * st[S_MARGIN]);
-    }
-    mot_i = 0;
-    if (--mot_reps <= 0 && !en_held)
-        motif_new();
-    else if (frand() < 0.7f * change + 0.3f * fm_maxf(st[S_FOLD], 0.0f))
-        motif_vary();
-    if (fig_vary_pending) {
-        fig_vary_pending = 0;
-        fig_motif();
-    }
 }
 
 /* -------------------------------------------------------- the drone --- */
@@ -991,14 +893,14 @@ static void fountain_event(void)
     }
 }
 
-/* ------------------------------------------------------------ a sandbar --- */
-/* ALG_SANDBAR: a figure written on the sand and washed away. Its notes are written in one at a time, a pass for each
- * (the passes keep the figure's time, the notes not yet written silent), until it is whole; it is heard whole a few
- * times; then the water takes it, a note or two a pass, until nothing is left, and after a silence another is written.
- * Repeat: passes before each note comes or goes, and how long it stays whole; Change: a note moved while it is whole;
- * Length: its notes (4..7); Memory and the fold: an older figure written again. Light lifts it, bleed lets it ring, the
- * margin washes it away faster (and lengthens the silences), the fold writes it out of order. An offering is written in
- * next (whole or ebbing, it puts a note back). The figure is the motif's arrays (mot_*), as the letter's. */
+/* ------------------------------------------------------------- motifs --- */
+/* ALG_MOTIF (SHALLOWS OF MEMORY): a motif written in and washed away. Its notes come one or two a pass (the passes keep
+ * the motif's time, the notes not yet written silent), until it is whole; it is heard whole a few times; then it fades
+ * from memory, a note or two a pass, until nothing is left, and after a silence another is written. Repeat: passes
+ * before each note comes or goes, and how long it stays whole; Change: a note moved while it is whole; Length: its
+ * notes (3..7); Memory and the fold: an older motif written again. Light lifts it, bleed lets it ring, the margin
+ * washes it away faster (and lengthens the silences), the fold writes it out of order. An offering is written in next
+ * (whole or fading, it puts a note back). The low voice under a pass now and then, the answer while it is whole. */
 enum { SB_GROW, SB_WHOLE, SB_EBB, SB_GONE };
 static uint8_t sb_mask, sb_order[MOT_MAX], sb_phase, sb_hold;
 volatile uint8_t en_sb_mask, en_sb_phase;
@@ -1012,13 +914,13 @@ static int sb_count(void)
     return c;
 }
 
-static void sandbar_ui(void)
+static void motif_ui(void)
 {
     en_sb_mask = sb_mask;
     en_sb_phase = sb_phase;
 }
 
-static void sandbar_write(void)                  /* a note written in: the offering's, or the next in its order */
+static void motif_write(void)                  /* a note written in: the offering's, or the next in its order */
 {
     int i, p = -1, n = SCALE[scale_i][0];
     for (i = 0; i < mot_len && p < 0; i++)
@@ -1033,12 +935,12 @@ static void sandbar_write(void)                  /* a note written in: the offer
     }
     if (p >= 0)
         sb_mask |= (uint8_t)(1u << p);
-    sandbar_ui();
+    motif_ui();
 }
 
-static void sandbar_erase(void)                  /* the water takes a note, or two in the margin */
+static void motif_erase(void)                  /* a note fades, or two (more often in the margin) */
 {
-    int k = 1 + (st[S_MARGIN] > 0.3f && frand() < st[S_MARGIN]), t;
+    int k = 1 + (frand() < 0.3f + 0.6f * fm_maxf(st[S_MARGIN], 0.0f)), t;
     while (k-- > 0 && sb_mask)
         for (t = 0; t < 16; t++) {
             int p = irand(mot_len);
@@ -1047,10 +949,10 @@ static void sandbar_erase(void)                  /* the water takes a note, or t
                 break;
             }
         }
-    sandbar_ui();
+    motif_ui();
 }
 
-static void sandbar_new(void)
+static void motif_new(void)
 {
     static const int8_t DUR[5] = {1, 1, 2, 2, 3};
     int i, n, d, lo, hi, leap = st[S_FOLD] > 0.3f ? 3 : 2;
@@ -1070,8 +972,8 @@ static void sandbar_new(void)
         }
         en_recalls++;
     } else {
-        mot_len = 3 + (int)(length * 4.0f) + irand(2) - margin_cut();   /* Length 50: 5..6 */
-        mot_len = mot_len < 4 ? 4 : mot_len > MOT_MAX ? MOT_MAX : mot_len;
+        mot_len = 2 + (int)(length * 4.0f) + irand(2) - margin_cut();   /* Length 50: 4..5 */
+        mot_len = mot_len < 3 ? 3 : mot_len > MOT_MAX ? MOT_MAX : mot_len;
         d = (int)((float)n * (0.7f + 0.35f * st[S_LIGHT])) + irand(n / 2 + 1);
         for (i = 0; i < mot_len; i++) {          /* mostly steps, now and then a leap */
             int k = irand(5);
@@ -1096,13 +998,14 @@ static void sandbar_new(void)
     sb_hold = 1;
     mot_i = 0;
     fig_motif();
-    sandbar_write();                             /* the first note, at once */
+    motif_write();                             /* the first notes, at once: two */
+    motif_write();
 }
 
-static void sandbar_event(void)
+static void motif_event(void)
 {
     if (!sb_mask && sb_phase == SB_GROW)
-        sandbar_write();
+        motif_write();
     if (mot_i < mot_len) {
         if (sb_mask >> mot_i & 1u) {
             int note = deg_note(mot_deg[mot_i]), c = sb_count();
@@ -1134,16 +1037,18 @@ static void sandbar_event(void)
     }
     mot_i = 0;
     if (gift_pc >= 0 && sb_phase != SB_GROW)     /* an offering: a note put back */
-        sandbar_write();
+        motif_write();
     if (en_held || --sb_hold > 0)
         return;
     sb_hold = (uint8_t)(1 + (frand() < 0.5f * repeat));
     switch (sb_phase) {
     case SB_GROW:
-        sandbar_write();
+        motif_write();
+        if (frand() < 0.35f + 0.3f * fm_maxf(st[S_BLEED], 0.0f))   /* or two */
+            motif_write();
         if (sb_count() >= mot_len) {
             sb_phase = SB_WHOLE;
-            sb_hold = (uint8_t)(1 + (int)(repeat * 4.0f) + irand(2));
+            sb_hold = (uint8_t)(1 + (int)(repeat * 3.0f) + irand(2));
         }
         break;
     case SB_WHOLE:
@@ -1153,23 +1058,23 @@ static void sandbar_event(void)
             fig_motif();
         }
         sb_phase = SB_EBB;
-        sandbar_erase();
+        motif_erase();
         break;
     case SB_EBB:
-        sandbar_erase();
+        motif_erase();
         if (!sb_mask) {                          /* gone: a silence, then another is written */
             float lean = fm_maxf(0.5f + 0.9f * st[S_MARGIN], 0.0f);
             sb_phase = SB_GONE;
             en_sb_gone++;
             gen_left += beat_len * (3.0f + (1.0f - density) * 8.0f * (0.5f + lean) + 3.0f * frand());
-            sandbar_new();
+            motif_new();
         }
         break;
     default:
-        sandbar_new();
+        motif_new();
         break;
     }
-    sandbar_ui();
+    motif_ui();
 }
 
 /* ------------------------------------------------------------ the wind --- */
@@ -1374,128 +1279,6 @@ static void two_event(void)
     two_phrase();
 }
 
-/* --------------------------------------------------------- the mirrors --- */
-/* ALG_MIRRORS: one melody and its mirrors, further down a corridor: the first as written, the second twice as slow an
- * octave up and quieter, the third three times as slow an octave down and quieter still. Each goes round on its own;
- * after six of the first's rounds they all meet at the start again, and a breath. Then the melody again (Repeat: the
- * meetings before a new one), perhaps a note changed (Change); Length: its notes (3..7); Memory and the fold: an older
- * melody. A sparse Density leaves the farthest mirror out; the margin leaves notes of the first out, and lengthens the
- * breath; light lifts it, bleed lets it ring. An offering begins the next melody. The melody is the motif's arrays. */
-static float mir_t[3];                           /* samples to each one's next note (MIR_IDLE: done) */
-static int mir_i[3], mir_r[3], mir_reps;         /* each one's note, rounds done; meetings before a new melody */
-static float mir_next;                           /* the step the generator was given */
-static const float MIR_SLOW[3] = {1.0f, 2.0f, 3.0f};
-static const int MIR_ROUNDS[3] = {6, 3, 2};      /* the rounds each goes before they meet */
-#define MIR_IDLE 1e12f
-
-static void mirrors_new(void)
-{
-    static const int8_t DUR[5] = {1, 1, 1, 2, 2};
-    int i, n, d;
-    scale_pick();
-    root_wander();
-    n = SCALE[scale_i][0];
-    if (mot_len)
-        motif_keep();
-    if (mem_n >= 2 && gift_pc < 0 && frand() < 0.24f * memory + 0.5f * fm_maxf(st[S_FOLD], 0.0f)) {
-        int m = (mem_w - 2 - irand(mem_n - 1) + 2 * MEM) % MEM;
-        mot_len = mem[m].len < 3 ? 3 : mem[m].len;
-        for (i = 0; i < mot_len; i++) {
-            mot_deg[i] = mem[m].deg[i];
-            mot_dur[i] = mem[m].dur[i] < 1 ? 1 : mem[m].dur[i] > 2 ? 2 : mem[m].dur[i];
-        }
-        en_recalls++;
-    } else {
-        d = n / 2 + (int)((float)n * 0.4f * st[S_LIGHT]) + irand(n);
-        if (gift_pc >= 0) {                      /* an offering: the melody begins with it */
-            d = pc_degree(gift_pc) + n;
-            gift_pc = -1;
-        }
-        mot_len = 2 + (int)(length * 4.0f) + irand(2) - margin_cut();   /* Length 50: 4..5 */
-        mot_len = mot_len < 3 ? 3 : mot_len > MOT_MAX ? MOT_MAX : mot_len;
-        for (i = 0; i < mot_len; i++) {
-            mot_deg[i] = (int8_t)(d < 0 ? 0 : d);
-            mot_dur[i] = DUR[irand(5)];
-            d += irand(2) ? 1 + irand(2) : -(1 + irand(2));
-        }
-    }
-    mir_reps = 1 + (int)(repeat * 2.0f) + irand(2);
-    fig_motif();
-}
-
-static void mirrors_start(float after)
-{
-    int k;
-    for (k = 0; k < 3; k++) {
-        mir_i[k] = mir_r[k] = 0;
-        mir_t[k] = after + (float)k * 0.5f * beat_len;   /* the mirrors a little after */
-    }
-    mir_next = 0.0f;
-}
-
-static void mirrors_event(void)
-{
-    int k;
-    float next = MIR_IDLE;
-    if (mot_len < 3) {
-        mirrors_new();
-        mirrors_start(0.0f);
-    }
-    for (k = 0; k < 3; k++)
-        if (mir_t[k] < MIR_IDLE)
-            mir_t[k] -= mir_next;
-    for (k = 0; k < 3; k++) {
-        int i, note, sound;
-        float vel;
-        if (mir_t[k] > 0.5f)
-            continue;
-        if (mir_i[k] >= mot_len) {               /* a round over */
-            mir_i[k] = 0;
-            if (k == 0)
-                phrase_end = 15;
-            if (++mir_r[k] >= MIR_ROUNDS[k]) {   /* its rounds done: it waits for the others */
-                mir_t[k] = MIR_IDLE;
-                continue;
-            }
-        }
-        i = mir_i[k];
-        note = deg_note(mot_deg[i]) + (k == 1 ? 12 : k == 2 ? -12 : 0);
-        vel = (0.32f + 0.16f * frand()) * (k == 0 ? 1.0f : k == 1 ? 0.5f : 0.42f);
-        sound = k == 0 ? (i == 0 || frand() >= 0.35f * fm_maxf(st[S_MARGIN], 0.0f)) : k == 1 || density > 0.3f;
-        while (note > 91)
-            note -= 12;
-        while (note < 36)
-            note += 12;
-        if (sound)
-            play_shaped(k == 0 ? R_LEAD : k == 1 ? R_ANSWER : R_LOW, note, vel, k == 0 ? 0.0f : k == 1 ? 0.5f : -0.5f,
-                        0, (0.8f + 0.4f * (float)k) * (1.0f + 0.5f * fm_maxf(st[S_BLEED], 0.0f)), 0.0f);
-        if (k == 0) {
-            en_fig_pos = (uint8_t)i;
-            mot_i = i + 1;
-        }
-        mir_t[k] = beat_len * (float)mot_dur[i] * MIR_SLOW[k];
-        mir_i[k] = i + 1;
-    }
-    if (mir_t[0] >= MIR_IDLE && mir_t[1] >= MIR_IDLE && mir_t[2] >= MIR_IDLE) {   /* all met: a breath, then again */
-        float lean = fm_maxf(0.5f + 0.9f * st[S_MARGIN], 0.0f);
-        phrase_end = 15;
-        beat_len = WORLDS[world].beat * tempo * EN_SR * (1.0f + 0.12f * st[S_MARGIN]);
-        if (!en_held && (gift_pc >= 0 || --mir_reps <= 0))
-            mirrors_new();
-        else if (frand() < 0.6f * change + 0.3f * fm_maxf(st[S_FOLD], 0.0f)) {
-            int j = irand(mot_len), d = mot_deg[j] + (irand(2) ? 1 : -1);
-            mot_deg[j] = (int8_t)(d < 0 ? 0 : d);
-            fig_motif();
-        }
-        mirrors_start(beat_len * (2.0f + (1.0f - density) * 4.0f * (0.5f + lean) + 2.0f * frand()));
-    }
-    for (k = 0; k < 3; k++)
-        next = fm_minf(next, mir_t[k]);
-    next = fm_maxf(next, 1.0f);
-    mir_next = next;
-    gen_left += next;
-}
-
 /* ------------------------------------------------------- the dispatcher --- */
 static void gen_event(void)
 {
@@ -1504,10 +1287,8 @@ static void gen_event(void)
     case ALG_LOOPS: loops_event(); break;
     case ALG_LETTER: letter_event(); break;
     case ALG_FOUNTAIN: fountain_event(); break;
-    case ALG_SANDBAR: sandbar_event(); break;
     case ALG_WIND: wind_event(); break;
     case ALG_TWO: two_event(); break;
-    case ALG_MIRRORS: mirrors_event(); break;
     default: motif_event(); break;
     }
     if (gen_left < 1.0f)                         /* every way on: the next event never before the next sample */
@@ -1539,10 +1320,6 @@ static void world_begin(void)                    /* a new world, at once: its ro
         fnt_k = 0;
         fountain_new();
         break;
-    case ALG_SANDBAR:
-        mot_len = 0;
-        sandbar_new();
-        break;
     case ALG_WIND:
         mot_len = 0;
         wind_chimes();
@@ -1554,11 +1331,6 @@ static void world_begin(void)                    /* a new world, at once: its ro
         two_dir = -1;
         two_over = 0;
         two_begin();
-        break;
-    case ALG_MIRRORS:
-        mot_len = 0;
-        mirrors_new();
-        mirrors_start(0.0f);
         break;
     default:
         mot_len = 0;
@@ -1592,7 +1364,7 @@ static float tempo_set = 1.0f;
 /* the hush: in a long rest of the music (a phrase over, more than three beats to the next), the chords and the pulse
  * keep its silence, as far as the world keeps silences (the letter wholly), fading over two beats, back as the music
  * comes back (one beat) */
-static const float HUSH[] = {0.5f, 0.6f, 1.0f, 0.5f, 0.5f, 0.7f, 0.8f, 0.6f, 0.4f};
+static const float HUSH[] = {0.5f, 0.6f, 1.0f, 0.5f, 0.5f, 0.8f, 0.6f};
 PER_WORLD(HUSH);
 static uint8_t in_rest;
 static float hush = 1.0f;
@@ -1676,7 +1448,7 @@ static void edges_step(uint32_t n)               /* once a chunk */
  *           coarser grain for a while, or rest. 0: the world's walk, at Stir's and Spread's own
  * Not every note sounds: fewer when sparse (Density), fewer in the margin. */
 static const float ARP_STEP[4] = {1.0f, 0.5f, 1.0f / 3.0f, 0.25f};
-static const float ARP_LEAN[] = {0.0f, -1.0f, -0.7f, 0.4f, 0.0f, -0.3f, -0.5f, -0.8f, 0.2f};   /* each world's grain, coarser or finer */
+static const float ARP_LEAN[] = {0.0f, -1.0f, -0.7f, 0.4f, 0.0f, -0.5f, -0.8f};   /* each world's grain, coarser or finer */
 PER_WORLD(ARP_LEAN);
 enum { WALK_UPDOWN, WALK_FALL, WALK_SCATTER, WALK_FOUNTAIN, WALK_PENDULUM };
 #define ARP_SEQ 48
@@ -1714,12 +1486,7 @@ static int arp_walk(uint8_t *q, int m)           /* the world's walk over tones 
         for (k = m - 1; k > 0; k--)
             q[len++] = (uint8_t)k;
         break;
-    case 5:                                      /* the sandbar: each wave reaching a little further, then back */
-        for (t = 1; t <= m && len + t + 1 <= ARP_SEQ; t++)
-            for (k = 0; k <= t; k++)
-                q[len++] = (uint8_t)k;
-        break;
-    case 6:                                      /* the wind: gusts, three tones a sway, up and back down */
+    case 5:                                      /* the wind: gusts, three tones a sway, up and back down */
         for (k = 0; k + 2 <= m; k += 2) {
             q[len++] = (uint8_t)k;
             q[len++] = (uint8_t)(k + 2);
@@ -1728,18 +1495,10 @@ static int arp_walk(uint8_t *q, int m)           /* the world's walk over tones 
         for (k = m; k > 0; k -= 2)
             q[len++] = (uint8_t)k;
         break;
-    case 7:                                      /* two lines: a step, and the tone two over it */
+    case 6:                                      /* two lines: a step, and the tone two over it */
         for (k = 0; k + 2 <= m; k++) {
             q[len++] = (uint8_t)k;
             q[len++] = (uint8_t)(k + 2);
-        }
-        break;
-    case 8:                                      /* the mirrors: up, then up again twice as slow */
-        for (k = 0; k <= m; k++)
-            q[len++] = (uint8_t)k;
-        for (k = 0; 2 * k <= m && len + 2 <= ARP_SEQ; k++) {
-            q[len++] = (uint8_t)(2 * k);
-            q[len++] = (uint8_t)(2 * k);
         }
         break;
     case 4:                                      /* a pendulum about the middle (or where it turns) */
@@ -1938,11 +1697,11 @@ static void rec_take(void)
         mot_reps = reps_new() + 1;
         mot_i = 0;
         fig_motif();
-        if (WORLDS[world].alg == ALG_SANDBAR) {  /* the sandbar: written whole, at once */
+        if (WORLDS[world].alg == ALG_MOTIF) {    /* the motifs: written whole, at once */
             sb_mask = (uint8_t)((1u << mot_len) - 1u);
             sb_phase = SB_WHOLE;
             sb_hold = 2;
-            sandbar_ui();
+            motif_ui();
         }
         break;
     }

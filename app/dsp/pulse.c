@@ -24,14 +24,11 @@ static const euclid_t PULSE_PAT[][3] = {   /* the thump, the click, the brush */
     {{0, 0}, {13, 3}, {20, 2}},                  /* THE UNREAD LETTER: no thump, a clock that is not quite one */
     {{16, 3}, {8, 3}, {16, 8}},                  /* SILENT FOUNTAIN: three in sixteen, the brush on the eighths */
     {{32, 2}, {14, 4}, {9, 4}},                  /* WHERE LIGHT BECOMES MOSS: a thump a bar, the rest drifting */
-    {{32, 1}, {0, 0}, {14, 3}},                  /* THE SANDBAR AT DUSK: a far thump, the brush as waves coming in */
     {{0, 0}, {11, 2}, {19, 5}},                  /* A HALL WHERE THE WIND LIVES: no thump, the brush as air */
     {{32, 1}, {16, 2}, {0, 0}},                  /* TWO LINES UNDER SNOW: a slow thump, two small clicks, no brush */
-    {{16, 2}, {12, 3}, {24, 4}},                 /* THE CORRIDOR OF SLOW MIRRORS: each a slower copy of the last */
 };
 static const uint8_t PULSE_ALT[][3] = {   /* each one's other length (Wander), its hits kept in proportion */
-    {12, 10, 16}, {24, 0, 32}, {0, 11, 15}, {12, 6, 12}, {18, 15, 11}, {24, 0, 18}, {0, 13, 23},
-    {24, 12, 0}, {24, 18, 36},
+    {12, 10, 16}, {24, 0, 32}, {0, 11, 15}, {12, 6, 12}, {18, 15, 11}, {0, 13, 23}, {24, 12, 0},
 };
 PER_WORLD(PULSE_PAT);
 PER_WORLD(PULSE_ALT);

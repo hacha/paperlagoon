@@ -994,7 +994,7 @@ static void draw_age(uint32_t now)
 static void draw_chords(void)
 {
     static const char *const WALK[] = {"UP THE CHORD AND DOWN", "FALLING", "SCATTERED", "RISING, FALLING BACK", "A PENDULUM",
-                                        "REACHING FURTHER", "SWAYING", "A STEP AND ITS THIRD", "AGAIN, TWICE AS SLOW"};
+                                        "SWAYING", "A STEP AND ITS THIRD"};
     static const char *const GRAIN[4] = {"QUARTERS", "EIGHTHS", "TRIPLETS", "SIXTEENTHS"};
     int32_t i, len = en_arp_len, m = en_arp_top ? en_arp_top : 1;
     int on = set.par[P_CH_LEVEL] > 0;
@@ -1090,8 +1090,7 @@ static void draw_seq(void)
     int32_t i;
     const char *what = en_alg == EN_ALG_DRONE ? "THE CHORD" : en_alg == EN_ALG_LOOPS ? "THE LOOPS" :
                        en_alg == EN_ALG_LETTER ? "THE LINE" : en_alg == EN_ALG_FOUNTAIN ? "THE FIGURE" :
-                       en_alg == EN_ALG_SANDBAR ? "THE WRITING" : en_alg == EN_ALG_WIND ? "THE CHIMES" :
-                       en_alg == EN_ALG_TWO ? "THE WALK" : en_alg == EN_ALG_MIRRORS ? "THE MELODY" : "THE MOTIF";
+                       en_alg == EN_ALG_WIND ? "THE CHIMES" : en_alg == EN_ALG_TWO ? "THE WALK" : "THE MOTIF";
     cv_begin(240, 144, C_BLACK);
     cv_text(10, 2, &FONT_XS, what, C_GRAY);
     if (en_alg == EN_ALG_LOOPS) {                           /* the loops: each its note, its length, where it is */

@@ -28,7 +28,7 @@ expect voices >0
 wait 9000
 shot loops.png
 # from the loops, at most 4 s; a crossing goes on further when chosen again while under way
-turn ALGO 5
+turn ALGO 3
 wait 30
 expect world 0
 expect crossing 1
@@ -65,23 +65,11 @@ wait 600
 expect world 2
 expect alg 3
 expect kit 0
-# the sandbar: a figure written in a note a pass, whole, then washed away; another after a silence
+# the wind: chimes struck in gusts, stillness between
 turn ALGO 3
 wait 9000
 expect world 5
 expect alg 5
-wait 3000
-expect voices >0
-expect sbnotes >0
-wait 20000
-shot sandbar.png
-wait 240000
-expect sbcycles >0
-# the wind: chimes struck in gusts, stillness between
-turn ALGO 1
-wait 9000
-expect world 6
-expect alg 6
 wait 30000
 # an offering brings a gust soon
 tapkey 20
@@ -91,21 +79,21 @@ shot wind.png
 # two lines: a walk by steps, and the chord's nearest tone with it
 turn ALGO 1
 wait 30000
-expect world 7
-expect alg 7
+expect world 6
+expect alg 6
 expect voices >1
 shot two.png
-# the mirrors: a melody, twice as slow an octave up, three times as slow an octave down
-turn ALGO 1
-wait 12000
-expect world 8
-expect alg 8
-wait 20000
-expect voices >1
-shot mirrors.png
 tap SAVE
 wait 30
 reboot
 wait 600
-expect world 8
-expect alg 8
+expect world 6
+expect alg 6
+# the shallows: a motif written in a note or two a pass, whole, then washed away; another after a silence
+turn ALGO 1
+wait 12000
+expect world 0
+expect alg 0
+expect sbnotes >0
+wait 150000
+expect sbcycles >0
