@@ -534,55 +534,53 @@ static void draw_ring(int32_t cx, int32_t cy, int32_t r, uint16_t c)
     }
 }
 
-/* where the page is (after HYP-1's): a short bar a page, at the header's right, ending at x 230; the page shown lit, the
- * voices' three (a group, as EDIT walks them) a little brighter than the rest while one of them shows. Returns its left */
-static int32_t draw_pages(void)
-{
-    int32_t x0 = 231 - NPAGE * 5, i;
-    for (i = 0; i < NPAGE; i++) {
-        int cur = i == (int32_t)ui.page, group = PG_VOICE(i) && PG_VOICE(ui.page);
-        cv_rect(x0 + i * 5, cur ? 11 : 12, 3, cur ? 7 : 5, cur ? C_HI : group ? C_GRAY : C_LINE);
-    }
-    return x0;
-}
-
+/* the header: the world (as HYP-1's the piece), whatever the page; playing or resting at its right. A message over it
+ * for a moment; REC said over the rest */
 static void draw_header(uint32_t now)
 {
-    int32_t x, xp;
+    int32_t x, end;
     cv_begin(240, 32, C_BLACK);
-    xp = draw_pages();
     if (now < ui.msg_until) {                    /* a long message in the smaller letters */
-        int big = 18 + text_w(&FONT_B, ui.msg[0]) + text_w(&FONT_B, ui.msg[1]) <= xp - 10;
+        int big = 18 + text_w(&FONT_B, ui.msg[0]) + text_w(&FONT_B, ui.msg[1]) <= 230;
         int32_t y = big ? 6 : 9;
-        if (!big && 18 + text_w(&FONT_XS, ui.msg[0]) + text_w(&FONT_XS, ui.msg[1]) > xp - 10)
-            cv_rect(xp - 4, 0, 240 - xp + 4, 32, C_BLACK);   /* too long even so: over the strip */
         x = cv_text(10, y, big ? &FONT_B : &FONT_XS, ui.msg[0], C_WHITE);
         cv_text(x + 8, y, big ? &FONT_B : &FONT_XS, ui.msg[1], C_HI);
+    } else if (en_recording) {
+        end = cv_text(10, 6, &FONT_B, "REC", C_WHITE);
+        cv_text(end + 8, 10, &FONT_XS, "the keys play; let go to give it", C_AMB);
     } else {
         const char *s = en_playing ? "PLAYING" : "RESTING";
-        int32_t end;
-        if (ui.page == PG_LAGOON) {              /* the lagoon: the world (the kit under it, on the water) */
-            end = cv_text(10, 6, &FONT_B, en_world_name(set.world), C_WHITE);
-        } else if (PG_VOICE(ui.page)) {          /* a voice: its name, the kit's */
-            x = cv_text(10, 6, &FONT_B, en_role_name(PG_ROLE(ui.page)), C_WHITE);
-            end = cv_text(x + 8, 10, &FONT_XS, en_kit_name(set.kit), C_GRAY);
-        } else {
-            end = cv_text(10, 6, &FONT_B, page_name(ui.page), C_WHITE);
-            if (ui.page == PG_SEQ && en_held)
-                end = cv_text(end + 8, 10, &FONT_XS, "HELD", C_AMB);
-        }
-        if (en_recording) {                      /* REC, SEL: said over the rest */
-            cv_rect(0, 0, xp - 4, 32, C_BLACK);
-            end = cv_text(10, 6, &FONT_B, "REC", C_WHITE);
-            end = cv_text(end + 8, 10, &FONT_XS, "the keys play; let go", C_AMB);
-        } else if (ui.shift) {
-            end = cv_text(end + 8, 10, &FONT_XS, ui.page == PG_LAGOON ? "SEL: FINE" : "SEL: LAGOON", C_AMB);
-        }
-        x = xp - 8 - text_w(&FONT_XS, s);
-        if (x > end + 8)                         /* playing or resting, where a long name leaves room */
+        end = cv_text(10, 6, &FONT_B, en_world_name(set.world), C_WHITE);
+        x = 230 - text_w(&FONT_XS, s);
+        if (x > end + 8)                         /* where a long name leaves room */
             cv_text(x, 10, &FONT_XS, s, en_playing ? C_HI : C_DIM);
     }
     cv_blit(0, 0);
+}
+
+/* the rule over the knobs (after HYP-1's): at its left what the knobs act on, if it needs saying (a voice: the kit;
+ * SEL held: the lagoon's four; the memory held); at its right the page's name, then a short bar a page, the one shown
+ * lit, the voices' three a little brighter while one of them shows */
+static void draw_rule(void)
+{
+    const char *ctx = 0, *name = PG_VOICE(ui.page) ? en_role_name(PG_ROLE(ui.page)) : page_name(ui.page);
+    uint16_t cc = C_AMB;
+    int32_t xd = 231 - NPAGE * 5, xt = xd - 6 - text_w(&FONT_XS, name), xs = 0, i;
+    if (ui.shift)
+        ctx = ui.page == PG_LAGOON ? "SEL: FINE" : "SEL: LAGOON";
+    else if (ui.page == PG_SEQ && en_held)
+        ctx = "HELD";
+    else if (PG_VOICE(ui.page))
+        ctx = en_kit_name(set.kit), cc = C_GRAY;
+    if (ctx)
+        xs = cv_text(6, 0, &FONT_XS, ctx, cc) + 6;
+    if (xt - 6 > xs)
+        cv_rect(xs, 5, xt - 6 - xs, 1, C_LINE);
+    cv_text(xt, 0, &FONT_XS, name, C_HI);
+    for (i = 0; i < NPAGE; i++) {
+        int cur = i == (int32_t)ui.page, group = PG_VOICE(i) && PG_VOICE(ui.page);
+        cv_rect(xd + i * 5, cur ? 2 : 3, 3, cur ? 7 : 5, cur ? C_HI : group ? C_GRAY : C_LINE);
+    }
 }
 
 /* a flat ring on the water: an ellipse, rx wide, a third as tall */
@@ -884,8 +882,8 @@ static void draw_knobs(uint32_t now)
 {
     char t[16];
     int32_t i;
-    cv_begin(240, 52, C_BLACK);
-    cv_rect(0, 0, 240, 1, C_LINE);
+    cv_begin(240, 60, C_BLACK);
+    draw_rule();
     for (i = 0; i < 4; i++) {
         int32_t x = 6 + i * 59, w = 52, v, hi;
         int lit = ui.turned_at[i] && now - ui.turned_at[i] < 600u;
@@ -906,12 +904,12 @@ static void draw_knobs(uint32_t now)
             else
                 int_text(v, t);
         }
-        cv_text(x, 6, &FONT_XS, name, lit ? C_WHITE : C_GRAY);
-        cv_text(x, 22, &FONT_B, t, lit ? C_WHITE : C_HI);
-        cv_rect(x, 44, w, 2, C_LINE);
-        cv_rect(x, 44, w * v / hi, 2, lit ? C_WHITE : C_HI);
+        cv_text(x, 14, &FONT_XS, name, lit ? C_WHITE : C_GRAY);
+        cv_text(x, 29, &FONT_B, t, lit ? C_WHITE : C_HI);
+        cv_rect(x, 51, w, 2, C_LINE);
+        cv_rect(x, 51, w * v / hi, 2, lit ? C_WHITE : C_HI);
     }
-    cv_blit(0, 188);
+    cv_blit(0, 180);
 }
 
 static void draw(void)

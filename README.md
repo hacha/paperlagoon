@@ -10,7 +10,7 @@ hidden state leans. Tested in the host simulator; runs on an FM-1 (installed wit
 
 | Control | Does |
 |---|---|
-| SELECT | turns through the pages: 1 the lagoon, 2..4 the kit's voices, 5 the effects, 6 the environment, 7 the cycles, 8 the memory, 9 global (at the header's right a short bar a page, the one shown lit, after HYP-1) |
+| SELECT | turns through the pages: 1 the lagoon, 2..4 the kit's voices, 5 the effects, 6 the environment, 7 the cycles, 8 the memory, 9 global (as HYP-1: on the rule over the knobs, the page's name and a short bar a page, the one shown lit; the header keeps the world) |
 | HOME | the lagoon (lit there) |
 | EDIT | the voices (lit there); again: the next voice; held: the voice as the kit has it |
 | FX | the effects: K1..K4 Time (the tape's loop), Feedback, Size (the plate), Wear (the tape's age) |
