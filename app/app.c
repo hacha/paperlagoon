@@ -1261,8 +1261,9 @@ static void draw(void)
 
 /* the card at boot: the title image's lagoon on the square screen. The name; under it the water's line, a drop
  * falling inside the great ring, landing, its rings spreading behind the ring (a key lit as it lands); a shimmer under
- * the line. About three seconds, or until anything is touched; the music has begun under it. */
-#define CARD_MS 3600u
+ * the line; then all of it fades. About four seconds, or until anything is touched; the music has begun under it. */
+#define CARD_MS 4200u
+#define CARD_FADE_MS 3500u                       /* everything dims to black from here to the end */
 #define CARD_DROP_MS 700u                        /* the drop lets go (the ring begins to fade) */
 #define CARD_LAND_MS 1600u                       /* the drop meets the water (the ring is gone) */
 #define CARD_WY 74                               /* the water's line in the lower band (240 x 144 at y 96) */
@@ -1276,12 +1277,25 @@ static void card_ellipse(int32_t cx, int32_t cy, int32_t rx, int32_t ry, int dot
     }
 }
 
-static void draw_card_name(void)
+static void card_dim(float k)                   /* the canvas, every pixel times k (its pixels are byte-swapped) */
+{
+    uint32_t i, n = cv_w * cv_h, q = (uint32_t)(k * 256.0f);
+    if (q >= 256u)
+        return;
+    for (i = 0; i < n; i++) {
+        uint32_t c = swap16(cv_px[i]);
+        uint32_t r = (c >> 11) * q >> 8, g = (c >> 5 & 63u) * q >> 8, b = (c & 31u) * q >> 8;
+        cv_px[i] = swap16(r << 11 | g << 5 | b);
+    }
+}
+
+static void draw_card_name(float k)
 {
     static const char *const SUB = "GENERATIVE ENVIRONMENTAL MUSIC";
     cv_begin(240, 96, C_BLACK);
     cv_text(120 - text_w(&FONT_L, APP_NAME) / 2, 34, &FONT_L, APP_NAME, C_WHITE);
     cv_text(120 - text_w(&FONT_XS, SUB) / 2, 72, &FONT_XS, SUB, C_GRAY);
+    card_dim(k);
     cv_blit(0, 0);
 }
 
@@ -1290,6 +1304,11 @@ static void draw_card(uint32_t t)
     const int32_t cx = 152, wy = CARD_WY;       /* right of centre, as in the title image */
     int32_t x, i;
     float f = t < CARD_LAND_MS ? 0.0f : (float)(t - CARD_LAND_MS) / (float)(CARD_MS - CARD_LAND_MS);
+    float fade = t < CARD_FADE_MS ? 1.0f : 1.0f - (float)(t - CARD_FADE_MS) / (float)(CARD_MS - CARD_FADE_MS);
+    if (fade < 0.0f)
+        fade = 0.0f;
+    if (fade < 1.0f)
+        draw_card_name(fade * fade);
     cv_begin(240, 144, C_BLACK);
     for (x = 0; x < 240; x += 2) {               /* the water: a slow swell, quieter away from the drop */
         float far = (float)(x > cx ? x - cx : cx - x) / 150.0f;
@@ -1329,6 +1348,7 @@ static void draw_card(uint32_t t)
                 cv_pset(cx, y - i * 3, i < 3 ? C_GRAY : C_LINE);
         cv_rect(cx - 1, y - 1, 3, 3, C_WHITE);
     }
+    card_dim(fade * fade);
     cv_blit(0, 96);
     {
         int lit = t >= CARD_LAND_MS && t < CARD_LAND_MS + 500u;   /* a key lit as it lands, the middle one */
@@ -1351,7 +1371,7 @@ void app_ui_init(void)
 #endif
         card_t0 = plat_ms();
         if (card_ms)
-            draw_card_name();
+            draw_card_name(1.0f);
     }
 }
 
