@@ -35,6 +35,16 @@ wait 30
 expect arp 1
 wait 20000
 expect arpbeats >10
+expect pulsehits 0
+tap ARP
+wait 30
+expect arp 2
+wait 20000
+expect pulsehits >20
+shot pulse.png
+tap ARP
+wait 30
+expect arp 3
 tap ARP
 wait 30
 expect arp 0

@@ -910,6 +910,7 @@ static void gen_event(void)
         gen_left = 1.0f;
 }
 
+static void pulse_begin(void);
 static void world_begin(void)                    /* a new world, at once: its root, its beat, its algorithm */
 {
     const world_t *w = &WORLDS[world];
@@ -939,6 +940,7 @@ static void world_begin(void)                    /* a new world, at once: its ro
         motif_new();
         break;
     }
+    pulse_begin();
     gen_left = 0.3f * EN_SR;
 }
 
@@ -973,6 +975,10 @@ static void arp_event(void)
     play_shaped(R_ANSWER, note, 0.16f + 0.08f * frand(), arp_i & 1 ? 0.35f : -0.35f, 0, 0.3f, 0.0f);
     en_arp_beat++;
 }
+
+#define ARP_CHORDS(m) ((m) == 1 || (m) == 2)   /* ARP's turns: 0 off, 1 the chords, 2 the chords and the pulse, 3 the pulse */
+#define ARP_PULSE(m) ((m) >= 2)
+#include "pulse.c"
 
 /* ---------------------------------------------------------------- REC --- */
 /* A phrase played in (REC held: the keys sound, the generator waits): let go, it becomes the music's own. Its notes
@@ -1114,9 +1120,10 @@ static void drain(void)
             break;
         case C_HOLD: en_held = (uint8_t)(a != 0); break;
         case C_OCT: music_oct = (int)a - 2; break;
-        case C_ARP:
-            en_arp_on = (uint8_t)(a != 0);
+        case C_ARP:                              /* 0 off, 1 the chords, 2 the chords and the pulse, 3 the pulse */
+            en_arp_on = (uint8_t)(a <= 3 ? a : 0);
             arp_left = 0.0f;
+            pu_left = 0.0f;
             break;
         case C_REC:
             if (a && !en_recording) {
@@ -1221,19 +1228,25 @@ void en_render(int32_t *out, uint32_t n, uint32_t gain_q12)
                                                   * a phrase is played in: REC) */
             if (gen_left <= 0.0f)
                 gen_event();
-            if (en_arp_on && arp_left <= 0.0f)
+            if (ARP_CHORDS(en_arp_on) && arp_left <= 0.0f)
                 arp_event();
+            if (ARP_PULSE(en_arp_on) && pu_left <= 0.0f)
+                pulse_event();
             if ((float)k > gen_left)
                 k = (uint32_t)gen_left + 1u;
-            if (en_arp_on && (float)k > arp_left)
+            if (ARP_CHORDS(en_arp_on) && (float)k > arp_left)
                 k = (uint32_t)arp_left + 1u;
+            if (ARP_PULSE(en_arp_on) && (float)k > pu_left)
+                k = (uint32_t)pu_left + 1u;
             gen_left -= (float)k;
             arp_left -= (float)k;
+            pu_left -= (float)k;
         }
         clock_s += k;
         control(k);
         mix_clear(k);
         fm_render(k, 1.6f);
+        pulse_render(k);
         mix_out(out, k, gain, echo_send, rev_send);
         out += 2 * k;
         n -= k;

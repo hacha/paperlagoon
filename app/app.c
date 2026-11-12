@@ -36,7 +36,7 @@ typedef struct {
     int16_t par[P_NPARAMS];
     uint8_t kit, world;
     int8_t oct;                                  /* the music's register, -2..2 */
-    uint8_t arp;                                 /* the pulse on */
+    uint8_t arp;                                 /* ARP: 0 off, 1 the chords, 2 both, 3 the pulse (ARP_NAME) */
     int8_t tone[EN_NKIT][EN_NROLE][EN_NTONE];
 } settings_t;
 #define OLD_NKIT 6                               /* the kits before PLL6 */
@@ -68,6 +68,7 @@ typedef struct {                                 /* PLL2: the lagoon's four para
     uint8_t kit, world;                          /* (world was a spare byte: older records load world 0) */
     int8_t tone[OLD_NKIT][EN_NROLE][EN_NTONE];
 } settings2_t;
+static const char *const ARP_NAME[4] = {"OFF", "CHORDS", "CHORDS + PULSE", "PULSE"};
 static settings_t set;
 static uint8_t set_dirty;
 
@@ -163,7 +164,7 @@ void app_init(void)
     en_set_world(set.world);
     set.oct = (int8_t)clamp(set.oct, -2, 2);
     en_octave(set.oct);
-    set.arp = (uint8_t)(set.arp != 0);
+    set.arp = (uint8_t)(set.arp <= 3 ? set.arp : 0);
     en_arp(set.arp);
     for (i = 0; i < EN_NKIT * EN_NROLE; i++)
         for (f = 0; f < EN_NTONE; f++) {
@@ -454,10 +455,10 @@ static void input(void)
     if ((down | up) & 1u << B_SEL)
         ui.redraw = 1;
     if (down & 1u << B_ARP) {
-        set.arp ^= 1u;
+        set.arp = (uint8_t)((set.arp + 1u) % 4u);   /* off, the chords, the chords and the pulse, the pulse */
         set_dirty = 1;
         en_arp(set.arp);
-        app_say("PULSE", set.arp ? "ON" : "OFF");
+        app_say("ARP", ARP_NAME[set.arp]);
     }
     if (down & 1u << B_REC) {                    /* REC held: the keys play; let go: the phrase is taken in */
         ui.rec_oct = 0;
@@ -650,12 +651,24 @@ static void draw_lagoon(uint32_t now)
     int32_t hy = 80 - (int32_t)(light * 26.0f), x, gap = 6 - (int32_t)(bleed * 3.0f);
     cv_begin(240, 144, C_BLACK);
     cv_text(10, 2, &FONT_XS, en_kit_name(set.kit), C_GRAY);
+    static uint32_t hits, hit_at;
+    static uint8_t hit_what;
+    uint16_t wc = C_LINE;
+    if (en_pulse_hits != hits) {                 /* the pulse: a thump shivers the water, a click sparks on it */
+        hits = en_pulse_hits;
+        hit_at = now;
+        hit_what = en_pulse_last;
+    }
+    if (hit_what == 0 && now - hit_at < 160u)
+        wc = C_GRAY, amp += 1.5f;
     if (en_alg == EN_ALG_DRONE)                             /* the drone: a heavy, slow water */
         speed *= 0.5f;
     for (x = 0; x < 240; x += gap < 2 ? 2 : gap) {
         float y = (float)hy + amp * fm_sinf((float)x * 0.045f + t * speed) +
                   0.5f * amp * fm_sinf((float)x * 0.11f - t * speed * 1.7f);
-        cv_pset(x, (int32_t)y, C_LINE);
+        cv_pset(x, (int32_t)y, wc);
+        if (hit_what && now - hit_at < 90u && ((uint32_t)x * 2654435761u + hits * 40503u) >> 27 == 0)
+            cv_rect(x, (int32_t)y - 2, 2, 2, hit_what == 1 ? C_WHITE : C_GRAY);
         if (en_alg == EN_ALG_DRONE) {
             cv_pset(x + gap / 2, (int32_t)y + 3, C_LINE);
             cv_pset(x, (int32_t)y + 6, C_LINE);
@@ -959,8 +972,8 @@ static void draw_env(void)
     cv_text(10, 106, &FONT_XS, "OCTAVE", C_GRAY);
     int_text(set.oct, t);
     cv_text(70, 102, &FONT_B, t, C_HI);
-    cv_text(130, 106, &FONT_XS, "PULSE", C_GRAY);
-    cv_text(180, 102, &FONT_B, set.arp ? "ON" : "OFF", set.arp ? C_HI : C_DIM);
+    cv_text(10, 126, &FONT_XS, "ARP", C_GRAY);
+    cv_text(70, 126, &FONT_XS, ARP_NAME[set.arp & 3u], set.arp ? C_HI : C_DIM);
     cv_blit(0, 36);
 }
 
@@ -1125,6 +1138,8 @@ int app_expect(const char *what, int *got)
         *got = set.oct;
     else if (!strcmp(what, "arp"))
         *got = en_arp_on;
+    else if (!strcmp(what, "pulsehits"))         /* the pulse's hits since boot */
+        *got = (int)en_pulse_hits;
     else if (!strcmp(what, "arpbeats"))          /* the pulse's notes (a count, mod 256) */
         *got = en_arp_beat;
     else if (!strcmp(what, "rec"))

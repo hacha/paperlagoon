@@ -17,7 +17,7 @@ hidden state leans. Tested in the host simulator; runs on an FM-1 (installed wit
 | ENV | the environment: the world, its root, beat and colour; K1..K4 Drift (how far the cycles and offerings sway the music), Offer, Tempo, Transpose |
 | LFO | the cycles (breath, tide, long turn) as orbits: K1..K3 their depths, K4 Pace |
 | GLO | global: K1..K4 Tune, Level, Lights (the buttons' glow), Sleep (minutes; then it rests) |
-| ARP | a pulse of broken chords under the music, on or off (soft, short; no drums) |
+| ARP | turns through: off, the chords (a pulse of broken chords: soft, short), the chords and the pulse, the pulse. The pulse: a muffled beat under the music (a low thump, a small click, air), each on its own pattern, each world its own (some without the thump); Density thins it. At most Yokota's, never a dance |
 | OCT- / OCT+ | the music's register, two octaves either way |
 | REC | held: the keys play (the music waits); let go: the phrase is taken in as the music's own (the motif, the drone's chord, the loops' notes). OCT- / OCT+ meanwhile move the keys' octave |
 | SEL | held: K1..K4 are the lagoon's four from any page (on the lagoon itself, in finer steps) |
@@ -28,7 +28,7 @@ hidden state leans. Tested in the host simulator; runs on an FM-1 (installed wit
 | PLAY | plays or rests |
 | SAVE | keeps all of it (lit when something is not saved) |
 
-Every button glows dim; the one whose page shows is lit, and so are PLAY when playing, SAVE when unsaved, SEQ when held, ARP when on, OCT when moved.
+Every button glows dim; the one whose page shows is lit, and so are PLAY when playing, SAVE when unsaved, SEQ when held, ARP when not off, OCT when moved.
 
 | Keys | play no notes (but under REC): a press *offers* something to a hidden state (held: a little more, again and again) |
 
