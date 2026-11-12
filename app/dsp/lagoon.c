@@ -240,7 +240,7 @@ typedef struct {
 static const world_t WORLDS[EN_NWORLD] = {
     {"SHALLOWS OF MEMORY", {0.0f, 0.0f, 0.0f, 0.0f}, 0.80f, {65, 60, 70, 67}, 1.0f, 12, ALG_MOTIF},        /* 記憶の浅瀬 */
     {"BEHIND THE HORIZON", {-0.35f, 0.2f, 0.0f, 0.3f}, 0.95f, {58, 60, 63, 55}, 1.4f, 7, ALG_DRONE},        /* 水平線の裏側 */
-    {"THE UNREAD LETTER", {0.0f, -0.2f, 0.55f, 0.6f}, 0.85f, {62, 67, 69, 64}, 1.0f, 12, ALG_LETTER},       /* 誰も読まない手紙 */
+    {"THE UNREAD LETTER", {0.0f, -0.2f, 0.55f, 0.6f}, 0.85f, {60, 65, 67, 62}, 1.0f, 12, ALG_LETTER},       /* 誰も読まない手紙 */
     {"SILENT FOUNTAIN", {0.35f, 0.35f, 0.0f, -0.3f}, 0.68f, {67, 72, 65, 70}, 0.65f, 19, ALG_FOUNTAIN},       /* 音のしない噴水 */
     {"WHERE LIGHT BECOMES MOSS", {0.2f, 0.4f, -0.3f, 0.1f}, 0.90f, {64, 69, 62, 67}, 2.0f, 12, ALG_LOOPS}, /* 光が苔になるところ */
 };
@@ -908,9 +908,12 @@ static void fountain_vary(void)
             return;
         }
     } else {
+        /* its height wanders, but leans back to where the light would have it (no climb to the ceiling) */
+        int home = n / 2 + (int)((float)n * 0.4f * st[S_LIGHT]);
+        int dir = foot > home + 1 ? -1 : foot < home - 1 ? 1 : irand(2) ? 1 : -1;
         switch (irand(4)) {
-        case 0: peak += irand(2) ? 1 : -1; break;
-        case 1: foot += irand(2) ? 1 : -1; peak += irand(2); break;
+        case 0: peak += peak - foot > n + 1 ? -1 : peak - foot < 3 ? 1 : irand(2) ? 1 : -1; break;
+        case 1: foot += dir; peak += dir; break;
         case 2: len = fountain_len(); break;
         default: {                               /* it starts elsewhere in the same round */
             int8_t t[MOT_MAX];
