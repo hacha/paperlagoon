@@ -967,7 +967,7 @@ static void draw_chords(void)
     cv_blit(0, 36);
 }
 
-/* the pulse: its three patterns as rings of steps (the hits marked, the step now lit, a ring where one sounds), each
+/* the pulse: its three patterns as rings of steps (the thump's of beats; the hits marked, the step now lit, a ring where one sounds), each
  * faint as Weight leaves it little */
 static void draw_pulse(uint32_t now)
 {
@@ -993,7 +993,7 @@ static void draw_pulse(uint32_t now)
             float a = (float)s * (FM_TWO_PI / (float)n) - FM_PI / 2.0f;
             int32_t x = cx + (int32_t)(fm_cosf(a) * (float)r), y = cy + (int32_t)(fm_sinf(a) * (float)r);
             int hit = (uint32_t)((s + en_pulse_rot[i]) % n) * (uint32_t)k % (uint32_t)n < (uint32_t)k;
-            int cur = lvl && (int32_t)(en_pulse_step % (uint32_t)n) == s;
+            int cur = lvl && (int32_t)((i ? en_pulse_step : en_pulse_step / 4u) % (uint32_t)n) == s;   /* (the thump's: beats) */
             if (hit)
                 cv_rect(x - 1, y - 1, 3, 3, !lvl ? C_DIM : cur ? C_WHITE : C_HI);
             else

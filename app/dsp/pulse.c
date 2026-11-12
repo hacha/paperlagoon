@@ -4,10 +4,10 @@
  * Three sounds, none a drum kit's: a soft low thump (a sine falling in pitch, no attack's click), a small click
  * (noise in a narrow band, a few ms), and a brush (noise, high, breathed in and out). On sixteenths of the beat, each
  * on its own Euclidean pattern (k hits spread over n steps), the lengths unequal in some worlds so they drift against
- * each other; each world its own (some without the thump), and a second length for each. The page's four, plain:
+ * each other; each world its own (some without the thump), and a second length for each. The thump alone keeps to
+ * the beats: its pattern is over beats, from the bar's head, never turned nor lengthened, at most four on the floor. The page's four, plain:
  *   Level   all of it (0: none; 50 as made)
- *   Busy    hits taken from or added to the world's patterns (50: as they are; the thump never more than one a
- *           beat)
+ *   Busy    hits taken from or added to the world's patterns (50: as they are)
  *   Wander  how far the patterns move with the music: now and then (more in a fold, less held, more with SEQ's
  *           Change) a hit comes or goes (fewer in the margin), a pattern turns, or takes its other length; at the end
  *           of a phrase the pulse may rest a bar or half. 0: the world's patterns, still
@@ -23,7 +23,7 @@ static const euclid_t PULSE_PAT[EN_NWORLD][3] = {   /* the thump, the click, the
     {{32, 1}, {0, 0}, {24, 3}},                  /* BEHIND THE HORIZON: a far, slow thump, long breaths */
     {{0, 0}, {13, 3}, {20, 2}},                  /* THE UNREAD LETTER: no thump, a clock that is not quite one */
     {{16, 3}, {8, 3}, {16, 8}},                  /* SILENT FOUNTAIN: three in sixteen, the brush on the eighths */
-    {{20, 3}, {14, 4}, {9, 4}},                  /* WHERE LIGHT BECOMES MOSS: three lengths, drifting */
+    {{32, 2}, {14, 4}, {9, 4}},                  /* WHERE LIGHT BECOMES MOSS: a thump a bar, the rest drifting */
 };
 static const uint8_t PULSE_ALT[EN_NWORLD][3] = {   /* each one's other length (Wander), its hits kept in proportion */
     {12, 10, 16}, {24, 0, 32}, {0, 11, 15}, {12, 6, 12}, {18, 15, 11},
@@ -63,14 +63,20 @@ static void pu_pattern(int i, euclid_t *e)      /* a pattern now: the world's, i
     e->n = e->k = 0;
     if (!n || !k)
         return;
+    if (i == 0) {                                /* the thump: on the beats only, from the bar's head (no turn, no
+                                                  * other length): k of n/4 beats, at most every one */
+        n /= 4;
+        k += (int)(pu_busy * 2.0f + (pu_busy >= 0.0f ? 0.5f : -0.5f)) + pu_dk[0];
+        e->n = (uint8_t)n;
+        e->k = (uint8_t)(k < 1 ? 1 : k > n ? n : k);
+        return;
+    }
     if (pu_alt[i] && alt) {
         k = (k * alt + n / 2) / n;
         n = alt;
     }
     k += (int)(pu_busy * 2.0f + (pu_busy >= 0.0f ? 0.5f : -0.5f)) + pu_dk[i];
     k = k < 1 ? 1 : k > n * 3 / 4 ? n * 3 / 4 : k;
-    if (i == 0 && k > (n + 2) / 4)               /* the thump: at most one a beat (four on the floor, no more) */
-        k = (n + 2) / 4;
     e->n = (uint8_t)n;
     e->k = (uint8_t)k;
 }
@@ -91,7 +97,7 @@ static void pulse_begin(void)                    /* a world begins: the patterns
 {
     int i;
     for (i = 0; i < 3; i++) {
-        pu_rot[i] = (uint8_t)(pu_rnd() * 16.0f);
+        pu_rot[i] = i ? (uint8_t)(pu_rnd() * 16.0f) : 0u;
         pu_dk[i] = 0;
         pu_alt[i] = 0;
     }
@@ -116,7 +122,7 @@ static void pulse_wander(void)                   /* once a bar: the patterns mov
         i = (i + 1) % 3;                         /* one that has a pattern */
     if (!PULSE_PAT[world][i].n)
         return;
-    t = (int)(pu_rnd() * 10.0f);
+    t = i ? (int)(pu_rnd() * 10.0f) : 0;         /* (the thump only gains or loses a beat) */
     if (t < 5) {                                 /* a hit comes or goes: fewer in the margin, more in a fold */
         int d = st[S_MARGIN] > 0.2f ? -1 : fold > 0.2f ? 1 : pu_rnd() < 0.5f ? -1 : 1;
         pu_dk[i] = (int8_t)(pu_dk[i] + d < -2 ? -2 : pu_dk[i] + d > 2 ? 2 : pu_dk[i] + d);
@@ -152,7 +158,8 @@ static void pulse_event(void)                    /* a step: what sounds on it; t
     }
     for (i = 0; i < 3 && !pu_rest; i++) {
         pu_pattern(i, &pat);
-        if (!euclid_hit(&pat, pu_step, pu_rot[i]) || gk[i] <= 0.0f || pu_rnd() >= keep)
+        if ((i ? !euclid_hit(&pat, pu_step, pu_rot[i]) : pu_step % 4u || !euclid_hit(&pat, pu_step / 4u, 0)) ||
+            gk[i] <= 0.0f || pu_rnd() >= keep)
             continue;
         if (i == 0) {
             th_ph = 0.0f;
