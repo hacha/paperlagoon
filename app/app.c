@@ -12,12 +12,12 @@
  *   6 the age (FX again)     over the whole sound: K1..K4 Haze, Hiss, Dropout, Air (the voices' breath)
  *   7 the environment (ENV)  K1..K4 Drift (how far the cycles and offerings sway it), Offer, Tempo, Transpose
  *   8 the cycles (LFO)       the breath, the tide, the long turn: K1..K3 their depths, K4 Pace
- *   9 the pulse (ARP)        broken chords and a muffled beat: K1..K4 Chords, Thump, Click, Brush (0: none).
- *                            ARP held: on or off
- *  10 the memory (SEQ)       what the music holds (a motif and the ones remembered, a chord, the loops):
+ *   9 the chords (ARP)       broken chords under the music: K1..K4 Level (0: none), Speed, Range, Gate
+ *  10 the pulse (ARP again)  a muffled beat: K1..K4 Level (0: none), Busy, Wander, Weight
+ *  11 the memory (SEQ)       what the music holds (a motif and the ones remembered, a chord, the loops):
  *                            K1..K4 Repeat, Change, Length, Memory. SEQ held: hold it (no new motif, chord or
  *                            colour; the changes go on), held again: let go
- *  11 global (GLO)           K1..K4 Tune, Level, Lights (the buttons' glow), Sleep (minutes: then it rests)
+ *  12 global (GLO)           K1..K4 Tune, Level, Lights (the buttons' glow), Sleep (minutes: then it rests)
  * OCT- / OCT+: the music's register. REC held: the keys play, and the
  * phrase is taken in when it is let go (OCT- / OCT+ then move the keys' octave). SEL held: the knobs are the
  * lagoon's four on any page (on the lagoon, in finer steps); the strip shows it.
