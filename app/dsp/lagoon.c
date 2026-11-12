@@ -23,11 +23,12 @@ static const en_param_t PARAMS[P_NPARAMS] = {
     {"Air", 0, 100, 50}, {"Tide", 0, 100, 50}, {"Turn", 0, 100, 50}, {"Pace", 0, 100, 50},
     {"Tune", -50, 50, 0}, {"Level", 0, 100, 70}, {"Lights", 0, 2, 1}, {"Sleep", 0, 120, 0},
     {"Haze", 0, 100, 15}, {"Hiss", 0, 100, 20}, {"Dropout", 0, 100, 5}, {"Air", 0, 100, 50},
-    {"Chords", 0, 100, 50}, {"Thump", 0, 100, 50}, {"Click", 0, 100, 50}, {"Brush", 0, 100, 50},
+    {"Level", 0, 100, 0}, {"Speed", 0, 3, 1}, {"Range", 1, 3, 1}, {"Gate", 0, 100, 30},
+    {"Level", 0, 100, 0}, {"Busy", 0, 100, 50}, {"Wander", 0, 100, 30}, {"Weight", 0, 100, 50},
 };
 const en_param_t *en_param_info(int i) { return (i >= 0 && i < P_NPARAMS) ? &PARAMS[i] : &PARAMS[0]; }
 
-enum { C_SET, C_PLAY, C_SEED, C_PANIC, C_AUDITION, C_OFFER, C_WORLD, C_HOLD, C_OCT, C_ARP, C_REC, C_REC_NOTE };
+enum { C_SET, C_PLAY, C_SEED, C_PANIC, C_AUDITION, C_OFFER, C_WORLD, C_HOLD, C_OCT, C_REC, C_REC_NOTE };
 void en_set(int p, int v) { post(C_SET, p, v); }
 void en_play(int on) { post(C_PLAY, on, 0); }
 void en_seed(uint32_t s) { post(C_SEED, 0, (int)(s & 0xFFFFu)); }
@@ -37,7 +38,6 @@ void en_offer(int key, int strength) { post(C_OFFER, key, strength); }
 void en_set_world(int w) { post(C_WORLD, w, 0); }
 void en_hold(int on) { post(C_HOLD, on, 0); }
 void en_octave(int o) { post(C_OCT, o + 2, 0); }
-void en_arp(int on) { post(C_ARP, on, 0); }
 void en_rec(int on) { post(C_REC, on, 0); }
 void en_rec_note(int note) { post(C_REC_NOTE, note, 0); }
 
@@ -336,6 +336,8 @@ static int8_t mot_deg[MOT_MAX], mot_dur[MOT_MAX];
 static int mot_len, mot_i, mot_reps, scale_i = 2, root = 65, root_wait;
 static float beat_len = 0.8f * EN_SR;            /* the world's beat (S_MARGIN: up to 15 % either way) */
 static float gen_left;                           /* samples to the next event */
+static uint8_t phrase_end;                       /* a phrase (a pass, a line, the fountain's rounds, a swell) ended:
+                                                  * the pulse may rest (pulse.c) */
 volatile uint8_t en_scale;
 
 static int deg_note(int d)                       /* scale degree (0 the root) to a MIDI note */
@@ -500,6 +502,7 @@ static void motif_event(void)
         mot_i++;
         return;
     }
+    phrase_end = 1;
     {   /* the pass is over: a rest, then the motif again (perhaps changed) or a new one */
         float lean = fm_maxf(0.5f + 0.9f * st[S_MARGIN], 0.0f);   /* 0 short rests .. ~1.4 long */
         gen_left += beat_len * (2.0f + (1.0f - density) * 8.0f * (0.5f + lean) + 3.0f * frand());
@@ -564,6 +567,7 @@ static void drone_event(void)
         root_wander();
     }
     drone_k++;
+    phrase_end = 1;
     gap = (6.0f + 8.0f * frand()) * (1.0f + 0.6f * st[S_MARGIN]) * (1.0f - 0.3f * st[S_BLEED]) * (1.6f - density) *
           (0.5f + length);                       /* Length: the swells' length */
     gen_left += beat_len * gap;
@@ -755,6 +759,7 @@ static void letter_event(void)
         mot_i++;
         return;
     }
+    phrase_end = 1;
     {   /* the line is over: a long silence, then it is read again or the next is written */
         float lean = fm_maxf(0.5f + 0.9f * st[S_MARGIN], 0.0f);
         gen_left += beat_len * (4.0f + (1.0f - density) * 10.0f * (0.5f + lean) + 4.0f * frand());
@@ -886,6 +891,7 @@ static void fountain_event(void)
     beat_len = WORLDS[world].beat * tempo * EN_SR * (1.0f + 0.1f * st[S_MARGIN]);
     if (--mot_reps > 0 || en_held)
         return;
+    phrase_end = 1;
     mot_reps = 2 + (int)(repeat * 6.0f) + irand(3);
     if (gift_pc >= 0 || frand() < 0.9f * change + 0.3f * fm_maxf(st[S_FOLD], 0.0f)) {
         fountain_vary();
@@ -946,40 +952,44 @@ static void world_begin(void)                    /* a new world, at once: its ro
 }
 
 /* ---------------------------------------------------------------- ARP --- */
-/* A pulse of broken chords under the music (ARP): eighths of the beat, soft and short, the answer's voice, up and
- * down the chord the music stands on (the motif's note, the drone's chord, the first loop's note), an octave under.
- * Not every eighth sounds: fewer when sparse (Density), fewer in the margin. No drums: at most, Yokota's pulse. */
-static float arp_left;
-static float arp_k[4] = {1.0f, 1.0f, 1.0f, 1.0f};   /* ARP's levels: the chords, the thump, the click, the brush */
-static int arp_i;
-volatile uint8_t en_arp_on, en_arp_beat;
+/* Broken chords under the music (ARP's first page, CHORDS): soft, the answer's voice, up and down the chord the
+ * music stands on (the motif's note, the drone's chord, the first loop's note), from an octave under. Not every one
+ * sounds: fewer when sparse (Density), fewer in the margin. The page's four, plain: Level (0: none), Speed (quarters,
+ * eighths, triplets, sixteenths of the beat), Range (the way up: 1..3 octaves), Gate (each note short .. ringing) */
+static const float ARP_STEP[4] = {1.0f, 0.5f, 1.0f / 3.0f, 0.25f};
+static float arp_left, arp_level, arp_gate = 0.28f;
+static int arp_i, arp_speed = 1, arp_range = 1;
+volatile uint8_t en_arp_beat, en_arp_pos, en_arp_len;
 
 static void arp_event(void)
 {
-    static const int8_t UPDOWN[6] = {0, 2, 4, 6, 4, 2};
-    int n = SCALE[scale_i][0], cd, note;
+    int n = SCALE[scale_i][0], cd, note, m = (n * arp_range + 1) / 2, j;   /* m: the chord's tones up the range */
     float skip = fm_clampf(0.1f + 0.5f * (1.0f - density) + 0.3f * fm_maxf(st[S_MARGIN], 0.0f), 0.0f, 0.85f);
-    arp_left += beat_len * 0.5f;
+    float step = beat_len * ARP_STEP[arp_speed & 3];
+    arp_left += step;
     if (arp_left < 1.0f)
-        arp_left = beat_len * 0.5f;
+        arp_left = step;
     if (WORLDS[world].alg == ALG_DRONE)
         cd = drone_chord;
     else if (WORLDS[world].alg == ALG_LOOPS)
         cd = loop[0].deg[0];
     else
         cd = mot_len ? mot_deg[(mot_i + mot_len - 1) % mot_len] : n;
-    arp_i = (arp_i + 1) % 6;
+    arp_i = (arp_i + 1) % (2 * m);               /* up the chord's tones, then down */
+    j = arp_i <= m ? arp_i : 2 * m - arp_i;
+    en_arp_pos = (uint8_t)arp_i;
+    en_arp_len = (uint8_t)(2 * m);
     if (frand() < skip)
         return;
-    note = deg_note(cd - n + UPDOWN[arp_i]);
-    while (note > 84)
+    note = deg_note(cd - n + 2 * j);
+    while (note > 88)
         note -= 12;
-    play_shaped(R_ANSWER, note, (0.16f + 0.08f * frand()) * arp_k[0], arp_i & 1 ? 0.35f : -0.35f, 0, 0.3f, 0.0f);
+    play_shaped(R_ANSWER, note, (0.16f + 0.08f * frand()) * arp_level, arp_i & 1 ? 0.35f : -0.35f, 0, arp_gate, 0.0f);
     en_arp_beat++;
 }
 
-#define ARP_CHORDS(on) ((on) && arp_k[0] > 0.0f)   /* ARP on: the chords, the pulse, as far as their levels let them */
-#define ARP_PULSE(on) ((on) && (arp_k[1] > 0.0f || arp_k[2] > 0.0f || arp_k[3] > 0.0f))
+#define ARP_CHORDS (arp_level > 0.0f)          /* they sound, as far as their levels let them */
+#define ARP_PULSE (pu_level > 0.0f)
 #include "pulse.c"
 
 /* ---------------------------------------------------------------- REC --- */
@@ -1074,9 +1084,14 @@ static void apply(int p, int v)
     case P_HISS: age_hiss = (float)v * 0.01f; break;
     case P_DROPOUT: age_drop = (float)v * 0.01f; break;
     case P_AIR: breath_k = (float)v * 0.02f; break;                /* the kits' air (breath), times 0 .. 2 (50: as is) */
-    case P_CHORDS: case P_THUMP: case P_CLICK: case P_BRUSH:        /* ARP's four: 0 none, 50 as made, 100 twice */
-        arp_k[p - P_CHORDS] = (float)v * 0.02f;
-        break;
+    case P_CH_LEVEL: arp_level = (float)v * 0.02f; break;           /* the chords: 0 none, 50 as made, 100 twice */
+    case P_CH_SPEED: arp_speed = v; break;                          /* quarters, eighths, triplets, sixteenths */
+    case P_CH_RANGE: arp_range = v; break;                          /* 1 .. 3 octaves */
+    case P_CH_GATE: arp_gate = 0.1f * fm_exp2f((float)v * 0.05f); break;   /* the notes' length: 0.1 .. 3.2 */
+    case P_PU_LEVEL: pu_level = (float)v * 0.02f; break;            /* the pulse (pulse.c) */
+    case P_PU_BUSY: pu_busy = (float)(v - 50) * 0.02f; break;
+    case P_PU_WANDER: pu_wander = (float)v * 0.01f; break;
+    case P_PU_WEIGHT: pu_weight = (float)v * 0.01f; break;
     case P_REPEAT: repeat = (float)v * 0.01f; break;
     case P_CHANGE: change = (float)v * 0.01f; break;
     case P_LENGTH: length = (float)v * 0.01f; break;
@@ -1125,11 +1140,6 @@ static void drain(void)
             break;
         case C_HOLD: en_held = (uint8_t)(a != 0); break;
         case C_OCT: music_oct = (int)a - 2; break;
-        case C_ARP:
-            en_arp_on = (uint8_t)(a != 0);
-            arp_left = 0.0f;
-            pu_left = 0.0f;
-            break;
         case C_REC:
             if (a && !en_recording) {
                 en_recording = 1;
@@ -1211,6 +1221,7 @@ static void control(uint32_t n)                  /* once a chunk: the slow thing
     echo_control(n, 0.5f, modv, en_playing);   /* (and echo_wear: P_WEAR) */
     plate_tick(pl_target);
     age_control(n, en_playing);
+    pulse_ui();
     state_step(n);
     en_cycle = cyc[0];
     en_cyc[0] = cyc[0];
@@ -1234,15 +1245,15 @@ void en_render(int32_t *out, uint32_t n, uint32_t gain_q12)
                                                   * a phrase is played in: REC) */
             if (gen_left <= 0.0f)
                 gen_event();
-            if (ARP_CHORDS(en_arp_on) && arp_left <= 0.0f)
+            if (ARP_CHORDS && arp_left <= 0.0f)
                 arp_event();
-            if (ARP_PULSE(en_arp_on) && pu_left <= 0.0f)
+            if (ARP_PULSE && pu_left <= 0.0f)
                 pulse_event();
             if ((float)k > gen_left)
                 k = (uint32_t)gen_left + 1u;
-            if (ARP_CHORDS(en_arp_on) && (float)k > arp_left)
+            if (ARP_CHORDS && (float)k > arp_left)
                 k = (uint32_t)arp_left + 1u;
-            if (ARP_PULSE(en_arp_on) && (float)k > pu_left)
+            if (ARP_PULSE && (float)k > pu_left)
                 k = (uint32_t)pu_left + 1u;
             gen_left -= (float)k;
             arp_left -= (float)k;

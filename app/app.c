@@ -28,8 +28,9 @@
  * state itself as the water's line, slowly. */
 #include "fastmath.h"
 
-#define SET_MAGIC 0x374C504Bu            /* "PLL7": the settings record; PLL6 .. PLL2 (fewer parameters; before PLL6 six
-                                         * kits) carry over */
+#define SET_MAGIC 0x384C504Bu            /* "PLL8": the settings record; PLL7 .. PLL2 (fewer parameters; before PLL6 six
+                                         * kits; ARP a switch, later levels) carry over */
+#define SET_MAGIC_7 0x374C504Bu
 #define SET_MAGIC_6 0x364C504Bu
 #define SET_MAGIC_5 0x354C504Bu
 #define SET_MAGIC_4 0x344C504Bu
@@ -40,9 +41,18 @@ typedef struct {
     int16_t par[P_NPARAMS];
     uint8_t kit, world;
     int8_t oct;                                  /* the music's register, -2..2 */
-    uint8_t arp;                                 /* ARP on (its levels: P_CHORDS .. P_BRUSH) */
+    uint8_t spare;
     int8_t tone[EN_NKIT][EN_NROLE][EN_NTONE];
 } settings_t;
+typedef struct {                                 /* PLL7: thirty-two parameters (ARP's four levels: the chords, the thump,
+                                                  * the click, the brush), ARP on or off */
+    uint32_t magic;
+    int16_t par[32];
+    uint8_t kit, world;
+    int8_t oct;
+    uint8_t arp;
+    int8_t tone[EN_NKIT][EN_NROLE][EN_NTONE];
+} settings7_t;
 typedef struct {                                 /* PLL6: twenty-eight parameters, ARP a turn of four (0 off, 1 the
                                                   * chords, 2 the chords and the pulse, 3 the pulse) */
     uint32_t magic;
@@ -100,9 +110,18 @@ static void settings_defaults(void)
     set.kit = 0;
     set.world = 0;
     set.oct = 0;
-    set.arp = 0;
+    set.spare = 0;
     for (i = 0; i < EN_NKIT * EN_NROLE; i++)
         tone_defaults(i / EN_NROLE, i % EN_NROLE);
+}
+
+/* an older record's ARP, as the two pages' levels: the chords' level, the pulse's (its weight: the thump against the
+ * click and the brush) */
+static void arp_carry(int chords, int thump, int light)
+{
+    set.par[P_CH_LEVEL] = (int16_t)clamp(chords, 0, 100);
+    set.par[P_PU_LEVEL] = (int16_t)clamp(thump > light ? thump : light, 0, 100);
+    set.par[P_PU_WEIGHT] = (int16_t)(thump + light ? thump * 100 / (thump + light) : 50);
 }
 
 /* ------------------------------------------------------------ contract --- */
@@ -110,7 +129,8 @@ void app_init(void)
 {
     int i, f;
     static union {
-        settings_t v7;
+        settings_t v8;
+        settings7_t v7;
         settings6_t v6;
         settings5_t v5;
         settings4_t v4;
@@ -120,8 +140,19 @@ void app_init(void)
     int n;
     en_init();
     n = plat_store_load(OBJ_SETTINGS, &ld, sizeof ld);
-    if (n == (int)sizeof(settings_t) && ld.v7.magic == SET_MAGIC) {
-        set = ld.v7;
+    if (n == (int)sizeof(settings_t) && ld.v8.magic == SET_MAGIC) {
+        set = ld.v8;
+    } else if (n == (int)sizeof(settings7_t) && ld.v7.magic == SET_MAGIC_7) {   /* older records: carried over */
+        settings_defaults();
+        for (i = 0; i < 28; i++)
+            set.par[i] = ld.v7.par[i];
+        set.kit = ld.v7.kit;
+        set.world = ld.v7.world;
+        set.oct = ld.v7.oct;
+        if (ld.v7.arp)
+            arp_carry(ld.v7.par[28], ld.v7.par[29], (ld.v7.par[30] + ld.v7.par[31]) / 2);
+        for (i = 0; i < (int)sizeof ld.v7.tone; i++)
+            ((int8_t *)set.tone)[i] = ((const int8_t *)ld.v7.tone)[i];
     } else if (n == (int)sizeof(settings6_t) && ld.v6.magic == SET_MAGIC_6) {   /* older records: carried over */
         settings_defaults();
         for (i = 0; i < 28; i++)
@@ -129,11 +160,8 @@ void app_init(void)
         set.kit = ld.v6.kit;
         set.world = ld.v6.world;
         set.oct = ld.v6.oct;
-        set.arp = (uint8_t)(ld.v6.arp != 0);     /* its turn, as levels: the chords alone, both, the pulse alone */
-        if (ld.v6.arp == 1)
-            set.par[P_THUMP] = set.par[P_CLICK] = set.par[P_BRUSH] = 0;
-        else if (ld.v6.arp == 3)
-            set.par[P_CHORDS] = 0;
+        if (ld.v6.arp)                           /* its turn: the chords alone, both, the pulse alone */
+            arp_carry(ld.v6.arp <= 2 ? 50 : 0, ld.v6.arp >= 2 ? 50 : 0, ld.v6.arp >= 2 ? 50 : 0);
         for (i = 0; i < (int)sizeof ld.v6.tone; i++)
             ((int8_t *)set.tone)[i] = ((const int8_t *)ld.v6.tone)[i];
     } else if (n == (int)sizeof(settings5_t) && ld.v5.magic == SET_MAGIC_5) {   /* older records: carried over (the
@@ -144,9 +172,8 @@ void app_init(void)
         set.kit = ld.v5.kit;
         set.world = ld.v5.world;
         set.oct = ld.v5.oct;
-        set.arp = (uint8_t)(ld.v5.arp != 0);     /* (then: the chords alone) */
-        if (set.arp)
-            set.par[P_THUMP] = set.par[P_CLICK] = set.par[P_BRUSH] = 0;
+        if (ld.v5.arp)                           /* (then: the chords alone) */
+            arp_carry(50, 0, 0);
         set.par[P_AIR] = en_param_info(P_AIR)->def;   /* (its place was Blur's) */
         for (i = 0; i < (int)sizeof ld.v5.tone; i++)
             ((int8_t *)set.tone)[i] = ((const int8_t *)ld.v5.tone)[i];
@@ -157,9 +184,8 @@ void app_init(void)
         set.kit = ld.v4.kit;
         set.world = ld.v4.world;
         set.oct = ld.v4.oct;
-        set.arp = (uint8_t)(ld.v4.arp != 0);     /* (then: the chords alone) */
-        if (set.arp)
-            set.par[P_THUMP] = set.par[P_CLICK] = set.par[P_BRUSH] = 0;
+        if (ld.v4.arp)                           /* (then: the chords alone) */
+            arp_carry(50, 0, 0);
         for (i = 0; i < (int)sizeof ld.v4.tone; i++)
             ((int8_t *)set.tone)[i] = ((const int8_t *)ld.v4.tone)[i];
     } else if (n == (int)sizeof(settings3_t) && ld.v3.magic == SET_MAGIC_3) {   /* older records: carried over */
@@ -195,8 +221,6 @@ void app_init(void)
     en_set_world(set.world);
     set.oct = (int8_t)clamp(set.oct, -2, 2);
     en_octave(set.oct);
-    set.arp = (uint8_t)(set.arp != 0);
-    en_arp(set.arp);
     for (i = 0; i < EN_NKIT * EN_NROLE; i++)
         for (f = 0; f < EN_NTONE; f++) {
             int8_t *v = &set.tone[i / EN_NROLE][i % EN_NROLE][f];
@@ -215,21 +239,23 @@ void app_panic(void)
 }
 
 /* ------------------------------------------------------------------ UI --- */
-enum { PG_LAGOON, PG_LEAD, PG_ANSWER, PG_LOW, PG_FX, PG_AGE, PG_ENV, PG_LFO, PG_ARP, PG_SEQ, PG_GLO, NPAGE };
-#define PG_GROUP(p) (PG_VOICE(p) ? 1 : (p) == PG_FX || (p) == PG_AGE ? 2 : 0)   /* pages one button walks */
+enum { PG_LAGOON, PG_LEAD, PG_ANSWER, PG_LOW, PG_FX, PG_AGE, PG_ENV, PG_LFO, PG_CHORDS, PG_PULSE, PG_SEQ, PG_GLO, NPAGE };
+#define PG_GROUP(p) (PG_VOICE(p) ? 1 : (p) == PG_FX || (p) == PG_AGE ? 2 : (p) == PG_CHORDS || (p) == PG_PULSE ? 3 : 0)
+                                                 /* pages one button walks */
+#define ARP_ON (set.par[P_CH_LEVEL] > 0 || set.par[P_PU_LEVEL] > 0)   /* the chords or the pulse sound */
 #define PG_ROLE(p) ((p) - PG_LEAD)               /* a voice page's R_* */
 #define PG_VOICE(p) ((p) >= PG_LEAD && (p) <= PG_LOW)
-#define HOLD_MS 800u                             /* EDIT, SEQ or ARP held this long: its second use */
+#define HOLD_MS 800u                             /* EDIT or SEQ held this long: its second use */
 
 static int page_par(int p)                       /* a page's first parameter (P_*), or -1 (a voice page) */
 {
-    return p == PG_LAGOON ? P_DENSITY : p == PG_FX ? P_TIME : p == PG_AGE ? P_HAZE : p == PG_ARP ? P_CHORDS : p == PG_SEQ ? P_REPEAT : p == PG_ENV ? P_DRIFT :
+    return p == PG_LAGOON ? P_DENSITY : p == PG_FX ? P_TIME : p == PG_AGE ? P_HAZE : p == PG_CHORDS ? P_CH_LEVEL : p == PG_PULSE ? P_PU_LEVEL : p == PG_SEQ ? P_REPEAT : p == PG_ENV ? P_DRIFT :
            p == PG_LFO ? P_BREATH : p == PG_GLO ? P_TUNE : -1;
 }
 
 static const char *page_name(int p)
 {
-    return p == PG_LAGOON ? "LAGOON" : p == PG_FX ? "EFFECTS" : p == PG_AGE ? "AGE" : p == PG_ARP ? "PULSE" : p == PG_SEQ ? "MEMORY" : p == PG_ENV ? "ENVIRONMENT" :
+    return p == PG_LAGOON ? "LAGOON" : p == PG_FX ? "EFFECTS" : p == PG_AGE ? "AGE" : p == PG_CHORDS ? "CHORDS" : p == PG_PULSE ? "PULSE" : p == PG_SEQ ? "MEMORY" : p == PG_ENV ? "ENVIRONMENT" :
            p == PG_LFO ? "CYCLES" : p == PG_GLO ? "GLOBAL" : en_role_name(PG_ROLE(p));
 }
 
@@ -239,7 +265,7 @@ static struct {
     uint32_t keys, btn;
     uint32_t turned_at[4];                       /* each knob's last turn (the strip lights it) */
     uint32_t last_draw;
-    uint32_t hb_at[3];                           /* EDIT, SEQ, ARP went down (0: up) */
+    uint32_t hb_at[2];                           /* EDIT, SEQ went down (0: up) */
     uint32_t audition_at;                        /* a voice was edited: let it sound then (0: none) */
     uint32_t key_at[NKEYS];                      /* each held key's next offering (0: up) */
     struct {
@@ -248,7 +274,7 @@ static struct {
         uint8_t big;
     } drop[8];
     uint8_t drop_i;
-    uint8_t hb_done[3];                          /* its hold has acted: the release does nothing */
+    uint8_t hb_done[2];                          /* its hold has acted: the release does nothing */
     uint8_t page;
     uint8_t redraw;
     uint8_t shift;                               /* SEL held: the knobs are the lagoon's */
@@ -485,15 +511,8 @@ static void input(void)
     ui.shift = (uint8_t)((btn >> B_SEL) & 1u);
     if ((down | up) & 1u << B_SEL)
         ui.redraw = 1;
-    switch (press(2, B_ARP, btn, down, up, now)) {    /* ARP: the pulse's page; held: on or off */
-    case 1: page_go(PG_ARP); break;
-    case 2:
-        set.arp ^= 1u;
-        set_dirty = 1;
-        en_arp(set.arp);
-        app_say("PULSE", set.arp ? "ON" : "OFF");
-        break;
-    }
+    if (down & 1u << B_ARP)                      /* the chords; again: the pulse, and back */
+        page_go(ui.page == PG_CHORDS ? PG_PULSE : PG_CHORDS);
     if (down & 1u << B_REC) {                    /* REC held: the keys play; let go: the phrase is taken in */
         ui.rec_oct = 0;
         en_rec(1);
@@ -579,10 +598,10 @@ static void input(void)
     ui.btn = btn;
     {   /* lit: the page's button, playing, unsaved, held; dim: every button that has a page or a use */
         uint32_t page_btn = ui.page == PG_LAGOON ? 1u << B_HOME : ui.page == PG_FX || ui.page == PG_AGE ? 1u << B_FX :
-                            ui.page == PG_SEQ ? 1u << B_SEQ : ui.page == PG_ENV ? 1u << B_ENV : ui.page == PG_ARP ? 1u << B_ARP :
+                            ui.page == PG_SEQ ? 1u << B_SEQ : ui.page == PG_ENV ? 1u << B_ENV : PG_GROUP(ui.page) == 3 ? 1u << B_ARP :
                             ui.page == PG_LFO ? 1u << B_LFO : ui.page == PG_GLO ? 1u << B_GLO : 1u << B_EDIT;
         uint32_t lit = btn | page_btn | (set_dirty ? 1u << B_SAVE : 0u) | (en_playing ? 1u << B_PLAY : 0u) |
-                       (en_held ? 1u << B_SEQ : 0u) | (set.arp ? 1u << B_ARP : 0u) |
+                       (en_held ? 1u << B_SEQ : 0u) | (ARP_ON ? 1u << B_ARP : 0u) |
                        (set.oct > 0 ? 1u << B_OCTUP : 0u) | (set.oct < 0 ? 1u << B_OCTDN : 0u);
         uint32_t dim = (1u << NB) - 1u;          /* every button has a use */
         plat_lights(lit, keys, dim, 0, set.par[P_LIGHTS]);
@@ -650,8 +669,8 @@ static void draw_rule(void)
         ctx = ui.page == PG_LAGOON ? "SEL: FINE" : "SEL: LAGOON";
     else if (ui.page == PG_SEQ && en_held)
         ctx = "HELD";
-    else if (ui.page == PG_ARP && !set.arp)
-        ctx = "OFF (HOLD ARP)", cc = C_GRAY;
+    else if ((ui.page == PG_CHORDS && !set.par[P_CH_LEVEL]) || (ui.page == PG_PULSE && !set.par[P_PU_LEVEL]))
+        ctx = "LEVEL 0: SILENT", cc = C_GRAY;
     else if (PG_VOICE(ui.page))
         ctx = en_kit_name(set.kit), cc = C_GRAY;
     if (ctx)
@@ -915,12 +934,32 @@ static void draw_age(uint32_t now)
     cv_blit(0, 36);
 }
 
-/* the pulse: its three patterns as rings of steps (the hits marked, the step now lit, the one that sounded bright),
- * the thump's innermost; the broken chords as a row of ticks under them. Each faint as its level is low, gone at 0 */
-static void draw_arp(uint32_t now)
+/* the chords: their way up the chord's tones and back down (Range), a place each, the one now lit; the speed and the
+ * notes' length (Gate) under it */
+static void draw_chords(void)
+{
+    static const char *const SPEED[4] = {"QUARTERS", "EIGHTHS", "TRIPLETS", "SIXTEENTHS"};
+    int32_t i, len = en_arp_len ? en_arp_len : 2 * ((5 * set.par[P_CH_RANGE] + 1) / 2), m = len / 2;
+    int on = set.par[P_CH_LEVEL] > 0;
+    cv_begin(240, 144, C_BLACK);
+    cv_text(10, 2, &FONT_XS, "UP THE CHORD AND DOWN", C_GRAY);
+    for (i = 0; i < len && i < 48; i++) {
+        int32_t j = i <= m ? i : len - i, x = 14 + i * 212 / len, y = 96 - j * 72 / (m ? m : 1);
+        int cur = on && i == en_arp_pos;
+        cv_rect(x, y, cur ? 5 : 3, cur ? 5 : 3, cur ? C_WHITE : on ? C_HI : C_DIM);
+    }
+    cv_text(10, 112, &FONT_XS, SPEED[set.par[P_CH_SPEED] & 3], on ? C_HI : C_DIM);
+    cv_rect(120, 118, 4 + set.par[P_CH_GATE], 2, on ? C_HI : C_DIM);   /* the notes' length */
+    cv_blit(0, 36);
+}
+
+/* the pulse: its three patterns as rings of steps (the hits marked, the step now lit, a ring where one sounds), each
+ * faint as Weight leaves it little */
+static void draw_pulse(uint32_t now)
 {
     static const char *const NAME[3] = {"THUMP", "CLICK", "BRUSH"};
     static uint32_t hits, hit_at;
+    int on = set.par[P_PU_LEVEL] > 0, w = set.par[P_PU_WEIGHT];
     int32_t i, s;
     if (en_pulse_hits != hits) {
         hits = en_pulse_hits;
@@ -928,8 +967,8 @@ static void draw_arp(uint32_t now)
     }
     cv_begin(240, 144, C_BLACK);
     for (i = 0; i < 3; i++) {                    /* three rings, side by side */
-        int32_t cx = 42 + i * 78, cy = 58, r = 30, n = en_pulse_n[i], k = en_pulse_k[i];
-        int lvl = set.par[P_THUMP + i];
+        int32_t cx = 42 + i * 78, cy = 64, r = 32, n = en_pulse_n[i], k = en_pulse_k[i];
+        int lvl = on && (i == 0 ? w > 0 : w < 100);
         cv_text(cx - 22, 2, &FONT_XS, NAME[i], lvl ? C_GRAY : C_DIM);
         if (!n || !k) {
             cv_text(cx - 12, cy - 6, &FONT_XS, "none", C_DIM);
@@ -940,20 +979,14 @@ static void draw_arp(uint32_t now)
             float a = (float)s * (FM_TWO_PI / (float)n) - FM_PI / 2.0f;
             int32_t x = cx + (int32_t)(fm_cosf(a) * (float)r), y = cy + (int32_t)(fm_sinf(a) * (float)r);
             int hit = (uint32_t)((s + en_pulse_rot[i]) % n) * (uint32_t)k % (uint32_t)n < (uint32_t)k;
-            int cur = set.arp && (int32_t)(en_pulse_step % (uint32_t)n) == s;
-            int ring = cur && hit && en_pulse_last == i && now - hit_at < 150u;   /* it sounds now */
+            int cur = lvl && (int32_t)(en_pulse_step % (uint32_t)n) == s;
             if (hit)
                 cv_rect(x - 1, y - 1, 3, 3, !lvl ? C_DIM : cur ? C_WHITE : C_HI);
             else
-                cv_rect(x, y, 1, 1, cur && lvl ? C_WHITE : C_GRAY);
-            if (ring)
+                cv_rect(x, y, 1, 1, cur ? C_WHITE : C_GRAY);
+            if (cur && hit && en_pulse_last == i && now - hit_at < 150u)
                 draw_ring(x, y, 5, C_WHITE);
         }
-    }
-    cv_text(10, 104, &FONT_XS, "CHORDS", set.par[P_CHORDS] ? C_GRAY : C_DIM);
-    for (i = 0; i < 8; i++) {                    /* the chords' notes, round eight places: the last one lit */
-        int lit = set.arp && set.par[P_CHORDS] && (int32_t)(en_arp_beat % 8u) == i;
-        cv_rect(76 + i * 18, lit ? 100 : 104, 8, lit ? 8 : 2, lit ? C_HI : set.par[P_CHORDS] ? C_GRAY : C_DIM);
     }
     cv_blit(0, 36);
 }
@@ -1125,7 +1158,10 @@ static void draw_knobs(uint32_t now)
             name = p->name;
             v = set.par[pn] - p->lo;
             hi = p->hi - p->lo;
-            int_text(set.par[pn], t);
+            if (pn == P_CH_SPEED)                /* the chords' speed: a note's length */
+                str_put(t, sizeof t, set.par[pn] == 0 ? "1/4" : set.par[pn] == 1 ? "1/8" : set.par[pn] == 2 ? "1/12" : "1/16");
+            else
+                int_text(set.par[pn], t);
         } else {
             v = set.tone[set.kit][PG_ROLE(ui.page)][i];
             hi = en_tone_hi((int)i);
@@ -1153,8 +1189,10 @@ static void draw(void)
         draw_fx(now);
     else if (ui.page == PG_AGE)
         draw_age(now);
-    else if (ui.page == PG_ARP)
-        draw_arp(now);
+    else if (ui.page == PG_CHORDS)
+        draw_chords();
+    else if (ui.page == PG_PULSE)
+        draw_pulse(now);
     else if (ui.page == PG_SEQ)
         draw_seq();
     else if (ui.page == PG_ENV)
@@ -1216,7 +1254,11 @@ int app_expect(const char *what, int *got)
     else if (!strcmp(what, "oct"))
         *got = set.oct;
     else if (!strcmp(what, "arp"))
-        *got = en_arp_on;
+        *got = (set.par[P_CH_LEVEL] > 0) | (set.par[P_PU_LEVEL] > 0) << 1;   /* 1 the chords, 2 the pulse */
+    else if (!strcmp(what, "pulsepat"))          /* the pulse's patterns now, as one number (n, k, turn of each) */
+        *got = (int)(((uint32_t)en_pulse_n[0] * 31u + en_pulse_k[0] * 7u + en_pulse_rot[0]) * 1000000u +
+                     ((uint32_t)en_pulse_n[1] * 31u + en_pulse_k[1] * 7u + en_pulse_rot[1]) * 1000u +
+                     ((uint32_t)en_pulse_n[2] * 31u + en_pulse_k[2] * 7u + en_pulse_rot[2]) % 1000u) & 0x7FFFFFFF;
     else if (!strcmp(what, "pulsehits"))         /* the pulse's hits since boot */
         *got = (int)en_pulse_hits;
     else if (!strcmp(what, "arpbeats"))          /* the pulse's notes (a count, mod 256) */

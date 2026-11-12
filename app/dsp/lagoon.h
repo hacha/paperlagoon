@@ -23,7 +23,8 @@ enum { P_DENSITY, P_BRIGHT, P_SPACE, P_ECHO,
        P_BREATH, P_TIDE, P_TURN, P_PACE,           /* the cycles (LFO) */
        P_TUNE, P_LEVEL, P_LIGHTS, P_SLEEP,         /* global (GLO): P_LIGHTS and P_SLEEP are the UI's */
        P_HAZE, P_HISS, P_DROPOUT, P_AIR,           /* the age (FX, again): over the whole mix (age.c); the voices' air */
-       P_CHORDS, P_THUMP, P_CLICK, P_BRUSH,        /* ARP: the broken chords' and the pulse's three sounds (0: none) */
+       P_CH_LEVEL, P_CH_SPEED, P_CH_RANGE, P_CH_GATE,   /* ARP: the broken chords (CHORDS; Level 0: none) */
+       P_PU_LEVEL, P_PU_BUSY, P_PU_WANDER, P_PU_WEIGHT, /* ARP again: the pulse (PULSE; Level 0: none) */
        P_NPARAMS };
 typedef struct {
     const char *name;
@@ -49,8 +50,6 @@ void en_voice_shape(int kit, int role, float *ratio, float *att_ms, float *t60);
 int en_voice_breath(int kit, int role);    /* a voice's air now, 0..170 (the kit's, times Air; the screen) */
 void en_audition(int role);
 void en_octave(int oct);               /* the music's register: -2..2 octaves (OCT- / OCT+) */
-void en_arp(int on);                   /* ARP on: broken chords and the pulse (a muffled beat), as P_CHORDS .. P_BRUSH
-                                        * have them */
 void en_rec(int on);                   /* REC: 1 a phrase starts (the generator waits), 0 it is taken in */
 void en_rec_note(int note);            /* a key played while REC: sounds now, kept for the phrase (MIDI note) */
 void en_hold(int on);                  /* hold what the music holds now (a motif, a chord, the loops' colour) */            /* one note of a voice, now (playing or resting) */
@@ -63,7 +62,9 @@ void en_offer(int key, int strength);
 #define EN_NWORLD 5
 const char *en_world_name(int world);
 void en_set_world(int world);           /* there at once; only the state's lean glides */  /* key 0..26 (F3..G5); strength 100 a press, less while it is held */
-extern volatile uint8_t en_arp_on, en_arp_beat;   /* ARP on; a count of the chords' notes (the screen's tick) */
+extern volatile uint8_t en_arp_beat;           /* a count of the chords' notes (the screen's tick) */
+extern volatile uint8_t en_arp_pos;            /* where the chords are in their way up and down, and its length */
+extern volatile uint8_t en_arp_len;
 extern volatile uint32_t en_pulse_hits;        /* the pulse's hits since boot */
 extern volatile uint8_t en_pulse_last;         /* the last: 0 the thump, 1 a click, 2 the brush */
 extern volatile uint8_t en_pulse_n[3], en_pulse_k[3], en_pulse_rot[3];   /* the patterns now: k hits over n steps, turned */

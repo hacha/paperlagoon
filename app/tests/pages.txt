@@ -19,7 +19,7 @@ expect page 0
 expect param0 45
 tap SEQ
 wait 30
-expect page 9
+expect page 10
 expect held 0
 wait 60000
 shot seq.png
@@ -28,7 +28,7 @@ wait 900
 release SEQ
 wait 30
 expect held 1
-expect page 9
+expect page 10
 shot held.png
 turn K2 -10
 wait 30

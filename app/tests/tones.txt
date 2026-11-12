@@ -7,10 +7,10 @@ expect kit 0
 turn SELECT 1
 wait 30
 expect page 1
-turn SELECT 9
+turn SELECT 10
 wait 30
-expect page 10
-turn SELECT -10
+expect page 11
+turn SELECT -11
 wait 30
 expect page 0
 tap EDIT

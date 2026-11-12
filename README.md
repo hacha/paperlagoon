@@ -10,14 +10,14 @@ hidden state leans. Tested in the host simulator; runs on an FM-1 (installed wit
 
 | Control | Does |
 |---|---|
-| SELECT | turns through the pages: 1 the lagoon, 2..4 the kit's voices, 5 the effects, 6 the age, 7 the environment, 8 the cycles, 9 the pulse, 10 the memory, 11 global (as HYP-1: on the rule over the knobs, the page's name and a short bar a page, the one shown lit; the header keeps the world) |
+| SELECT | turns through the pages: 1 the lagoon, 2..4 the kit's voices, 5 the effects, 6 the age, 7 the environment, 8 the cycles, 9 the chords, 10 the pulse, 11 the memory, 12 global (as HYP-1: on the rule over the knobs, the page's name and a short bar a page, the one shown lit; the header keeps the world) |
 | HOME | the lagoon (lit there) |
 | EDIT | the voices (lit there); again: the next voice; held: the voice as the kit has it |
 | FX | the effects: K1..K4 Time (the tape's loop), Feedback, Size (the plate), Wear (the tape's age; it blurs the whole sound too: a late, wandering copy). Again: the age: K1..K4 Haze (the band narrows, the loud parts round off), Hiss (a breathing floor of noise, while it plays), Dropout (the sound thins now and then, darker, as worn tape), Air (the voices' breath, times 0..2: 50 as the kit has it); again: back |
 | ENV | the environment: the world, its root, beat and colour; K1..K4 Drift (how far the cycles and offerings sway the music), Offer, Tempo, Transpose |
 | LFO | the cycles (breath, tide, long turn) as orbits: K1..K3 their depths, K4 Pace |
 | GLO | global: K1..K4 Tune, Level, Lights (the buttons' glow), Sleep (minutes; then it rests) |
-| ARP | the pulse: broken chords and a muffled beat under the music (a low thump, a small click, a brush), each on its own pattern, each world its own (some without the thump); K1..K4 Chords, Thump, Click, Brush (0: none). Held: on or off. Density thins it. At most Yokota's, never a dance |
+| ARP | the chords: broken chords under the music, up the chord and down; K1..K4 Level (0: none), Speed (1/4, 1/8, triplets, 1/16), Range (1..3 octaves), Gate (each note's length). Again: the pulse, a muffled beat (a low thump, a small click, a brush) on each world's own patterns; K1..K4 Level (0: none), Busy (hits taken or added), Wander (how far the patterns move with the music: 0 still), Weight (the thump against the click and the brush). Again: back. At most Yokota's, never a dance |
 | OCT- / OCT+ | the music's register, two octaves either way |
 | REC | held: the keys play (the music waits); let go: the phrase is taken in as the music's own (the motif, the drone's chord, the loops' notes). OCT- / OCT+ meanwhile move the keys' octave |
 | SEL | held: K1..K4 are the lagoon's four from any page (on the lagoon itself, in finer steps) |
@@ -28,7 +28,7 @@ hidden state leans. Tested in the host simulator; runs on an FM-1 (installed wit
 | PLAY | plays or rests |
 | SAVE | keeps all of it (lit when something is not saved) |
 
-Every button glows dim; the one whose page shows is lit, and so are PLAY when playing, SAVE when unsaved, SEQ when held, ARP when on, OCT when moved.
+Every button glows dim; the one whose page shows is lit, and so are PLAY when playing, SAVE when unsaved, SEQ when held, ARP when the chords or the pulse sound, OCT when moved.
 
 | Keys | play no notes (but under REC): a press *offers* something to a hidden state (held: a little more, again and again) |
 

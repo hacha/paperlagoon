@@ -20,7 +20,7 @@ wait 1000
 shot lfo.png
 tap GLO
 wait 30
-expect page 10
+expect page 11
 turn K3 1
 wait 30
 expect param22 2
@@ -28,30 +28,46 @@ shot glo.png
 tap HOME
 wait 30
 expect page 0
-# the pulse: ARP its page; held: on or off; its four levels (0: none)
+# ARP: the chords' page, again the pulse's, again the chords'; each sounds as its Level lets it (0: none)
 expect arp 0
 tap ARP
 wait 30
 expect page 8
-expect arp 0
-press ARP
-wait 900
-release ARP
+turn K1 25
 wait 30
+expect param28 50
 expect arp 1
-expect page 8
 wait 20000
 expect arpbeats >10
+expect pulsehits 0
+shot chords.png
+turn K1 -25
+tap ARP
+wait 30
+expect page 9
+expect arp 0
+turn K1 25
+wait 30
+expect arp 2
+wait 20000
 expect pulsehits >20
 shot pulse.png
-turn K1 -25
 turn K2 25
+turn K3 -15
+turn K4 25
 wait 30
-expect param28 0
-expect param29 100
-press ARP
-wait 900
-release ARP
+expect param33 100
+expect param34 0
+expect param35 100
+wait 10000
+expect pulsehits >40
+tap ARP
+wait 30
+expect page 8
+turn K1 -25
+tap ARP
+wait 30
+turn K1 -25
 wait 30
 expect arp 0
 tap HOME
