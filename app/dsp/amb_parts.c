@@ -242,15 +242,16 @@ static void mix_clear(uint32_t n)
     for (j = 0; j < n; j++)
         mixl[j] = mixr[j] = esend[j] = rsend[j] = 0.0f;
 }
-static void mix_out(int32_t *out, uint32_t n, float gain, float eg, float rg)
+static void mix_out(int32_t *out, uint32_t n, float gain, float eg, float rg, float wet)   /* (PaperLagoon) wet: the
+                                                  * echoes' and the plate's return, swollen by a splash */
 {
     uint32_t j;
     for (j = 0; j < n; j++) {
         float wl, wr, l, r, el, er, xl, xr;
         echoes(esend[j] * eg, &el, &er, &xl, &xr);
         reverb((rsend[j] * rg + (el + er + xl + xr) * 0.35f * rg) * 0.8f, &wl, &wr);
-        l = (mixl[j] + 0.75f * el + 0.3f * xl + 1.3f * wl) * 0.36f * gain;
-        r = (mixr[j] + 0.75f * er + 0.3f * xr + 1.3f * wr) * 0.36f * gain;
+        l = (mixl[j] + wet * (0.75f * el + 0.3f * xl + 1.3f * wl)) * 0.36f * gain;
+        r = (mixr[j] + wet * (0.75f * er + 0.3f * xr + 1.3f * wr)) * 0.36f * gain;
         age_px(&l, &r);                          /* (PaperLagoon) the age: haze, hiss, dropout, blur */
         out[2 * j] = (int32_t)(fm_tanhf(l) * 8300000.0f);
         out[2 * j + 1] = (int32_t)(fm_tanhf(r) * 8300000.0f);

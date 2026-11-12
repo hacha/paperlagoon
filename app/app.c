@@ -1277,6 +1277,8 @@ int app_expect(const char *what, int *got)
         *got = (int)(h & 0x7FFFFFFF);
     } else if (!strcmp(what, "chordgrain"))      /* the chords' grain now: 0 quarters .. 3 sixteenths */
         *got = en_arp_div;
+    else if (!strcmp(what, "splash"))            /* the splash now, 0..100 */
+        *got = (int)(en_splash * 100.0f);
     else if (!strcmp(what, "pulsehits"))         /* the pulse's hits since boot */
         *got = (int)en_pulse_hits;
     else if (!strcmp(what, "arpbeats"))          /* the pulse's notes (a count, mod 256) */

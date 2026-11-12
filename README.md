@@ -30,7 +30,7 @@ hidden state leans. Tested in the host simulator; runs on an FM-1 (installed wit
 
 Every button glows dim; the one whose page shows is lit, and so are PLAY when playing, SAVE when unsaved, SEQ when held, ARP when the chords or the pulse sound, OCT when moved.
 
-| Keys | play no notes (but under REC): a press *offers* something to a hidden state (held: a little more, again and again) |
+| Keys | play no notes (but under REC): a press *offers* something to a hidden state (held: a little more, again and again). When its drop meets the water the offering splashes: the sound stirs at once (smeared, darker or opener, the echoes and the plate swelling, hushed or swollen), the music answers soon, and in a second or two it is gone; then it seeps in slowly |
 
 Kits: TIN HARBOR, WOODEN RAIN, GLASS ORCHARD, SLOW BREATH, IRON SNOW, HAZE ARCHIVE, DUST PIPES, FOG LANTERN.
 Some voices have breath (air beside the tone, a rough modulation, a pitch that wanders: worn, hazy), fixed by the kit

@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 hacha
+# the splash: nothing while the drop falls, large when it meets the water (0.38 s), gone in a few seconds; the slow
+# seepage as ever after it
+wait 600
+expect splash 0
+tapkey 20
+wait 250
+expect splash <5
+wait 250
+expect splash >40
+wait 4000
+expect splash <5
+expect offsetsum >0

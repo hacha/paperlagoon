@@ -251,6 +251,17 @@ volatile uint32_t en_offers;
 static float pend[EN_NSTATE], off[EN_NSTATE], st[EN_NSTATE];
 static float cyc[3];                             /* the cycles' phases, in turns */
 static int8_t gift_pc = -1;                      /* the last offered key's pitch class (-1 none), for a motif */
+/* the splash: when the drop meets the water (as the screen has it), the offering's lean at once and large, gone in a
+ * second or two (the slow seepage after it, as ever); and the sound itself stirred meanwhile: smeared (the fold),
+ * darker or opener (the light), thrown into the echo (the bleed), hushed or swollen (the margin) */
+#define SPLASH_WAIT_S 0.38f                      /* the drop's fall (the screen's DROP_FALL_MS) */
+#define SPLASH_S 0.8f                            /* its decay */
+#define SPLASH_K 3.0f                            /* how much larger than what seeps in */
+static float spl_q[EN_NSTATE], spl[EN_NSTATE], spl_t, spl_e, spl_wait;   /* spl_e follows spl_t in ~15 ms (no click) */
+static float gen_left;                           /* (the generator's: a splash brings its next event near) */
+static float spl_echo = 1.0f, spl_gain = 1.0f, spl_wet = 1.0f;   /* the splash's on the echo's send, the whole, the
+                                                  * echoes' and the plate's return (their tails swell) */
+volatile float en_splash;                        /* (UI, tests) the splash now, 0..1 */
 
 /* each pitch class's lean across LIGHT, BLEED, FOLD, MARGIN: a fixed, uneven mix */
 static const int8_t PC_MIX[12][EN_NSTATE] = {
@@ -270,8 +281,13 @@ static void offer(int key, int strength)         /* key 0..26 (F3..G5), strength
     q[S_BLEED] = 0.0f;
     q[S_FOLD] = black ? 0.8f : -0.2f;          /* black keys fold */
     q[S_MARGIN] = (black ? -0.3f : 0.4f) + reg * fm_sinf(turn);
-    for (i = 0; i < EN_NSTATE; i++)
-        pend[i] += m * (q[i] + (float)PC_MIX[pc][i] * 0.25f + 0.5f * (frand() * 2.0f - 1.0f));
+    for (i = 0; i < EN_NSTATE; i++) {
+        float d = m * (q[i] + (float)PC_MIX[pc][i] * 0.25f + 0.5f * (frand() * 2.0f - 1.0f));
+        pend[i] += d;
+        spl_q[i] += SPLASH_K * d;
+    }
+    if (spl_wait <= 0.0f)
+        spl_wait = SPLASH_WAIT_S * EN_SR;
     if (strength >= 100) {
         gift_pc = (int8_t)pc;
         en_offers++;
@@ -304,6 +320,25 @@ static void state_step(uint32_t n)
         for (i = 0; i < EN_NSTATE; i++)
             wbias[i] += (w->bias[i] - wbias[i]) * g;
     }
+    if (spl_wait > 0.0f && (spl_wait -= (float)n) <= 0.0f) {   /* the drop meets the water */
+        float e = 0.0f;
+        for (i = 0; i < EN_NSTATE; i++) {
+            spl[i] = fm_clampf(spl[i] + spl_q[i], -1.5f, 1.5f);
+            e += fm_fabsf(spl_q[i]);
+            spl_q[i] = 0.0f;
+        }
+        spl_t = fm_minf(spl_t + 0.4f + 2.0f * e, 1.0f);
+        if (en_playing && !en_recording && gen_left > 0.06f * EN_SR && frand() < 0.85f)
+            gen_left = 0.06f * EN_SR;            /* the music answers soon */
+    }
+    {
+        float k = fm_expf(-(float)n / (SPLASH_S * EN_SR));
+        for (i = 0; i < EN_NSTATE; i++)
+            spl[i] *= k;
+        spl_t *= k;
+        spl_e += (spl_t - spl_e) * fm_minf((float)n * (1.0f / (0.015f * EN_SR)), 1.0f);
+        en_splash = spl_e;
+    }
     for (i = 0; i < EN_NSTATE; i++) {
         float f = pend[i] * seep;
         pend[i] -= f;
@@ -311,7 +346,7 @@ static void state_step(uint32_t n)
         off[(i + 1) % EN_NSTATE] += 0.15f * f;   /* a little bleeds into the next */
         off[i] -= off[i] * fade;
         off[i] = fm_clampf(off[i], -1.0f, 1.0f);
-        st[i] = fm_tanhf(wbias[i] + drift * (AMP[i] * base[i] + off[i]));   /* soft at the ends: never pinned */
+        st[i] = fm_tanhf(wbias[i] + drift * (AMP[i] * base[i] + off[i] + spl[i]));   /* soft at the ends: never pinned */
         en_state[i] = st[i];
         en_offset[i] = off[i];
     }
@@ -1355,6 +1390,17 @@ static void control(uint32_t n)                  /* once a chunk: the slow thing
     mods_step(n);
     echo_control(n, 0.5f, modv, en_playing);   /* (and echo_wear: P_WEAR) */
     plate_tick(pl_target);
+    if (spl_e > 0.001f) {                        /* the splash stirs the sound itself */
+        float d = drift > 1.0f ? 1.0f : drift;
+        age_spl_blur = d * spl_e * (0.35f + 0.8f * fm_fabsf(spl[S_FOLD]));
+        age_spl_haze = d * fm_clampf(-0.7f * spl[S_LIGHT], -0.5f, 0.6f) * fm_minf(spl_e * 1.5f, 1.0f);
+        spl_echo = 1.0f + d * spl_e * (0.6f + 2.5f * fm_maxf(spl[S_BLEED], 0.0f));
+        spl_gain = 1.0f - d * fm_clampf(0.5f * spl[S_MARGIN], -0.2f, 0.4f) * fm_minf(spl_e * 1.5f, 1.0f);
+        spl_wet = 1.0f + d * spl_e * (1.2f + 1.5f * fm_maxf(spl[S_BLEED], 0.0f));
+    } else {
+        age_spl_blur = age_spl_haze = 0.0f;
+        spl_echo = spl_gain = spl_wet = 1.0f;
+    }
     age_control(n, en_playing);
     pulse_ui();
     state_step(n);
@@ -1399,7 +1445,7 @@ void en_render(int32_t *out, uint32_t n, uint32_t gain_q12)
         mix_clear(k);
         fm_render(k, 1.6f);
         pulse_render(k);
-        mix_out(out, k, gain, echo_send, rev_send);
+        mix_out(out, k, gain * spl_gain, echo_send * spl_echo, rev_send, spl_wet);
         out += 2 * k;
         n -= k;
     }

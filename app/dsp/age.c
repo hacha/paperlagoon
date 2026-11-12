@@ -14,6 +14,8 @@
  * (age_rnd), so how much hiss or dropout there is never changes what the music chooses. Cheap per sample:
  * a few one-pole filters, two noises, two delay taps, one sine. */
 static float age_haze, age_hiss, age_drop, age_blur;  /* 0..1: P_HAZE, P_HISS, P_DROPOUT; the blur from P_WEAR */
+static float age_spl_blur, age_spl_haze;         /* a splash's, for a moment (lagoon.c): more blur, the haze moved */
+static float age_bl;                             /* the blur now (age_blur and a splash's), once a chunk */
 volatile float en_age_drop;                      /* (UI) a dropout now, 0..1 */
 static uint32_t age_seed = 0x2545F491u;
 static inline float age_rnd(void)                /* 0..1, apart from the music's frand() */
@@ -53,11 +55,12 @@ static float age_onepole(float fc)               /* a one-pole's coefficient for
 /* once a chunk: the coefficients, the hiss's level, the next dropout */
 static void age_control(uint32_t n, int playing)
 {
-    float t = (float)n * (1.0f / EN_SR);
+    float t = (float)n * (1.0f / EN_SR), hz = fm_clampf(age_haze + age_spl_haze, 0.0f, 1.0f);
     /* haze 0: open (no filter); 1: 2.2 kHz down, 320 Hz up */
-    hz_a = age_haze > 0.005f ? age_onepole(18000.0f * fm_powf(2200.0f / 18000.0f, age_haze)) : 1.0f;
-    hz_h = age_haze > 0.005f ? age_onepole(20.0f + 300.0f * age_haze * age_haze) : 0.0f;
-    hz_round = 0.9f * age_haze;
+    hz_a = hz > 0.005f ? age_onepole(18000.0f * fm_powf(2200.0f / 18000.0f, hz)) : 1.0f;
+    hz_h = hz > 0.005f ? age_onepole(20.0f + 300.0f * hz * hz) : 0.0f;
+    hz_round = 0.9f * hz;
+    age_bl = fm_minf(age_blur + age_spl_blur, 1.0f);
     hs_level += ((playing ? 0.03f * age_hiss * age_hiss : 0.0f) - hs_level) * fm_minf(t * 0.7f, 1.0f);
     hs_ph += t * 0.071f;                         /* the breath: ~14 s */
     if (hs_ph >= 1.0f)
@@ -92,7 +95,7 @@ static inline void age_px(float *l, float *r)
         e = sine(dr_ph * 0.5f);
         dr_ph += dr_inc;
     }
-    if (age_blur > 0.005f) {
+    if (age_bl > 0.005f) {
         int i0, i1, k;
         float f, y;
         for (c = 0; c < 2; c++) {
@@ -100,7 +103,7 @@ static inline void age_px(float *l, float *r)
             if (bl_ph[c] >= 1.0f)
                 bl_ph[c] -= 1.0f;
             /* lateness 12..31 ms, wandering more with more blur */
-            bl_d[c] = (0.012f + 0.006f * age_blur * (1.0f + sine(bl_ph[c]))) * EN_SR + 300.0f * age_blur;
+            bl_d[c] = (0.012f + 0.006f * age_bl * (1.0f + sine(bl_ph[c]))) * EN_SR + 300.0f * age_bl;
             k = (int)bl_d[c];
             f = bl_d[c] - (float)k;
             i0 = bl_w - k;
@@ -108,8 +111,8 @@ static inline void age_px(float *l, float *r)
             i1 = i0 - 1;
             i1 += i1 < 0 ? BL_N : 0;
             y = ((float)bl_buf[c][i0] + ((float)bl_buf[c][i1] - (float)bl_buf[c][i0]) * f) * (1.0f / 12000.0f);
-            bl_buf[c][bl_w] = s16(x[c] + 0.35f * age_blur * y);
-            x[c] = (1.0f - 0.35f * age_blur) * x[c] + 0.65f * age_blur * y;
+            bl_buf[c][bl_w] = s16(x[c] + 0.35f * age_bl * y);
+            x[c] = (1.0f - 0.35f * age_bl) * x[c] + 0.65f * age_bl * y;
         }
         if (++bl_w >= BL_N)
             bl_w = 0;

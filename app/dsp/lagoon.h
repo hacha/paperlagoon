@@ -62,6 +62,7 @@ void en_offer(int key, int strength);
 #define EN_NWORLD 5
 const char *en_world_name(int world);
 void en_set_world(int world);           /* there at once; only the state's lean glides */  /* key 0..26 (F3..G5); strength 100 a press, less while it is held */
+extern volatile float en_splash;               /* a splash (a drop meeting the water), 0..1, gone in a second or two */
 extern volatile uint8_t en_arp_beat;           /* a count of the chords' notes (the screen's tick) */
 extern volatile uint8_t en_arp_pos;            /* where the chords are in their walk, its length, its tones */
 extern volatile uint8_t en_arp_len;            /* (en_arp_seq: each step's tone, 0..en_arp_top) */
