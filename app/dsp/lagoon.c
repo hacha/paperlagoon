@@ -752,7 +752,7 @@ static void letter_event(void)
 /* ALG_FOUNTAIN: one figure, round and round, quick and soft, the eighths never stopping: it rises to a height and
  * falls back, keeping its shape while no round is quite the last. After some rounds (Repeat) it may change a little
  * (Change: its height, its foot, a note longer or shorter, where it starts); Length: 3..7 notes; an older figure comes
- * back (Memory, the fold). The margin leaves notes out (and now and then a whole round holds its breath), light lifts
+ * back (Memory, the fold). The margin and a low Density leave notes out (and a round holds its breath), light lifts
  * it, fold lifts its height, bleed lets the notes ring; the low voice under it every few rounds, the answer at its
  * height now and then. An offering becomes its height. The figure is the motif's arrays (mot_*), as the letter's. */
 static int fnt_k, fnt_changes;
@@ -833,7 +833,8 @@ static void fountain_vary(void)
 static void fountain_event(void)
 {
     int note, i, top = 0;
-    float drop = fm_clampf(0.04f + 0.4f * fm_maxf(st[S_MARGIN], 0.0f) + 0.3f * (0.5f - density), 0.0f, 0.6f);
+    float sparse = fm_maxf(0.6f - density, 0.0f);   /* Density under 60: notes left out, rounds apart */
+    float drop = fm_clampf(0.04f + 0.4f * fm_maxf(st[S_MARGIN], 0.0f) + 0.6f * sparse, 0.0f, 0.6f);
     if (mot_len < 3)                             /* (a phrase too short, or none: a figure of its own) */
         fountain_new();
     if (mot_i >= mot_len)
@@ -863,7 +864,7 @@ static void fountain_event(void)
         return;
     mot_i = 0;                                   /* a round is over */
     fnt_k++;
-    if (frand() < 0.03f + 0.12f * fm_maxf(st[S_MARGIN], 0.0f))   /* it holds its breath */
+    if (frand() < 0.03f + 0.12f * fm_maxf(st[S_MARGIN], 0.0f) + 0.8f * sparse)   /* it holds its breath */
         gen_left += beat_len * (float)(1 + irand(3));
     beat_len = WORLDS[world].beat * tempo * EN_SR * (1.0f + 0.1f * st[S_MARGIN]);
     if (--mot_reps > 0 || en_held)

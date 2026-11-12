@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 hacha
+# Density thins the fountain plainly: at 0, notes left out and rounds apart (about 150 in 90 s; at 45, about 220)
+wait 300
+turn ALGO 3
+wait 30
+turn K1 -45
+wait 30
+expect param0 0
+wait 90000
+expect notes <190
+expect notes >80

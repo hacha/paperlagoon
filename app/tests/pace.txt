@@ -1,18 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 hacha
-# the letter and the fountain keep their own pace: the letter's points few and far apart, the fountain's eighths
-# never stopping (so neither drifts back into the motifs' pace)
+# the letter and the fountain keep their own pace (so neither drifts back into the motifs'): over 90 s the letter's
+# points are few (about 21; the motifs about 37), the fountain's eighths many (about 220; notes count since boot)
 wait 300
 turn ALGO 2
 wait 30
 expect alg 3
-wait 40000
+wait 90000
 expect notes <30
-expect notes >2
+expect notes >5
 reboot
 wait 300
 turn ALGO 3
 wait 30
 expect alg 4
-wait 40000
-expect notes >60
+wait 90000
+expect notes >170
