@@ -1286,12 +1286,12 @@ static void draw_card_name(void)
 
 static void draw_card(uint32_t t)
 {
-    const int32_t cx = 120, wy = CARD_WY;
+    const int32_t cx = 152, wy = CARD_WY;       /* right of centre, as in the title image */
     int32_t x, i;
     float f = t < CARD_LAND_MS ? 0.0f : (float)(t - CARD_LAND_MS) / (float)(CARD_MS - CARD_LAND_MS);
     cv_begin(240, 144, C_BLACK);
     for (x = 0; x < 240; x += 2) {               /* the water: a slow swell, quieter away from the drop */
-        float far = (float)(x > cx ? x - cx : cx - x) / 120.0f;
+        float far = (float)(x > cx ? x - cx : cx - x) / 150.0f;
         float y = (float)wy + (1.0f - 0.6f * far) * (1.2f + 1.5f * f) * fm_sinf((float)x * 0.07f + (float)t * 0.002f);
         cv_pset(x, (int32_t)y, C_GRAY);
     }
