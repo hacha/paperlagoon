@@ -401,7 +401,7 @@ static float beat_len = 0.8f * EN_SR;            /* the world's beat (S_MARGIN: 
 static float gen_left;                           /* samples to the next event */
 static uint8_t phrase_end;                       /* a phrase (a pass, a line, the fountain's rounds, a swell) ended:
                                                   * bit 0 the pulse's to take (pulse.c), bit 1 the chords', bit 2 a
-                                                  * crossing's (to the next world) */
+                                                  * crossing's (to the next world), bit 3 the hush's */
 volatile uint8_t en_scale;
 
 static int deg_note(int d)                       /* scale degree (0 the root) to a MIDI note */
@@ -577,7 +577,7 @@ static void motif_event(void)
         mot_i++;
         return;
     }
-    phrase_end = 7;
+    phrase_end = 15;
     {   /* the pass is over: a rest, then the motif again (perhaps changed) or a new one */
         float lean = fm_maxf(0.5f + 0.9f * st[S_MARGIN], 0.0f);   /* 0 short rests .. ~1.4 long */
         gen_left += beat_len * (2.0f + (1.0f - density) * 8.0f * (0.5f + lean) + 3.0f * frand());
@@ -642,7 +642,7 @@ static void drone_event(void)
         root_wander();
     }
     drone_k++;
-    phrase_end = 7;
+    phrase_end = 15;
     gap = (6.0f + 8.0f * frand()) * (1.0f + 0.6f * st[S_MARGIN]) * (1.0f - 0.3f * st[S_BLEED]) * (1.6f - density) *
           (0.5f + length);                       /* Length: the swells' length */
     gen_left += beat_len * gap;
@@ -835,7 +835,7 @@ static void letter_event(void)
         mot_i++;
         return;
     }
-    phrase_end = 7;
+    phrase_end = 15;
     {   /* the line is over: a long silence, then it is read again or the next is written */
         float lean = fm_maxf(0.5f + 0.9f * st[S_MARGIN], 0.0f);
         gen_left += beat_len * (4.0f + (1.0f - density) * 10.0f * (0.5f + lean) + 4.0f * frand());
@@ -967,7 +967,7 @@ static void fountain_event(void)
     beat_len = WORLDS[world].beat * tempo * EN_SR * (1.0f + 0.1f * st[S_MARGIN]);
     if (--mot_reps > 0 || en_held)
         return;
-    phrase_end = 7;
+    phrase_end = 15;
     mot_reps = 2 + (int)(repeat * 6.0f) + irand(3);
     if (gift_pc >= 0 || frand() < 0.9f * change + 0.3f * fm_maxf(st[S_FOLD], 0.0f)) {
         fountain_vary();
@@ -1047,6 +1047,12 @@ static float open_k = 1.0f, open_rate;           /* opening: 0..1, per sample */
 static float acc = 1.0f, acc_to = 1.0f, acc_rate, acc_wait;   /* the chords' and the pulse's share, 0..1 */
 static float dusk, dusk_to;                      /* 0..1 */
 static float tempo_set = 1.0f;
+/* the hush: in a long rest of the music (a phrase over, more than three beats to the next), the chords and the pulse
+ * keep its silence, as far as the world keeps silences (the letter wholly), fading over two beats, back as the music
+ * comes back (one beat) */
+static const float HUSH[EN_NWORLD] = {0.5f, 0.6f, 1.0f, 0.5f, 0.5f};
+static uint8_t in_rest;
+static float hush = 1.0f;
 volatile uint8_t en_crossing;                    /* (UI) a crossing under way */
 
 static void opening(float secs, float acc_wait_beats, float acc_beats)
@@ -1105,13 +1111,17 @@ static void edges_step(uint32_t n)               /* once a chunk */
     else if (acc > acc_to)
         acc = fm_maxf(acc - acc_rate * (float)n, acc_to);
     dusk += (dusk_to - dusk) * fm_minf((float)n * (1.0f / (2.0f * EN_SR)), 1.0f);
+    if (in_rest)
+        hush = fm_maxf(hush - (float)n / (2.0f * beat_len), 1.0f - HUSH[world]);
+    else
+        hush = fm_minf(hush + (float)n / beat_len, 1.0f);
     d = dusk;
     density = dens_set * (OPEN_FROM + (1.0f - OPEN_FROM) * open_k) * (1.0f - 0.6f * d);
     tempo = tempo_set * (1.0f + 0.12f * d);
 }
 
 /* ---------------------------------------------------------------- ARP --- */
-/* Broken chords under the music (ARP's first page, CHORDS): soft, the answer's voice, over the chord the music stands
+/* Broken chords under the music (ARP's first page, CHORDS): soft, in the low voice's colour (the kit's third), over the chord the music stands
  * on (the motif's note, the drone's chord, the first loop's note), from an octave under. Each world walks its tones its
  * own way (SHALLOWS up and down; HORIZON falling, slow; LETTER scattered, far apart; FOUNTAIN rising and falling back
  * part way; MOSS a pendulum about the middle). The knobs only lean it; the music sets the rest:
@@ -1187,6 +1197,16 @@ static int arp_walk(uint8_t *q, int m)           /* the world's walk over tones 
         for (k = 0; k < len; k++)
             q[k] = (uint8_t)(m - q[k]);
     return len;
+}
+
+static int voice_free(void)                      /* two voices free, or near silent: the chords never cut what
+                                                  * sounds, and leave the music one */
+{
+    int i, k = 0;
+    for (i = 0; i < NFM; i++)
+        if (!fmv[i].on || fmv[i].amp < 0.02f)
+            k++;
+    return k >= 2;
 }
 
 static void arp_phrase(void);
@@ -1272,12 +1292,12 @@ static void arp_event(void)
         arp_rest--;
         return;
     }
-    if (frand() < skip)
+    if (frand() < skip || !voice_free())
         return;
     note = deg_note(cd - n + 2 * j);
     while (note > 88)
         note -= 12;
-    play_shaped(R_ANSWER, note, (0.16f + 0.08f * frand()) * arp_level * acc, arp_i & 1 ? 0.35f : -0.35f, 0, arp_gate, 0.0f);
+    play_shaped(R_LOW, note, (0.16f + 0.08f * frand()) * arp_level * acc * hush, arp_i & 1 ? 0.35f : -0.35f, 0, arp_gate, 0.0f);
     en_arp_beat++;
 }
 
@@ -1559,8 +1579,11 @@ void en_render(int32_t *out, uint32_t n, uint32_t gain_q12)
         uint32_t k = n > BLK ? BLK : n;
         if (en_playing && !en_recording) {       /* the generator's next event lands on its sample (paused while
                                                   * a phrase is played in: REC) */
-            if (gen_left <= 0.0f)
+            if (gen_left <= 0.0f) {
                 gen_event();
+                in_rest = (phrase_end & 8u) && gen_left > 3.0f * beat_len;
+                phrase_end &= (uint8_t)~8u;
+            }
             if (en_crossing && ((phrase_end & 4u) || cross_left <= 0.0f))
                 arrive();
             if (ARP_CHORDS && arp_left <= 0.0f)
