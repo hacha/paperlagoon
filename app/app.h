@@ -8,7 +8,9 @@
 #include "lagoon.h"
 
 #define APP_NAME "PAPERLAGOON"
-#define APP_SPLASH_RGB RGB(150, 190, 200)
+#define APP_SPLASH                       /* the platform's splash: none (the screen stays black); the app's own card
+                                         * follows, in app_ui_init */
+void app_splash(void);
 #define APP_PALETTE 2u                   /* gfx.c PALETTES: cyan */
 #define APP_BLOCK 256u                   /* frames per audio block: 5.8 ms at 44.1 kHz */
 

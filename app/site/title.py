@@ -106,7 +106,9 @@ class Canvas:
 
 def title_image():                           # the screen's lagoon, the name beside it
     c = Canvas(); wy, cx = 0.60 * H, 0.70 * W
-    c.water(wy, cx); c.circle(cx, wy, 0.33 * H); c.rings(cx, wy); c.drop(cx, wy - 0.42 * H); c.shimmer(cx, wy)
+    c.water(wy, cx); c.rings(cx, wy); c.shimmer(cx, wy)
+    c.circle(cx, wy, 0.33 * H)                                 # the great ring in front of all
+    c.drop(cx, wy - 0.6 * 0.33 * H)                            # inside the great ring, a fifth down from its top
     c.title(0.075 * W, 0.255 * H)
     return c.done()
 

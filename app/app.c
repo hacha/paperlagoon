@@ -631,7 +631,31 @@ static void input(void)
     }
 }
 
-void app_input_only(void) { input(); }
+/* the card at boot: drawn below (draw_card); any button, key or knob passes it */
+static uint32_t card_ms, card_t0;               /* how long (0: none), since when */
+static int card_input(void)
+{
+    uint32_t held = plat_buttons() | plat_keys(), now = plat_ms(), k;
+    int turned = 0;
+    for (k = 0; k < NE; k++)                   /* a turn passes it too, and does nothing more */
+        turned |= plat_enc((int)k) != 0;
+    if (now - card_t0 < card_ms && !held && !turned)
+        return 1;
+    card_ms = 0;
+    ui.btn = plat_buttons();                     /* a press that passed it does nothing more */
+    ui.keys = plat_keys();
+    ui.hb_done[0] = ui.hb_done[1] = 1;
+    lcd_fill(0, 0, 240, 240, C_BLACK);
+    ui.redraw = 1;
+    return 0;
+}
+
+void app_input_only(void)
+{
+    if (card_ms)
+        return;
+    input();
+}
 
 /* a ring: the midpoint circle, clipped by the canvas */
 static void draw_ring(int32_t cx, int32_t cy, int32_t r, uint16_t c)
@@ -1235,15 +1259,109 @@ static void draw(void)
     draw_knobs(now);
 }
 
+/* the card at boot: the title image's lagoon on the square screen. The name; under it the water's line, a drop
+ * falling inside the great ring, landing, its rings spreading behind the ring (a key lit as it lands); a shimmer under
+ * the line. About three seconds, or until anything is touched; the music has begun under it. */
+#define CARD_MS 3000u
+#define CARD_LAND_MS 900u                        /* the drop meets the water */
+#define CARD_WY 74                               /* the water's line in the lower band (240 x 144 at y 96) */
+#define CARD_R 50                                /* the great ring */
+static void card_ellipse(int32_t cx, int32_t cy, int32_t rx, int32_t ry, int dotted, uint16_t c)
+{
+    int32_t i, n = dotted ? rx / 2 + 6 : rx * 4 + 8;
+    for (i = 0; i < n; i++) {
+        float a = (float)i * (FM_TWO_PI / (float)n);
+        cv_pset(cx + (int32_t)(fm_cosf(a) * (float)rx), cy + (int32_t)(fm_sinf(a) * (float)ry), c);
+    }
+}
+
+static void draw_card_name(void)
+{
+    static const char *const SUB = "GENERATIVE ENVIRONMENTAL MUSIC";
+    cv_begin(240, 96, C_BLACK);
+    cv_text(120 - text_w(&FONT_L, APP_NAME) / 2, 34, &FONT_L, APP_NAME, C_WHITE);
+    cv_text(120 - text_w(&FONT_XS, SUB) / 2, 72, &FONT_XS, SUB, C_GRAY);
+    cv_blit(0, 0);
+}
+
+static void draw_card(uint32_t t)
+{
+    const int32_t cx = 120, wy = CARD_WY;
+    int32_t x, i;
+    float f = t < CARD_LAND_MS ? 0.0f : (float)(t - CARD_LAND_MS) / (float)(CARD_MS - CARD_LAND_MS);
+    cv_begin(240, 144, C_BLACK);
+    for (x = 0; x < 240; x += 2) {               /* the water: a slow swell, quieter away from the drop */
+        float far = (float)(x > cx ? x - cx : cx - x) / 120.0f;
+        float y = (float)wy + (1.0f - 0.6f * far) * (1.2f + 1.5f * f) * fm_sinf((float)x * 0.07f + (float)t * 0.002f);
+        cv_pset(x, (int32_t)y, C_GRAY);
+    }
+    for (i = 0; i < 40; i++) {                   /* the shimmer: short strokes under the line, fewer further down */
+        uint32_t h = (uint32_t)i * 2654435761u;
+        int32_t dy = 6 + (int32_t)((h >> 8) % 1000u) * (int32_t)((h >> 8) % 1000u) / 16000;
+        int32_t sx = cx + (int32_t)((h >> 20) % 160u) - 80, len = 2 + (int32_t)((h >> 4) % 9u) * (62 - dy) / 62;
+        if (wy + dy < 142)
+            cv_rect(sx, wy + dy, len, 1, dy < 24 ? C_LINE : C_DIM);
+    }
+    if (t >= CARD_LAND_MS)                       /* the rings, spreading from where it landed */
+        for (i = 0; i < 6; i++) {
+            float g = f * 1.3f - (float)i * 0.1f;
+            int32_t rx;
+            if (g <= 0.0f)
+                continue;
+            rx = 4 + (int32_t)(g * 60.0f) + i * 16;
+            if (rx > 200)
+                continue;
+            card_ellipse(cx, wy, rx, rx * 17 / 100 + 1, i < 2,
+                         i < 2 ? C_HI : g < 0.5f ? C_AMB : g < 0.9f ? C_GRAY : C_LINE);
+        }
+    draw_ring(cx, wy, CARD_R, C_AMB);            /* the great ring, in front of all */
+    draw_ring(cx, wy, CARD_R - 1, C_AMB);
+    if (t < CARD_LAND_MS) {                      /* the drop, falling inside the ring, a faint trail over it */
+        float u = (float)t / (float)CARD_LAND_MS;
+        int32_t top = wy - CARD_R + 8, y = top + (int32_t)((float)(wy - 2 - top) * u * u);
+        for (i = 1; i < 6; i++)
+            if (y - i * 3 > wy - CARD_R + 2)
+                cv_pset(cx, y - i * 3, i < 3 ? C_GRAY : C_LINE);
+        cv_rect(cx - 1, y - 1, 3, 3, C_WHITE);
+    }
+    cv_blit(0, 96);
+    {
+        int lit = t >= CARD_LAND_MS && t < CARD_LAND_MS + 500u;   /* a key lit as it lands, the middle one */
+        plat_lights(0, lit ? 1u << (NKEYS / 2) : 0u, (1u << NB) - 1u, 0, set.par[P_LIGHTS]);
+    }
+}
+
+void app_splash(void) {}                         /* the platform's: none (lcd_init left the screen black) */
+
 void app_ui_init(void)
 {
+    static int booted;
     lcd_fill(0, 0, 240, 240, C_BLACK);
     ui.redraw = 1;
+    if (!booted) {                               /* the card, once a boot (not after a restore) */
+        booted = 1;
+        card_ms = CARD_MS;
+#if defined PLAT_HOST && !defined __EMSCRIPTEN__
+        card_ms = getenv("PL_CARD") ? CARD_MS : 0u;   /* the host's tests start at the lagoon */
+#endif
+        card_t0 = plat_ms();
+        if (card_ms)
+            draw_card_name();
+    }
 }
 
 void app_frame(void)
 {
     uint32_t now = plat_ms();
+    if (card_ms) {
+        if (card_input()) {
+            if (now - ui.last_draw >= 33u) {
+                ui.last_draw = now;
+                draw_card(now - card_t0);
+            }
+            return;
+        }
+    }
     input();
     ann_tick(now);
     if (!ui.play_at)
