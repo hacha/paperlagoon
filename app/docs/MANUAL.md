@@ -283,12 +283,16 @@ touch the knobs or the kit. The screen changes with the world.
   hangs. A strong gust may bring one deep tone under it. An offering hangs a key of its pitch, and its splash brings a
   gust soon. Light lifts the keys and bleed lets them ring. The page of the memory is called THE KEYS. In the margin the attic is still for longer, and a fold makes
   the gusts wilder.
+
+  ![The attic: a beam, five threads, a key at the end of each, one swinging lit after a strike](img/screen-attic.png "THE ATTIC OF LOOSE KEYS")
 - A STAIR AND ITS SHADOW: two voices, slowly. The stair walks by steps away from a centre and back, each phrase one
   step longer than the last (one note, two, three, up to the longest, three to seven), each note long. With every
   note its shadow sounds: the nearest tone of the root's chord, under it (after a change, over it; in a fold it
   alternates). The two never sound the same pitch. A rest comes between phrases, a long one after the longest; then
   the stair turns the other way. The root, low and long, lies under each walk. An offering becomes the next centre,
   and light lifts the centre; bleed lets the notes ring. The page of the memory is called THE STAIR. In the margin the rests grow longer.
+
+  ![The stair: steps by the walk's notes, the sounding one lit, its dotted shadow beside each](img/screen-stair.png "A STAIR AND ITS SHADOW")
 
 ### The kits
 
