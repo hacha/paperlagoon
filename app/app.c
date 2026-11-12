@@ -1309,17 +1309,17 @@ static void draw_env(void)
     cv_text(10, 2, &FONT_XS, "THE WORLD", C_GRAY);
     cv_text(10, 18, &FONT_B, en_world_name(set.world), C_WHITE);
     cv_text(10, 46, &FONT_XS, "ROOT", C_GRAY);
-    cv_text(70, 42, &FONT_B, NOTE[((int)en_root + set.par[P_TRANSPOSE] + 120) % 12], C_HI);
+    cv_text(70, 45, &FONT_B, NOTE[((int)en_root + set.par[P_TRANSPOSE] + 120) % 12], C_HI);
     cv_text(10, 66, &FONT_XS, "BEAT", C_GRAY);
     int_text(bpm, t);
     k = str_put(t + 6, 12, t);                   /* (t: the number, then " a minute") */
     str_put(t + 6 + k, 12, " A MINUTE");
-    cv_text(70, 62, &FONT_B, t + 6, C_HI);
+    cv_text(70, 65, &FONT_B, t + 6, C_HI);
     cv_text(10, 86, &FONT_XS, "SCALE", C_GRAY);
-    cv_text(70, 84, &FONT_XS, SCALE_NAME[en_scale % 5], C_HI);
+    cv_text(70, 86, &FONT_XS, SCALE_NAME[en_scale % 5], C_HI);
     cv_text(10, 106, &FONT_XS, "OCTAVE", C_GRAY);
     int_text(set.oct, t);
-    cv_text(70, 102, &FONT_B, t, C_HI);
+    cv_text(70, 105, &FONT_B, t, C_HI);
     cv_blit(0, 36);
 }
 
