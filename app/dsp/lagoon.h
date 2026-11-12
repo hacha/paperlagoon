@@ -32,7 +32,7 @@ const en_param_t *en_param_info(int i);
 
 /* tones: sets of three voices (kits), one chosen at a time; each voice's four settings can be edited, per kit.
  * The UI writes them (en_set_kit, en_set_tone: single bytes); the render reads them as a note starts */
-#define EN_NKIT 6
+#define EN_NKIT 8
 enum { R_LEAD, R_ANSWER, R_LOW, EN_NROLE };
 enum { T_COLOR, T_BRIGHT, T_DECAY, T_SOFT, EN_NTONE };
 #define EN_NRATIO 12                   /* T_COLOR: 0..EN_NRATIO-1, the modulator's ratio (en_ratio); the rest 0..100 */
@@ -45,6 +45,7 @@ float en_ratio(int color);
 void en_set_kit(int kit);
 void en_set_tone(int kit, int role, int field, int value);
 void en_voice_shape(int kit, int role, float *ratio, float *att_ms, float *t60);   /* for the screen */
+int en_voice_breath(int kit, int role);    /* a kit's voice's breath, 0..100 (fixed by the kit; the screen) */
 void en_audition(int role);
 void en_octave(int oct);               /* the music's register: -2..2 octaves (OCT- / OCT+) */
 void en_arp(int on);                   /* the pulse of broken chords (ARP) */

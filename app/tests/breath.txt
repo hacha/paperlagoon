@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 hacha
+# the kits with breath (air beside the tone): they sound, within bounds, in a world of short notes and in the drone
+wait 300
+turn PRESET 6
+wait 30
+expect kit 6
+peakreset
+wait 20000
+expect voices >0
+expect peak_db_max >-30
+expect peak_db_max <-3
+turn PRESET 1
+turn ALGO 1
+wait 30
+expect kit 7
+peakreset
+wait 30000
+expect peak_db_max >-30
+expect peak_db_max <-3
+tap EDIT
+wait 30
+shot breath-voice.png

@@ -25,7 +25,9 @@
  * state itself as the water's line, slowly. */
 #include "fastmath.h"
 
-#define SET_MAGIC 0x354C504Bu            /* "PLL5": the settings record; PLL4, PLL3, PLL2 (fewer parameters) carry over */
+#define SET_MAGIC 0x364C504Bu            /* "PLL6": the settings record; PLL5 .. PLL2 (fewer parameters, six kits) carry
+                                         * over */
+#define SET_MAGIC_5 0x354C504Bu
 #define SET_MAGIC_4 0x344C504Bu
 #define SET_MAGIC_3 0x334C504Bu
 #define SET_MAGIC_2 0x324C504Bu
@@ -37,25 +39,34 @@ typedef struct {
     uint8_t arp;                                 /* the pulse on */
     int8_t tone[EN_NKIT][EN_NROLE][EN_NTONE];
 } settings_t;
+#define OLD_NKIT 6                               /* the kits before PLL6 */
+typedef struct {                                 /* PLL5: twenty-eight parameters, six kits */
+    uint32_t magic;
+    int16_t par[28];
+    uint8_t kit, world;
+    int8_t oct;
+    uint8_t arp;
+    int8_t tone[OLD_NKIT][EN_NROLE][EN_NTONE];
+} settings5_t;
 typedef struct {                                 /* PLL4: twenty-four parameters (before the age) */
     uint32_t magic;
     int16_t par[24];
     uint8_t kit, world;
     int8_t oct;
     uint8_t arp;
-    int8_t tone[EN_NKIT][EN_NROLE][EN_NTONE];
+    int8_t tone[OLD_NKIT][EN_NROLE][EN_NTONE];
 } settings4_t;
 typedef struct {                                 /* PLL3: twelve parameters */
     uint32_t magic;
     int16_t par[12];
     uint8_t kit, world;
-    int8_t tone[EN_NKIT][EN_NROLE][EN_NTONE];
+    int8_t tone[OLD_NKIT][EN_NROLE][EN_NTONE];
 } settings3_t;
 typedef struct {                                 /* PLL2: the lagoon's four parameters only */
     uint32_t magic;
     int16_t par[4];
     uint8_t kit, world;                          /* (world was a spare byte: older records load world 0) */
-    int8_t tone[EN_NKIT][EN_NROLE][EN_NTONE];
+    int8_t tone[OLD_NKIT][EN_NROLE][EN_NTONE];
 } settings2_t;
 static settings_t set;
 static uint8_t set_dirty;
@@ -86,7 +97,8 @@ void app_init(void)
 {
     int i, f;
     static union {
-        settings_t v5;
+        settings_t v6;
+        settings5_t v5;
         settings4_t v4;
         settings3_t v3;
         settings2_t v2;
@@ -94,8 +106,19 @@ void app_init(void)
     int n;
     en_init();
     n = plat_store_load(OBJ_SETTINGS, &ld, sizeof ld);
-    if (n == (int)sizeof(settings_t) && ld.v5.magic == SET_MAGIC) {
-        set = ld.v5;
+    if (n == (int)sizeof(settings_t) && ld.v6.magic == SET_MAGIC) {
+        set = ld.v6;
+    } else if (n == (int)sizeof(settings5_t) && ld.v5.magic == SET_MAGIC_5) {   /* older records: carried over (the
+                                                                                    * new kits as they come) */
+        settings_defaults();
+        for (i = 0; i < 28; i++)
+            set.par[i] = ld.v5.par[i];
+        set.kit = ld.v5.kit;
+        set.world = ld.v5.world;
+        set.oct = ld.v5.oct;
+        set.arp = ld.v5.arp;
+        for (i = 0; i < (int)sizeof ld.v5.tone; i++)
+            ((int8_t *)set.tone)[i] = ((const int8_t *)ld.v5.tone)[i];
     } else if (n == (int)sizeof(settings4_t) && ld.v4.magic == SET_MAGIC_4) {   /* older records: carried over */
         settings_defaults();
         for (i = 0; i < 24; i++)
@@ -104,7 +127,7 @@ void app_init(void)
         set.world = ld.v4.world;
         set.oct = ld.v4.oct;
         set.arp = ld.v4.arp;
-        for (i = 0; i < (int)sizeof set.tone; i++)
+        for (i = 0; i < (int)sizeof ld.v4.tone; i++)
             ((int8_t *)set.tone)[i] = ((const int8_t *)ld.v4.tone)[i];
     } else if (n == (int)sizeof(settings3_t) && ld.v3.magic == SET_MAGIC_3) {   /* older records: carried over */
         settings_defaults();
@@ -112,7 +135,7 @@ void app_init(void)
             set.par[i] = ld.v3.par[i];
         set.kit = ld.v3.kit;
         set.world = ld.v3.world;
-        for (i = 0; i < (int)sizeof set.tone; i++)
+        for (i = 0; i < (int)sizeof ld.v3.tone; i++)
             ((int8_t *)set.tone)[i] = ((const int8_t *)ld.v3.tone)[i];
     } else if (n == (int)sizeof(settings2_t) && ld.v2.magic == SET_MAGIC_2) {
         settings_defaults();
@@ -120,7 +143,7 @@ void app_init(void)
             set.par[i] = ld.v2.par[i];
         set.kit = ld.v2.kit;
         set.world = ld.v2.world;
-        for (i = 0; i < (int)sizeof set.tone; i++)
+        for (i = 0; i < (int)sizeof ld.v2.tone; i++)
             ((int8_t *)set.tone)[i] = ((const int8_t *)ld.v2.tone)[i];
     } else {
         settings_defaults();
@@ -735,6 +758,22 @@ static void draw_voice(int role)
     ratio_text(ratio, t + k);
     cv_text(10, 4, &FONT_XS, "carrier : modulator", C_GRAY);
     cv_text(10, 18, &FONT_B, t, C_WHITE);
+    if (en_voice_breath(set.kit, role)) {        /* the kit's breath in this voice: grains over the shape */
+        static uint32_t seed = 0x51ED270Bu;
+        int32_t b = en_voice_breath(set.kit, role), y1 = 0;
+        cv_text(150, 64, &FONT_XS, "BREATH", C_GRAY);
+        int_text(b, t);
+        cv_text(206, 64, &FONT_XS, t, C_HI);
+        for (i = 0; i < b * 2; i++) {
+            seed = seed * 1664525u + 1013904223u;
+            x = (int32_t)((seed >> 8) % 220u);
+            {
+                float s = (float)x * (10.0f / 220.0f);
+                y1 = 130 - (int32_t)((1.0f - fm_expf(-s * ia)) * fm_expf(s * id) * 90.0f);
+            }
+            cv_pset(10 + x, y1 - 2 - (int32_t)((seed >> 4) % 9u), C_DIM);
+        }
+    }
     for (i = 0; i < EN_NVOICE; i++) {            /* the voice, sounding */
         float g = en_glow[i];
         if (g < 0.02f || en_voice_role[i] != role)

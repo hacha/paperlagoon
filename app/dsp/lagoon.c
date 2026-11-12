@@ -67,12 +67,14 @@ volatile uint8_t en_mem_len[4];
 static const float RATIO[EN_NRATIO] = {0.5f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 7.0f, 1.41f, 2.76f, 3.5f, 4.24f, 5.19f};
 
 /* one voice of a kit: the ratio (RATIO's step), the index at the strike (radians) and its fall to -60 dB (s), the
- * level's fall (s), the attack (T_SOFT's scale: 0 = 1 ms .. 100 = 3 s), to the mix, the echo, the plate */
+ * level's fall (s), the attack (T_SOFT's scale: 0 = 1 ms .. 100 = 3 s), to the mix, the echo, the plate; its breath
+ * (0..100: air beside the tone, a rough modulation, a pitch that wanders; worn, hazy) */
 typedef struct {
     uint8_t color;
     float idx, idx_t, t60;
     uint8_t soft;
     float dry, esend, rsend;
+    uint8_t breath;
 } voice_t;
 typedef struct {
     const char *name;
@@ -80,24 +82,30 @@ typedef struct {
     voice_t v[EN_NROLE];                         /* R_LEAD, R_ANSWER, R_LOW */
 } kit_t;
 static const kit_t KITS[EN_NKIT] = {
-    {"PAPER LAGOON", 1.0f, {{1, 1.6f, 0.30f, 3.6f, 14, 0.9f, 0.8f, 0.7f},      /* a tine, as an electric piano's */
-                      {9, 0.9f, 0.90f, 5.0f, 9, 0.6f, 1.0f, 0.9f},       /* glass, an inharmonic bell */
-                      {1, 0.4f, 1.60f, 7.0f, 51, 0.8f, 0.3f, 0.6f}}},    /* a soft low tone */
-    {"WOODEN RAIN", 1.7f, {{4, 2.2f, 0.05f, 1.6f, 0, 0.9f, 0.6f, 0.5f},        /* a bar of wood, struck */
-                     {1, 0.5f, 1.00f, 4.5f, 9, 0.6f, 1.0f, 0.8f},        /* a vibraphone's bar */
-                     {2, 0.6f, 0.30f, 3.0f, 17, 0.8f, 0.3f, 0.5f}}},     /* a low, hollow log */
-    {"GLASS ORCHARD", 1.0f, {{3, 1.1f, 0.15f, 2.8f, 0, 0.9f, 0.8f, 0.7f},      /* a celesta */
-                       {11, 0.7f, 1.50f, 7.0f, 14, 0.5f, 1.0f, 1.0f},    /* a thin glass bowl */
-                       {2, 0.3f, 2.00f, 8.0f, 55, 0.7f, 0.3f, 0.7f}}},   /* a held low glass */
-    {"SLOW BREATH", 1.0f, {{1, 0.7f, 3.00f, 5.0f, 73, 0.8f, 0.7f, 0.8f},       /* a breath, almost a flute */
-                     {2, 0.5f, 4.00f, 6.0f, 82, 0.5f, 0.9f, 1.0f},       /* an octave's breath, slower */
-                     {0, 0.3f, 5.00f, 10.0f, 89, 0.8f, 0.3f, 0.7f}}},    /* a low swell */
-    {"IRON SNOW", 0.9f, {{7, 1.2f, 0.60f, 6.0f, 9, 0.7f, 0.9f, 0.9f},          /* a struck plate of iron */
-                   {8, 0.8f, 2.00f, 9.0f, 17, 0.5f, 1.0f, 1.0f},         /* a far, wide bell */
-                   {1, 0.5f, 3.00f, 9.0f, 46, 0.8f, 0.3f, 0.6f}}},       /* a low hum */
-    {"HAZE ARCHIVE", 1.0f, {{1, 0.9f, 6.00f, 9.0f, 85, 0.7f, 0.8f, 1.0f},      /* a slow, soft chord tone */
-                      {3, 0.4f, 6.00f, 10.0f, 91, 0.4f, 1.0f, 1.0f},     /* a haze above it */
-                      {0, 0.5f, 8.00f, 12.0f, 95, 0.7f, 0.3f, 0.8f}}},   /* a low haze */
+    {"PAPER LAGOON", 1.0f, {{1, 1.6f, 0.30f, 3.6f, 14, 0.9f, 0.8f, 0.7f, 0},      /* a tine, as an electric piano's */
+                      {9, 0.9f, 0.90f, 5.0f, 9, 0.6f, 1.0f, 0.9f, 0},       /* glass, an inharmonic bell */
+                      {1, 0.4f, 1.60f, 7.0f, 51, 0.8f, 0.3f, 0.6f, 0}}},    /* a soft low tone */
+    {"WOODEN RAIN", 1.7f, {{4, 2.2f, 0.05f, 1.6f, 0, 0.9f, 0.6f, 0.5f, 0},        /* a bar of wood, struck */
+                     {1, 0.5f, 1.00f, 4.5f, 9, 0.6f, 1.0f, 0.8f, 0},        /* a vibraphone's bar */
+                     {2, 0.6f, 0.30f, 3.0f, 17, 0.8f, 0.3f, 0.5f, 0}}},     /* a low, hollow log */
+    {"GLASS ORCHARD", 1.0f, {{3, 1.1f, 0.15f, 2.8f, 0, 0.9f, 0.8f, 0.7f, 0},      /* a celesta */
+                       {11, 0.7f, 1.50f, 7.0f, 14, 0.5f, 1.0f, 1.0f, 0},    /* a thin glass bowl */
+                       {2, 0.3f, 2.00f, 8.0f, 55, 0.7f, 0.3f, 0.7f, 0}}},   /* a held low glass */
+    {"SLOW BREATH", 1.0f, {{1, 0.7f, 3.00f, 5.0f, 73, 0.8f, 0.7f, 0.8f, 30},       /* a breath, almost a flute */
+                     {2, 0.5f, 4.00f, 6.0f, 82, 0.5f, 0.9f, 1.0f, 35},       /* an octave's breath, slower */
+                     {0, 0.3f, 5.00f, 10.0f, 89, 0.8f, 0.3f, 0.7f, 20}}},    /* a low swell */
+    {"IRON SNOW", 0.9f, {{7, 1.2f, 0.60f, 6.0f, 9, 0.7f, 0.9f, 0.9f, 0},          /* a struck plate of iron */
+                   {8, 0.8f, 2.00f, 9.0f, 17, 0.5f, 1.0f, 1.0f, 0},         /* a far, wide bell */
+                   {1, 0.5f, 3.00f, 9.0f, 46, 0.8f, 0.3f, 0.6f, 0}}},       /* a low hum */
+    {"HAZE ARCHIVE", 1.0f, {{1, 0.9f, 6.00f, 9.0f, 85, 0.7f, 0.8f, 1.0f, 25},      /* a slow, soft chord tone */
+                      {3, 0.4f, 6.00f, 10.0f, 91, 0.4f, 1.0f, 1.0f, 40},     /* a haze above it */
+                      {0, 0.5f, 8.00f, 12.0f, 95, 0.7f, 0.3f, 0.8f, 20}}},   /* a low haze */
+    {"DUST PIPES", 1.1f, {{1, 0.5f, 2.00f, 4.5f, 46, 0.8f, 0.7f, 0.7f, 75},     /* a pipe, more air than tone */
+                     {2, 0.4f, 3.00f, 5.0f, 55, 0.5f, 1.0f, 0.9f, 85},      /* a higher one, further off */
+                     {0, 0.3f, 4.00f, 8.0f, 64, 0.8f, 0.3f, 0.6f, 50}}},    /* a low breath */
+    {"FOG LANTERN", 1.0f, {{7, 0.9f, 0.80f, 5.0f, 9, 0.8f, 0.9f, 0.9f, 55},     /* a bell through fog */
+                      {9, 0.6f, 1.50f, 7.0f, 17, 0.5f, 1.0f, 1.0f, 65},     /* glass, worn */
+                      {1, 0.4f, 2.50f, 9.0f, 46, 0.8f, 0.3f, 0.7f, 40}}},   /* a low hum, grainy */
 };
 static const char *const ROLE_NAME[EN_NROLE] = {"LEAD", "ANSWER", "LOW"};
 static const char *const TONE_NAME[EN_NTONE] = {"Color", "Bright", "Decay", "Soft"};
@@ -138,7 +146,10 @@ static void voice_patch(int k, int role, fm_patch_t *pt)
     pt->dry = b->dry;
     pt->esend = b->esend;
     pt->rsend = b->rsend;
+    pt->breath = (float)b->breath * 0.01f;
 }
+
+int en_voice_breath(int k, int role) { return KITS[(unsigned)k % EN_NKIT].v[(unsigned)role % EN_NROLE].breath; }
 
 void en_voice_shape(int k, int role, float *ratio, float *att_ms, float *t60)
 {
