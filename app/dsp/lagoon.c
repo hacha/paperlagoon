@@ -1184,6 +1184,7 @@ static void wind_event(void)
  * walks before the centre may move; Length: the longest phrase (2..6). Light lifts the centre, bleed lets the notes
  * ring, the margin lengthens the rests. An offering becomes the next centre. The phrase is the motif's arrays (mot_*). */
 static int two_c, two_dir = -1, two_k, two_kmax, two_walks, two_over;
+volatile uint8_t en_two_over;
 
 static int two_chord_tone(int note, int over)    /* the root's chord tone nearest the note, strictly under (or over) */
 {
@@ -1233,6 +1234,7 @@ static void two_event(void)
         while (note < 55)
             note += 12;
         t = two_chord_tone(note, over);
+        en_two_over = (uint8_t)over;
         if (mot_i == 0 && two_k == 0)            /* the root, low and long, under each walk */
             play_shaped(R_LOW, root - 24, 0.38f, 0.0f, 0, 2.2f, 0.0f);
         play_shaped(R_LEAD, note, vel, -0.25f, irand(600), 1.3f + 0.6f * fm_maxf(st[S_BLEED], 0.0f), 0.0f);

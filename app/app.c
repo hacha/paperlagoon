@@ -749,21 +749,65 @@ static void draw_ellipse(int32_t cx, int32_t cy, int32_t rx, uint16_t c)
     }
 }
 
-/* the lagoon. The water's line is the hidden state, slowly: higher in light, rougher when folded, its dots closer
- * when it bleeds, its waves slower in the margin. Each sounding voice a ripple, wider as it fades; a slow breath at the
- * centre (the shortest cycle). An offering: a drop falls to the water at once, and rings spread */
+/* the lagoon, as each world has it: its own ground and its own tint (a little off the cyan), under the same rule.
+ * The water's line (where there is water) is the hidden state, slowly: higher in light, rougher when folded, its dots
+ * closer when it bleeds, its waves slower in the margin. Each sounding voice a ripple, wider as it fades; a slow
+ * breath at the centre. An offering: a drop falls at once, and rings spread where it lands.
+ *   SHALLOWS  the water; the motif's notes as marks at the water's edge, lit as they are written, gone as they fade
+ *   HORIZON   the line low, bands under it; the sky wide and empty
+ *   LETTER    no water: a ruled page, a margin; the words points on its lines
+ *   FOUNTAIN  a short water in a basin; the figure in an arc over it
+ *   MOSS      the water thick, furred; four buoys
+ *   ATTIC     no water: a beam, five threads, a key on each, swinging when struck; a draught after a gust
+ *   STAIR     a stair by the walk's notes, the step sounding lit; its shadow beside it, under or over */
+static const uint8_t TINT[EN_NWORLD][6] = {      /* each world's two accents (r, g, b): the mid, the high */
+    {60, 180, 235, 150, 225, 255},               /* the palette's own cyan */
+    {100, 150, 240, 180, 200, 255},              /* a little violet */
+    {185, 180, 160, 232, 226, 210},              /* paper */
+    {50, 190, 190, 140, 235, 228},               /* a green-blue */
+    {80, 185, 150, 165, 232, 200},               /* toward moss */
+    {190, 160, 110, 232, 212, 172},              /* dusty, warm */
+    {150, 168, 186, 214, 224, 234},              /* cold, grey */
+};
+
+static uint32_t mix32(uint32_t h)
+{
+    h ^= h >> 16;
+    h *= 0x7FEB352Du;
+    h ^= h >> 15;
+    return h;
+}
+
+static void dotted_hline(int32_t x0, int32_t x1, int32_t y, int32_t gap, uint16_t c)
+{
+    for (; x0 <= x1; x0 += gap)
+        cv_pset(x0, y, c);
+}
+
 static void draw_lagoon(uint32_t now)
 {
     uint32_t i;
+    int w = set.world % EN_NWORLD;
+    uint16_t tm = RGB(TINT[w][0], TINT[w][1], TINT[w][2]), th = RGB(TINT[w][3], TINT[w][4], TINT[w][5]);
     float light = en_state[S_LIGHT], bleed = en_state[S_BLEED], fold = en_state[S_FOLD], margin = en_state[S_MARGIN];
     float b = 0.5f + 0.5f * fm_sinf(en_cycle * FM_TWO_PI), t = (float)now * 0.001f;
     float amp = 1.5f + 3.5f * (fold + 1.0f), speed = 0.9f - 0.6f * margin;
     int32_t hy = 80 - (int32_t)(light * 26.0f), x, gap = 6 - (int32_t)(bleed * 3.0f);
-    cv_begin(240, 144, C_BLACK);
-    cv_text(10, 2, &FONT_XS, en_kit_name(set.kit), C_GRAY);
+    int32_t wx0 = 0, wx1 = 239;                  /* the water's extent */
+    int water = en_alg != EN_ALG_LETTER && en_alg != EN_ALG_WIND && en_alg != EN_ALG_TWO;
     static uint32_t hits, hit_at;
     static uint8_t hit_what;
     uint16_t wc = C_LINE;
+    if (en_alg == EN_ALG_DRONE)                  /* the horizon: low */
+        hy = 104 - (int32_t)(light * 14.0f);
+    else if (en_alg == EN_ALG_FOUNTAIN) {        /* the basin's water */
+        hy = 92 - (int32_t)(light * 16.0f);
+        wx0 = 56;
+        wx1 = 184;
+    } else if (!water)                           /* the floor a drop lands on */
+        hy = en_alg == EN_ALG_LETTER ? 104 : 126;
+    cv_begin(240, 144, C_BLACK);
+    cv_text(10, 2, &FONT_XS, en_kit_name(set.kit), C_GRAY);
     if (en_pulse_hits != hits) {                 /* the pulse: a thump shivers the water, a click sparks on it */
         hits = en_pulse_hits;
         hit_at = now;
@@ -771,20 +815,55 @@ static void draw_lagoon(uint32_t now)
     }
     if (hit_what == 0 && now - hit_at < 160u)
         wc = C_GRAY, amp += 1.5f;
-    if (en_alg == EN_ALG_DRONE)                             /* the drone: a heavy, slow water */
+    if (en_alg == EN_ALG_DRONE)                  /* the drone: a heavy, slow water */
         speed *= 0.5f;
-    for (x = 0; x < 240; x += gap < 2 ? 2 : gap) {
-        float y = (float)hy + amp * fm_sinf((float)x * 0.045f + t * speed) +
-                  0.5f * amp * fm_sinf((float)x * 0.11f - t * speed * 1.7f);
-        cv_pset(x, (int32_t)y, wc);
-        if (hit_what && now - hit_at < 90u && ((uint32_t)x * 2654435761u + hits * 40503u) >> 27 == 0)
-            cv_rect(x, (int32_t)y - 2, 2, 2, hit_what == 1 ? C_WHITE : C_GRAY);
-        if (en_alg == EN_ALG_DRONE) {
-            cv_pset(x + gap / 2, (int32_t)y + 3, C_LINE);
-            cv_pset(x, (int32_t)y + 6, C_LINE);
+
+    /* the ground */
+    if (en_alg == EN_ALG_LETTER) {               /* a ruled page: its lines, its margin */
+        for (i = 0; i < 4; i++)
+            dotted_hline(28, 230, 32 + (int32_t)i * 24, 4, C_LINE);
+        for (x = 22; x < 140; x += 3)
+            cv_pset(22, x, C_DIM);
+    } else if (en_alg == EN_ALG_WIND) {          /* the attic's beam */
+        cv_rect(30, 18, 180, 1, C_GRAY);
+        dotted_hline(10, 230, 126, 5, C_DIM);
+    } else if (en_alg == EN_ALG_TWO) {
+        dotted_hline(10, 230, 126, 5, C_DIM);
+    } else {
+        int32_t step = gap < 2 ? 2 : gap;
+        if (en_alg == EN_ALG_LOOPS)              /* moss: furred, close */
+            step = 2;
+        for (x = wx0; x <= wx1; x += step) {
+            float y = (float)hy + amp * fm_sinf((float)x * 0.045f + t * speed) +
+                      0.5f * amp * fm_sinf((float)x * 0.11f - t * speed * 1.7f);
+            cv_pset(x, (int32_t)y, wc);
+            if (hit_what && now - hit_at < 90u && ((uint32_t)x * 2654435761u + hits * 40503u) >> 27 == 0)
+                cv_rect(x, (int32_t)y - 2, 2, 2, hit_what == 1 ? C_WHITE : C_GRAY);
+            if (en_alg == EN_ALG_LOOPS) {        /* the fur: short strands above and under, stirring */
+                uint32_t h = mix32((uint32_t)x * 977u + (uint32_t)(t * 3.0f));
+                if (h & 1u)
+                    cv_pset(x + 1, (int32_t)y - 1 - (int32_t)(h >> 1 & 1u), (h >> 3 & 3u) ? C_DIM : tm);
+                if (h & 16u)
+                    cv_pset(x, (int32_t)y + 1 + (int32_t)(h >> 5 & 1u), C_DIM);
+            }
+            if (en_alg == EN_ALG_DRONE) {        /* the horizon: bands under it, thinning */
+                cv_pset(x + step / 2, (int32_t)y + 4, C_LINE);
+                if ((x / step) % 2 == 0)
+                    cv_pset(x, (int32_t)y + 10, C_LINE);
+                if ((x / step) % 4 == 0)
+                    cv_pset(x + 1, (int32_t)y + 20, C_DIM);
+            }
         }
+        if (en_alg == EN_ALG_FOUNTAIN)           /* the basin: its rim and its bowl */
+            for (i = 0; i <= 60; i++) {
+                float a = FM_PI * (float)i / 60.0f;
+                cv_pset(120 - (int32_t)(fm_cosf(a) * 70.0f), hy + 4 + (int32_t)(fm_sinf(a) * 24.0f), C_LINE);
+            }
+        if (en_alg != EN_ALG_DRONE)
+            draw_ring(120, hy, 3 + (int32_t)(4.0f * b), C_LINE);   /* the breath */
     }
-    draw_ring(120, hy, 3 + (int32_t)(4.0f * b), C_LINE);
+
+    /* the voices */
     for (i = 0; i < EN_NVOICE; i++) {
         float g = en_glow[i];
         int32_t r;
@@ -792,27 +871,46 @@ static void draw_lagoon(uint32_t now)
             continue;
         x = 20 + ((int32_t)en_voice_note[i] - 41) * 4;
         x = x < 10 ? 10 : x > 230 ? 230 : x;
-        if (en_alg == EN_ALG_DRONE) {                       /* the drone: bands that swell with the sound and sink with it */
+        if (en_alg == EN_ALG_WIND || en_alg == EN_ALG_TWO)   /* (drawn with their keys, their stair) */
+            continue;
+        if (en_alg == EN_ALG_DRONE) {            /* the drone: bands that swell with the sound and sink with it */
             int32_t rx = 6 + (int32_t)(g * 54.0f);
-            draw_ellipse(x, hy + 3, rx, g > 0.5f ? C_HI : g > 0.2f ? C_AMB : C_DIM);
-            draw_ellipse(x, hy + 3, rx * 2 / 3, g > 0.5f ? C_AMB : C_DIM);
+            draw_ellipse(x, hy + 3, rx, g > 0.5f ? th : g > 0.2f ? tm : C_DIM);
+            draw_ellipse(x, hy + 3, rx * 2 / 3, g > 0.5f ? tm : C_DIM);
             continue;
         }
-        if (en_alg == EN_ALG_LETTER) {           /* the letter: each word a point lifting off the water, a small ring */
-            cv_rect(x, hy - 8 - (int32_t)((1.0f - g) * 44.0f), 2, 2, g > 0.5f ? C_WHITE : g > 0.2f ? C_HI : C_DIM);
-            draw_ring(x, hy, 3 + (int32_t)((1.0f - g) * 16.0f), g > 0.3f ? C_AMB : C_DIM);
+        if (en_alg == EN_ALG_LETTER) {           /* the letter: each word a point on its line, a small ring round it */
+            int32_t line = 3 - ((int32_t)en_voice_note[i] - 48) / 10, y;
+            line = line < 0 ? 0 : line > 3 ? 3 : line;
+            y = 32 + line * 24;
+            cv_rect(x, y - 1 - (int32_t)((1.0f - g) * 6.0f), 2, 2, g > 0.5f ? C_WHITE : g > 0.2f ? th : C_DIM);
+            draw_ring(x, y, 3 + (int32_t)((1.0f - g) * 12.0f), g > 0.3f ? tm : C_DIM);
             continue;
         }
         if (en_alg == EN_ALG_FOUNTAIN) {         /* the fountain: small rings where its drops fall */
-            draw_ellipse(x, hy, 3 + (int32_t)((1.0f - g) * 18.0f), g > 0.3f ? C_GRAY : C_DIM);
+            if (x > wx0 && x < wx1)
+                draw_ellipse(x, hy, 3 + (int32_t)((1.0f - g) * 18.0f), g > 0.3f ? C_GRAY : C_DIM);
             continue;
         }
         r = 4 + (int32_t)((1.0f - g) * 56.0f);
-        draw_ring(x, hy, r, g > 0.5f ? C_HI : g > 0.2f ? C_AMB : C_DIM);
+        draw_ring(x, hy, r, g > 0.5f ? th : g > 0.2f ? tm : C_DIM);
         if (g > 0.6f)
-            draw_ring(x, hy, r / 2, C_AMB);
+            draw_ring(x, hy, r / 2, tm);
     }
-    if (en_alg == EN_ALG_FOUNTAIN && en_fig_len) {   /* the fountain: its figure as drops over the water, one lit */
+
+    /* what each world holds */
+    if (en_alg == EN_ALG_MOTIF && en_fig_len) {  /* the motif: marks at the water's edge, as they are written */
+        int32_t n = en_fig_len > EN_FIG ? EN_FIG : en_fig_len, x0 = 120 - (n - 1) * 10;
+        for (i = 0; i < (uint32_t)n; i++) {
+            int on = en_sb_mask >> i & 1u, cur = on && i == en_fig_pos;
+            int32_t mx = x0 + (int32_t)i * 20, my = hy + 16;
+            if (on)
+                cv_rect(mx - (cur ? 1 : 0), my - (cur ? 1 : 0), cur ? 4 : 2, cur ? 4 : 2, cur ? C_WHITE : th);
+            else
+                cv_pset(mx, my + 1, C_LINE);
+        }
+    }
+    if (en_alg == EN_ALG_FOUNTAIN && en_fig_len) {   /* the fountain: its figure as drops in an arc, one lit */
         int32_t lo = 99, hi = -99, n = en_fig_len > EN_FIG ? EN_FIG : en_fig_len, x0 = 120 - (n - 1) * 8;
         for (i = 0; i < (uint32_t)n; i++) {
             lo = en_fig_deg[i] < lo ? en_fig_deg[i] : lo;
@@ -821,19 +919,73 @@ static void draw_lagoon(uint32_t now)
         for (i = 0; i < (uint32_t)n; i++) {
             int32_t y = hy - 10 - 34 * (en_fig_deg[i] - lo) / (hi > lo ? hi - lo : 1);
             int cur = i == en_fig_pos;
-            cv_rect(x0 + (int32_t)i * 16 - (cur ? 1 : 0), y - (cur ? 1 : 0), cur ? 4 : 2, cur ? 4 : 2,
-                    cur ? C_WHITE : C_HI);
+            cv_rect(x0 + (int32_t)i * 16 - (cur ? 1 : 0), y - (cur ? 1 : 0), cur ? 4 : 2, cur ? 4 : 2, cur ? C_WHITE : th);
         }
     }
-    if (en_alg == EN_ALG_LOOPS)                             /* the loops: four buoys, a light going round each */
+    if (en_alg == EN_ALG_LOOPS)                  /* the loops: four buoys, a light going round each */
         for (i = 0; i < 4; i++) {
             float ph = en_loop_ph[i], a = ph * FM_TWO_PI - FM_PI / 2.0f;
             int32_t bx = 36 + (int32_t)i * 56, by = hy - 26;
             draw_ring(bx, by, 9, ph < 0.06f ? C_WHITE : C_LINE);
-            cv_rect(bx + (int32_t)(fm_cosf(a) * 9.0f) - 1, by + (int32_t)(fm_sinf(a) * 9.0f) - 1, 3, 3, C_HI);
+            cv_rect(bx + (int32_t)(fm_cosf(a) * 9.0f) - 1, by + (int32_t)(fm_sinf(a) * 9.0f) - 1, 3, 3, th);
             if (ph < 0.15f)
                 draw_ring(bx, by, 9 + (int32_t)(ph * 80.0f), C_GRAY);
         }
+    if (en_alg == EN_ALG_WIND && en_fig_len) {   /* the attic: keys on threads, swinging when struck */
+        static uint32_t struck_at[EN_FIG], notes_seen, gust_at;
+        int32_t n = en_fig_len > 5 ? 5 : en_fig_len, lo = 99, hi = -99;
+        if (en_notes != notes_seen) {
+            notes_seen = en_notes;
+            if (en_fig_pos < EN_FIG)
+                struck_at[en_fig_pos] = now ? now : 1u;
+            gust_at = now;
+        }
+        for (i = 0; i < (uint32_t)n; i++) {
+            lo = en_fig_deg[i] < lo ? en_fig_deg[i] : lo;
+            hi = en_fig_deg[i] > hi ? en_fig_deg[i] : hi;
+        }
+        for (i = 0; i < (uint32_t)n; i++) {
+            int32_t ax = 52 + (int32_t)i * 34, len = 78 - 40 * (en_fig_deg[i] - lo) / (hi > lo ? hi - lo : 1), k;
+            uint32_t age = struck_at[i] ? now - struck_at[i] : 99999u;
+            float sw = age < 2400u ? 7.0f * fm_expf(-(float)age * 0.0014f) * fm_sinf((float)age * 0.009f) : 0.0f;
+            int32_t ex = ax + (int32_t)sw, ey = 18 + len;
+            for (k = 1; k < len; k += 2)         /* the thread, leaning with the swing */
+                cv_pset(ax + (ex - ax) * k / len, 18 + k, C_DIM);
+            cv_rect(ex - 1, ey, 3, 6, age < 300u ? C_WHITE : age < 1200u ? th : tm);
+            cv_pset(ex, ey + 2, C_BLACK);        /* a key's eye */
+        }
+        if (now - gust_at < 1500u)               /* a draught: faint strokes drifting across */
+            for (i = 0; i < 6; i++) {
+                uint32_t h = mix32(i * 7919u + gust_at);
+                int32_t gx = (int32_t)((h % 240u + (now - gust_at) / 8u) % 260u) - 10, gy = 40 + (int32_t)(h >> 8 & 63u);
+                cv_rect(gx, gy, 6 + (int32_t)(h >> 16 & 7u), 1, C_LINE);
+            }
+    }
+    if (en_alg == EN_ALG_TWO && en_fig_len) {    /* the stair: a step a note, the one sounding lit; its shadow beside */
+        int32_t lo = 99, hi = -99, n = en_fig_len > EN_FIG ? EN_FIG : en_fig_len, sw = 22, x0 = 120 - n * sw / 2;
+        int32_t sdy = en_two_over ? -12 : 12;
+        for (i = 0; i < (uint32_t)n; i++) {
+            lo = en_fig_deg[i] < lo ? en_fig_deg[i] : lo;
+            hi = en_fig_deg[i] > hi ? en_fig_deg[i] : hi;
+        }
+        for (i = 0; i < (uint32_t)n; i++) {
+            int32_t sx = x0 + (int32_t)i * sw, y = 96 - 9 * (en_fig_deg[i] - lo), k;
+            int cur = i == en_fig_pos;
+            float g = 0.0f;
+            uint32_t v;
+            for (v = 0; v < EN_NVOICE; v++)      /* how much it sounds now */
+                g = en_voice_role[v] == R_LEAD && en_glow[v] > g ? en_glow[v] : g;
+            for (k = 0; k < sw - 4; k += 2)      /* the shadow: dotted, a little aside */
+                cv_pset(sx + 4 + k, y + sdy, cur && g > 0.2f ? tm : C_LINE);
+            cv_rect(sx, y, sw - 2, 1, cur ? (g > 0.4f ? C_WHITE : th) : C_GRAY);
+            if (i + 1 < (uint32_t)n) {           /* the riser to the next */
+                int32_t y2 = 96 - 9 * (en_fig_deg[i + 1] - lo), y0 = y < y2 ? y : y2, y1 = y < y2 ? y2 : y;
+                for (k = y0; k <= y1; k++)
+                    cv_pset(sx + sw - 2, k, C_LINE);
+            }
+        }
+    }
+
     for (i = 0; i < 8; i++) {                    /* the offerings */
         uint32_t age;
         if (!ui.drop[i].born)
@@ -846,8 +998,10 @@ static void draw_lagoon(uint32_t now)
             float f = (float)(age - DROP_FALL_MS) / (float)DROP_RING_MS;
             int32_t rx = 3 + (int32_t)(f * (ui.drop[i].big ? 70.0f : 34.0f));
             uint16_t c = f < 0.3f ? C_WHITE : f < 0.65f ? C_GRAY : C_DIM;
+            if (!water)                          /* no water: a small ring on the floor, soon gone */
+                rx = 3 + (int32_t)(f * 20.0f);
             draw_ellipse(ui.drop[i].x, hy, rx, c);
-            if (ui.drop[i].big && f < 0.7f)
+            if (ui.drop[i].big && f < 0.7f && water)
                 draw_ellipse(ui.drop[i].x, hy, rx * 3 / 5, c);
         } else {
             ui.drop[i].born = 0;

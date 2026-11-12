@@ -97,6 +97,7 @@ extern volatile uint8_t en_alg;                /* the world's way of making musi
 extern volatile float en_loop_ph[4];           /* the loops (en_alg 2): each one's way round, 0..1 */
 extern volatile uint8_t en_sb_mask;            /* the motifs (en_alg 0): which of the motif's notes are written now */
 extern volatile uint8_t en_sb_phase;           /* 0 written in, 1 whole, 2 washed away, 3 gone */
+extern volatile uint8_t en_two_over;           /* the stair (en_alg 6): its shadow over it (1) or under (0) */
 extern volatile uint32_t en_sb_gone;           /* motifs washed away wholly, since boot */
 
 /* commands (main loop -> render) */
