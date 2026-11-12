@@ -25,7 +25,7 @@ static const euclid_t PULSE_PAT[][3] = {   /* the thump, the click, the brush */
     {{16, 3}, {8, 3}, {16, 8}},                  /* THE FOUNTAIN AFTER CLOSING: three in sixteen, the brush on the eighths */
     {{32, 2}, {14, 4}, {9, 4}},                  /* WHERE LIGHT BECOMES MOSS: a thump a bar, the rest drifting */
     {{0, 0}, {11, 2}, {19, 5}},                  /* THE ATTIC OF LOOSE KEYS: no thump, the brush as air */
-    {{32, 1}, {16, 2}, {0, 0}},                  /* TWO LINES UNDER SNOW: a slow thump, two small clicks, no brush */
+    {{32, 1}, {16, 2}, {0, 0}},                  /* A STAIR AND ITS SHADOW: a slow thump, two small clicks, no brush */
 };
 static const uint8_t PULSE_ALT[][3] = {   /* each one's other length (Wander), its hits kept in proportion */
     {12, 10, 16}, {24, 0, 32}, {0, 11, 15}, {12, 6, 12}, {18, 15, 11}, {0, 13, 23}, {24, 12, 0},

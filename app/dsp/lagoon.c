@@ -244,7 +244,7 @@ static const world_t WORLDS[] = {
     {"THE FOUNTAIN AFTER CLOSING", {0.35f, 0.35f, 0.0f, -0.3f}, 0.68f, {67, 72, 65, 70}, 0.65f, 19, ALG_FOUNTAIN},       /* 閉園後の噴水 */
     {"WHERE LIGHT BECOMES MOSS", {0.2f, 0.4f, -0.3f, 0.1f}, 0.90f, {64, 69, 62, 67}, 2.0f, 12, ALG_LOOPS}, /* 光が苔になるところ */
     {"THE ATTIC OF LOOSE KEYS", {0.3f, -0.1f, 0.1f, 0.4f}, 0.70f, {69, 64, 71, 66}, 0.8f, 12, ALG_WIND},   /* 緩んだ鍵の屋根裏 */
-    {"TWO LINES UNDER SNOW", {-0.2f, 0.4f, -0.3f, 0.1f}, 1.00f, {60, 55, 62, 57}, 1.5f, 12, ALG_TWO},       /* 雪の下の二本の線 */
+    {"A STAIR AND ITS SHADOW", {-0.2f, 0.4f, -0.3f, 0.1f}, 1.00f, {60, 55, 62, 57}, 1.5f, 12, ALG_TWO},       /* 階段とその影 */
 };
 /* every per-world table has one entry a world: a missing one would be zeros, silently (a check per table) */
 #define PER_WORLD(t) typedef char t##_per_world[sizeof t / sizeof t[0] == EN_NWORLD ? 1 : -1]
