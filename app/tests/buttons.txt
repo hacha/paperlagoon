@@ -20,7 +20,7 @@ wait 1000
 shot lfo.png
 tap GLO
 wait 30
-expect page 9
+expect page 10
 turn K3 1
 wait 30
 expect param22 2
@@ -28,26 +28,34 @@ shot glo.png
 tap HOME
 wait 30
 expect page 0
-# the pulse
+# the pulse: ARP its page; held: on or off; its four levels (0: none)
 expect arp 0
 tap ARP
+wait 30
+expect page 8
+expect arp 0
+press ARP
+wait 900
+release ARP
 wait 30
 expect arp 1
+expect page 8
 wait 20000
 expect arpbeats >10
-expect pulsehits 0
-tap ARP
-wait 30
-expect arp 2
-wait 20000
 expect pulsehits >20
 shot pulse.png
-tap ARP
+turn K1 -25
+turn K2 25
 wait 30
-expect arp 3
-tap ARP
+expect param28 0
+expect param29 100
+press ARP
+wait 900
+release ARP
 wait 30
 expect arp 0
+tap HOME
+wait 30
 # the register
 tap OCT+
 wait 30

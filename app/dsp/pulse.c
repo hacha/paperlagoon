@@ -1,17 +1,18 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 hacha */
-/* The pulse (ARP's third and fourth turns): a muffled beat under the music, at most as Susumu Yokota's, never a
- * dance. Three sounds, none a drum kit's: a soft low thump (a sine falling in pitch, no attack's click), a small
- * click (noise in a narrow band, a few ms), and air (noise, high, breathed in and out). On sixteenths of the beat,
+/* The pulse (ARP, with the broken chords): a muffled beat under the music, at most as Susumu Yokota's, never a
+ * dance. Three sounds, none a drum kit's, each its own level on ARP's page (0: none): a soft low thump (a sine
+ * falling in pitch, no attack's click), a small click (noise in a narrow band, a few ms), and a brush (noise, high,
+ * breathed in and out). On sixteenths of the beat,
  * each on its own Euclidean pattern (k hits spread over n steps), the lengths unequal in some worlds so they drift
  * against each other; each world its own (some without the thump). Not every hit sounds: fewer when sparse
- * (Density) and in the margin; bleed lengthens the air, light brightens the click, and a fold now and then turns a
+ * (Density) and in the margin; bleed lengthens the brush, light brightens the click, and a fold now and then turns a
  * pattern round. Its own random numbers (the music's untouched). #included by lagoon.c after amb_parts.c (mixl, ..,
  * sine()) and the worlds. */
 typedef struct {
     uint8_t n, k;                                /* k hits over n steps (n 0: none) */
 } euclid_t;
-static const euclid_t PULSE_PAT[EN_NWORLD][3] = {   /* the thump, the click, the air */
+static const euclid_t PULSE_PAT[EN_NWORLD][3] = {   /* the thump, the click, the brush */
     {{16, 2}, {16, 5}, {12, 5}},                 /* SHALLOWS OF MEMORY: halves under, clicks across */
     {{32, 1}, {0, 0}, {24, 3}},                  /* BEHIND THE HORIZON: a far, slow thump, long breaths */
     {{0, 0}, {13, 3}, {20, 2}},                  /* THE UNREAD LETTER: no thump, a clock that is not quite one */
@@ -23,7 +24,9 @@ static float pu_left;                            /* samples to the next step */
 static uint32_t pu_step;
 static uint8_t pu_rot[3];                        /* each pattern's turn */
 volatile uint32_t en_pulse_hits;                 /* (UI) hits sounded since boot */
-volatile uint8_t en_pulse_last;                  /* (UI) the last: 0 the thump, 1 a click, 2 air */
+volatile uint8_t en_pulse_last;                  /* (UI) the last: 0 the thump, 1 a click, 2 the brush */
+volatile uint8_t en_pulse_n[3], en_pulse_k[3], en_pulse_rot[3];   /* (UI) the patterns now */
+volatile uint32_t en_pulse_step;                 /* (UI) the step now */
 
 static inline float pu_rnd(void)                 /* 0..1 */
 {
@@ -32,7 +35,7 @@ static inline float pu_rnd(void)                 /* 0..1 */
 }
 static inline float pu_noise(void) { return 2.0f * pu_rnd() - 1.0f; }
 
-/* the three sounds */
+/* the three sounds (ai_*: the brush) */
 static float th_ph, th_pf, th_amp, th_att;       /* the thump: phase, pitch's fall, level, its soft start */
 static float ck_amp, ck_lo, ck_bd, ck_f, ck_pan; /* the click: level, its band (state, tuning), side */
 static float ai_amp, ai_att, ai_dec, ai_hp, ai_lp, ai_pan;   /* the air: level, rise, fall, its filter, side */
@@ -43,8 +46,12 @@ static float ai_amp, ai_att, ai_dec, ai_hp, ai_lp, ai_pan;   /* the air: level, 
 static void pulse_begin(void)                    /* a world begins: the patterns turned anew */
 {
     int i;
-    for (i = 0; i < 3; i++)
+    for (i = 0; i < 3; i++) {
         pu_rot[i] = (uint8_t)(pu_rnd() * 16.0f);
+        en_pulse_n[i] = PULSE_PAT[world][i].n;   /* (the screen: the patterns, before a step sounds) */
+        en_pulse_k[i] = PULSE_PAT[world][i].k;
+        en_pulse_rot[i] = pu_rot[i];
+    }
     pu_step = 0;
     pu_left = 0.0f;
 }
@@ -64,20 +71,23 @@ static void pulse_event(void)                    /* a step: what sounds on it; t
     float keep = fm_clampf(0.6f + 0.5f * density - 0.35f * fm_maxf(st[S_MARGIN], 0.0f), 0.15f, 1.0f);
     int i;
     for (i = 0; i < 3; i++) {
-        if (!euclid_hit(&pat[i], pu_step, pu_rot[i]) || pu_rnd() >= keep)
+        en_pulse_n[i] = pat[i].n;
+        en_pulse_k[i] = pat[i].k;
+        en_pulse_rot[i] = pu_rot[i];
+        if (!euclid_hit(&pat[i], pu_step, pu_rot[i]) || arp_k[1 + i] <= 0.0f || pu_rnd() >= keep)
             continue;
         if (i == 0) {
             th_ph = 0.0f;
             th_pf = 1.0f;
             th_att = 0.0f;
-            th_amp = 0.36f + 0.1f * pu_rnd();
+            th_amp = (0.36f + 0.1f * pu_rnd()) * arp_k[1];
         } else if (i == 1) {
             float fc = 2400.0f + 1600.0f * (st[S_LIGHT] + 1.0f) * 0.5f + 600.0f * pu_rnd();
             ck_f = 2.0f * fm_sinf(FM_PI * fc * (1.0f / EN_SR));
-            ck_amp = 0.12f + 0.08f * pu_rnd();
+            ck_amp = (0.12f + 0.08f * pu_rnd()) * arp_k[2];
             ck_pan = -ck_pan + (ck_pan == 0.0f ? 0.4f : 0.0f);
         } else {
-            ai_amp = 0.05f + 0.03f * pu_rnd();
+            ai_amp = (0.05f + 0.03f * pu_rnd()) * arp_k[3];
             ai_att = 0.0f;
             ai_dec = fm_expf(-6.9f / ((0.12f + 0.12f * fm_maxf(st[S_BLEED], 0.0f)) * EN_SR));
             ai_pan = 0.6f * pu_noise();
@@ -87,6 +97,7 @@ static void pulse_event(void)                    /* a step: what sounds on it; t
     }
     if (pu_step % 64u == 63u && pu_rnd() < 0.35f * fm_maxf(st[S_FOLD], 0.0f))   /* a fold: one turns round */
         pu_rot[(int)(pu_rnd() * 2.999f)]++;
+    en_pulse_step = pu_step;
     pu_step++;
     pu_left += beat_len * 0.25f;
     if (pu_left < 1.0f)
