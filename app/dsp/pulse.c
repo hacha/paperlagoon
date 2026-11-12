@@ -159,10 +159,10 @@ static void pulse_event(void)                    /* a step: what sounds on it; t
         } else if (i == 1) {
             float fc = 2400.0f + 1600.0f * (st[S_LIGHT] + 1.0f) * 0.5f + 600.0f * pu_rnd();
             ck_f = 2.0f * fm_sinf(FM_PI * fc * (1.0f / EN_SR));
-            ck_amp = (0.12f + 0.08f * pu_rnd()) * gk[1];
+            ck_amp = (0.26f + 0.12f * pu_rnd()) * gk[1];
             ck_pan = -ck_pan + (ck_pan == 0.0f ? 0.4f : 0.0f);
         } else {
-            ai_amp = (0.05f + 0.03f * pu_rnd()) * gk[2];
+            ai_amp = (0.13f + 0.06f * pu_rnd()) * gk[2];
             ai_att = 0.0f;
             ai_dec = fm_expf(-6.9f / ((0.12f + 0.12f * fm_maxf(st[S_BLEED], 0.0f)) * EN_SR));
             ai_pan = 0.6f * pu_noise();
