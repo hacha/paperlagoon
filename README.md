@@ -8,6 +8,9 @@ FM voices through AMB-1's tape echo and plate, played in seven worlds that a hid
 [app/docs/MANUAL.md](app/docs/MANUAL.md) (日本語: [app/docs/MANUAL.ja.md](app/docs/MANUAL.ja.md)); the site, to try it in
 the browser and install it: https://hacha.github.io/paperlagoon/
 
+It reads nothing another firmware saved (projects, presets, samples), and that may not be there when you go back to
+it: back it up first.
+
 ## Controls
 
 | Control | Does |

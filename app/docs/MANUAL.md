@@ -36,6 +36,9 @@ The browser asks once to allow MIDI, so allow it. Don't unplug the cable while i
 To install it from a terminal, run `python3 tools/fm1_install.py paperlagoon-VERSION.fwsc`, with the package that
 goes with the version you downloaded.
 
+PaperLagoon keeps only its own settings. It doesn't read what another firmware saved (projects, presets, samples),
+and that may not be there when you go back to it, so back it up first.
+
 You install it at your own risk. To go back to the stock firmware, use the installer's last section, which writes
 M-VAVE's own firmware back.
 
