@@ -75,7 +75,7 @@ Lights, on the global page, sets how bright they all are.
 | ARP | Goes to the chords. Press again for the pulse. Press again to go back. |
 | SEQ | Goes to the memory. Hold it to hold the music still, hold it again to let go. |
 | OCT− · OCT+ | Move the register of the music, two octaves either way. While REC is held they move the keys' octave instead. |
-| REC | Hold it and the keys play, and the music waits. Let go, and what you played is taken in as the music's own: the motif is written whole at once, and in the attic the phrase becomes the keys. |
+| REC | Hold it and the keys play, and the music waits. Let go, and what you played is taken in as the music's own, in whatever way the world holds it. |
 | SEL | Hold it and K1 to K4 are the lagoon's four knobs, on any page. On the lagoon itself, they turn in finer steps. |
 | PRESETS | Picks the kit. Ten kits, each three voices. Edits to the voices are kept per kit. |
 | ALGORITHM | Picks the world. Seven worlds. The change is a crossing. |
@@ -125,7 +125,7 @@ voice back as the kit has it.
 
 ![The effects page: TAPE and PLATE, with Time, Feedback, Size and Wear](img/screen-effects.png "TAPE and PLATE")
 
-The tape echo and the plate, which come from AMB-1.
+The tape echo and the plate.
 
 - Time: the length of the tape's loop.
 - Feedback: how long the echoes go on.
@@ -150,7 +150,7 @@ Press FX again. This page lies over everything that you hear, voices, echoes and
 The page shows the world, its root note, its beat, its scale and the octave. It is where you set how the room
 lies, and how far the music is allowed to be moved.
 
-- Drift: how far the cycles and the offerings sway the music. At 0 nothing sways it, and the keys stir nothing.
+- Drift: how far the cycles and the offerings (what a key gives; see 5. The keys and offerings) sway the music. At 0 nothing sways it, and the keys stir nothing.
 - Offer: how great the stir of an offering from the keys is.
 - Tempo: how fast it goes.
 - Transpose: the music's key, moved up or down.
@@ -183,7 +183,7 @@ in its own way: up and down, falling, scattered, rising and falling back, like a
 
 ![The pulse page: THUMP, CLICK and BRUSH as rings, with Level, Stir, Wander and Weight](img/screen-pulse.png "The pulse")
 
-Press ARP again. A muffled beat: a low thump, a small click and a brush, laid on each world's own patterns. In the attic there is no thump, only small clicks and the brush. At the stair there is a slow thump and two small clicks, and no brush. It stays
+Press ARP again. A muffled beat: a low thump, a small click and a brush, laid on each world's own patterns. Some worlds leave one or two of these out. It stays
 a hazy pulse, and never goes to a dance. The thump stays on the beats, at most one to a beat.
 
 - Level: how loud. At 0 there is none.
@@ -191,26 +191,23 @@ a hazy pulse, and never goes to a dance. The thump stays on the beats, at most o
 - Wander: how far the patterns move with the music. At 0 they keep still.
 - Weight: how much the thump counts against the click and the brush.
 
-The chords and the pulse both keep the silences of the music. In a long rest they fade, and in The Unread Letter
+The chords and the pulse both keep the silences of the music. In a long rest they fade, in some worlds
 wholly. They never cut off a note that is sounding.
 
 ### 4.9 The memory
 
 ![The memory page: THE MOTIF above and REMEMBERED below, with Repeat, Change, Length and Memory](img/screen-memory.png "THE MOTIF, REMEMBERED")
 
-What the music holds: the motif and the ones it remembers, the chord, the loops, the letter's line, the fountain's
-figure, the attic's keys, the stair's centre. What the knobs mean follows the world. In the attic the page's heading is THE KEYS, and at the stair THE STAIR.
+What the music holds: a motif, a chord, a line, a figure, whatever the world plays from. What it is, and so what
+each knob touches, depends on the world, and on some the page has its own heading. 6. Worlds and kits tells what each
+world holds.
 
-- Repeat: how many passes before each note of a motif comes or goes, and how long it stays whole; how often a line is
-  read again; how many rounds the fountain makes before the figure may change; how many gusts in a spell of the
-  attic; how many walks before the stair's centre may move.
-- Change: a note moved while the motif is whole; a word exchanged; the figure's height, foot, length or start; a key
-  changed between spells; the centre of the stair moved (and the shadow may change sides).
-- Length: the notes to a motif, a line or a figure; the drone's swells; the lengths of the loops; the strikes in a
-  gust; the longest phrase of the stair.
-- Memory: how often an older motif, line, figure, set of keys or centre comes back.
+- Repeat: how many times it is played before it may change.
+- Change: how much changes when it does.
+- Length: how long it is.
+- Memory: how often an older one comes back.
 
-Hold SEQ to hold the music: no new motif, chord, line, figure, keys, centre or scale. The changes already moving go on. Hold SEQ
+Hold SEQ to hold the music: nothing new is taken up, and the scale stays. The changes already moving go on. Hold SEQ
 again to let go.
 
 ### 4.10 The global page
@@ -246,8 +243,8 @@ At that moment the sound stirs too, at once. It smears, turns darker or clearer,
 whole is a little hushed or a little swollen. The music answers soon after, and in a second or two the stir is gone.
 Then the offering seeps in over some seconds, and it fades over minutes. What it changes is the scale, the register,
 the length of the rests, how long a motif is, how often the answer and the low voice come, an older motif folding
-back, and now and then a motif built on the pitch you offered. In the attic an offering hangs a key of its pitch; at the
-stair it becomes the next centre.
+back, and now and then a motif built on the pitch you offered. In some worlds an offering does something of its own
+as well (see 6. Worlds and kits).
 
 With Drift at 0 nothing stirs. Offer sets how great the stir is.
 
