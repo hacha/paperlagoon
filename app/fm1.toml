@@ -1,6 +1,6 @@
 # PaperLagoon's build settings (fm1-base's tools/build.py: ./build.sh)
 name = "PAPERLAGOON"           # the build's files: paperlagoon.fwsc, paperlagoon-X.Y.fwsc
-id_prefix = "FM-1_58"          # package identity (each firmware its own): dev FM-1_5800, releases FM-1_58XXYYZZ
+id_prefix = "FM-1_1612"        # package identity (each firmware its own): dev FM-1_161200, releases FM-1_1612XXYYZZ
 usb_manufacturer = "PaperLagoon"
 usb_product = "PaperLagoon FM-1"
 include = ["dsp"]
