@@ -26,7 +26,7 @@ the browser and install it: https://hacha.github.io/paperlagoon/
 | SEQ | the memory: what the music holds (the motif and the ones remembered, the chord, the loops, the letter's line, the fountain's figure, the attic's keys, the stair's centre); K1..K4 Repeat, Change, Length, Memory. Held: hold it (no new motif, chord, line, figure, keys, centre or scale), held again: let go |
 | PRESETS | the kit: ten sets of three voices (lead, answer, low); edits are kept per kit |
 | ALGORITHM | the world: seven places that exist nowhere, each its own way of making music (never the knobs nor the kit). Chosen at once, reached by a crossing: the music finishes its phrase where it is (a few seconds; the header says CROSSING, the name breathing, a wake running under it), the chords and the pulse fading, then a breath, and the new world opens |
-| K1..K4 | the lagoon: Density, Bright, Space, Echo. A voice: Color (the FM ratio), Bright, Decay, Soft (the attack) |
+| K1..K4 | the lagoon: Density, Bright, Space, Echo. A voice: Color, Bright, Decay, Soft |
 | PLAY | plays or rests. It opens: sparse at first, full in some 25 s, the chords and the pulse coming in a few bars later. A rest is at once (the echoes and the plate ring on) |
 | SAVE | keeps all of it (lit when something is not saved) |
 

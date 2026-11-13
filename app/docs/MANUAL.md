@@ -111,10 +111,10 @@ Three pages, one for each voice of the kit: the lead, the answer and the low voi
 to the next. The page shows the voice's make-up (CARRIER : MODULATOR, the two tones the voice is built from), its
 envelope, and a ring that opens and closes with the voice.
 
-- Color: the voice's character, from plain and round to hollow, bell-like or strange. (This is the FM ratio.)
+- Color: the voice's character, from plain and round to hollow, bell-like or strange.
 - Bright: how much of the voice shines.
 - Decay: how long the voice rings after it is struck.
-- Soft: how gently the voice begins. Low is a tap, high is a slow swell. (This is the attack.)
+- Soft: how gently the voice begins. Low is a tap, high is a slow swell.
 
 Some voices have breath: air beside the tone, a rough wobble, a pitch that wanders a little, as if worn or hazy. The
 kit fixes it. There is a little in SLOW BREATH and HAZE ARCHIVE and much in DUST PIPES, FOG LANTERN and CHALK GARDEN. Air, on the
