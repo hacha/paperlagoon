@@ -6,8 +6,7 @@ PaperLagoon is a generative environmental-music firmware for the M-VAVE FM-1. It
 steer it from outside, the way you might change the light in a room. FM voices go through a tape echo and a plate
 reverb, and a generator of phrases plays them, leaning on a hidden state that you can only touch from the side.
 
-![The lagoon: SHALLOWS OF MEMORY in the header, the kit TIN HARBOR below it, a thin line of water across the middle,
-and the four knobs Density, Bright, Space and Echo at the bottom](img/screen-lagoon.png "The lagoon, at rest")
+![The lagoon: SHALLOWS OF MEMORY in the header, the kit TIN HARBOR below it, a thin line of water across the middle, and the four knobs Density, Bright, Space and Echo at the bottom](img/screen-lagoon.png "The lagoon, at rest")
 
 ---
 
@@ -106,8 +105,7 @@ drawn slowly: higher when there is light in it, rougher when it is folded.
 
 ### 4.2 The voices
 
-![A voice page: CARRIER : MODULATOR 1 : 1.00, a decaying envelope, a ring, and Color 1.00, Bright 50, Decay 50,
-Soft 14](img/screen-voice.png "A voice, TIN HARBOR's lead")
+![A voice page: CARRIER : MODULATOR 1 : 1.00, a decaying envelope, a ring, and Color 1.00, Bright 50, Decay 50, Soft 14](img/screen-voice.png "A voice, TIN HARBOR's lead")
 
 Three pages, one for each voice of the kit: the lead, the answer and the low voice. EDIT goes to the lead, and again
 to the next. The page shows the voice's make-up (CARRIER : MODULATOR, the two tones the voice is built from), its
@@ -147,8 +145,7 @@ Press FX again. This page lies over everything that you hear, voices, echoes and
 
 ### 4.5 The environment
 
-![The environment page: the world, its root, beat, scale and octave, with Drift, Offer, Tempo and
-Transpose](img/screen-environment.png "The environment")
+![The environment page: the world, its root, beat, scale and octave, with Drift, Offer, Tempo and Transpose](img/screen-environment.png "The environment")
 
 The page shows the world, its root note, its beat, its scale and the octave. It is where you set how the room
 lies, and how far the music is allowed to be moved.
@@ -314,8 +311,7 @@ which takes a few seconds. The rule over the knobs and the header both say CROSS
 and a small wake runs under the header. The chords and the pulse fade. Then a breath, and the new world opens,
 sparse, and fills out over some seconds.
 
-![A crossing: THE FOUNTAIN AFTER CLOSING in the header with CROSSING at its right, a wake under it, and wide rings on the
-water](img/screen-crossing.png "A crossing to THE FOUNTAIN AFTER CLOSING")
+![A crossing: THE FOUNTAIN AFTER CLOSING in the header with CROSSING at its right, a wake under it, and wide rings on the water](img/screen-crossing.png "A crossing to THE FOUNTAIN AFTER CLOSING")
 
 If you pick again during a crossing the way changes. If you go back to the world you left, the crossing is
 cancelled.

@@ -6,8 +6,7 @@ PaperLagoon は、M-VAVE FM-1 のための、自動生成の環境音楽ファ�
 外から舵を取ります。FM の声がテープエコーとプレートを通り、フレーズの生成器がそれを奏で、その傾きは、
 横からしか触れられない見えない状態が決めます。
 
-![ラグーン。ヘッダーに SHALLOWS OF MEMORY、その下にキット名 TIN HARBOR、中ほどに水面の細い線、下に Density、Bright、
-Space、Echo の4つのノブ](img/screen-lagoon.png "静かなラグーン")
+![ラグーン。ヘッダーに SHALLOWS OF MEMORY、その下にキット名 TIN HARBOR、中ほどに水面の細い線、下に Density、Bright、Space、Echo の4つのノブ](img/screen-lagoon.png "静かなラグーン")
 
 ---
 
@@ -105,8 +104,7 @@ Install を押します。ブラウザが MIDI の許可を一度だけ尋ねる
 
 ### 4.2 声
 
-![声のページ。CARRIER : MODULATOR 1 : 1.00、減衰するエンベロープ、輪、Color 1.00、Bright 50、Decay 50、
-Soft 14](img/screen-voice.png "TIN HARBOR の主旋律の声")
+![声のページ。CARRIER : MODULATOR 1 : 1.00、減衰するエンベロープ、輪、Color 1.00、Bright 50、Decay 50、Soft 14](img/screen-voice.png "TIN HARBOR の主旋律の声")
 
 キットの声ごとに1ページ、全部で3つ。主旋律、応え、低音です。EDIT で主旋律、もう一度で次へ。ページには、声の
 組み立て（CARRIER : MODULATOR、声を作る2つの音）、エンベロープ、声につれて開いたり閉じたりする輪が出ます。

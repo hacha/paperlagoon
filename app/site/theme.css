@@ -1,0 +1,32 @@
+/* SPDX-License-Identifier: GPL-3.0-only
+ * Copyright (C) 2026 hacha
+ * PaperLagoon's site, as its screen: black, pale type, grey for asides, the great ring's blue for what can be touched.
+ * Put last in every page's <head> by app/site/theme.py, over fm1-base's paper (whatever the system's light or dark). */
+:root, :root:not([data-theme="light"]), :root[data-theme="dark"], :root[data-theme="light"] {
+  --pl-ground: #07080a; --pl-sheet: #121417; --pl-rule: #262a2f; --pl-ink: #e6eae6; --pl-muted: #9a9ca3;
+  --pl-ring: #39b6ee; --pl-ring2: #94e2ff; --pl-ring-t: rgba(57, 182, 238, .16); --pl-on-ring: #03121a;
+  /* the manual and the front page */
+  --paper: var(--pl-ground) !important; --sheet: var(--pl-sheet) !important; --rule: var(--pl-rule) !important;
+  --ink: var(--pl-ink) !important; --muted: var(--pl-muted) !important;
+  --hot: var(--pl-ring) !important; --hot-t: var(--pl-ring-t) !important; --hot-ink: var(--pl-ring2) !important;
+  --cool: var(--pl-muted) !important; --cool-t: var(--pl-sheet) !important;
+  /* the installer */
+  --bg: var(--pl-ground) !important; --fg: var(--pl-ink) !important; --dim: var(--pl-muted) !important;
+  --accent: var(--pl-ring) !important; --on-accent: var(--pl-on-ring) !important; --focus: var(--pl-ring2) !important;
+  --bad: #ff8a73 !important;
+  /* the emulator */
+  --ground: var(--pl-ground) !important; --card: var(--pl-sheet) !important; --teal: var(--pl-ring2) !important;
+  color-scheme: dark !important;
+}
+html { background: var(--pl-ground); }
+h1, h2, h3, .site .home { font-family: "Barlow Semi Condensed", "Barlow", "Helvetica Neue", Arial, sans-serif; letter-spacing: .03em; }
+h2 { border-top-color: var(--pl-rule) !important; }
+.site, th { border-bottom-color: var(--pl-rule) !important; }
+a { color: var(--pl-ink); }
+img { max-width: 100%; height: auto; }
+/* the emulator's own colours */
+.start button { background: var(--pl-ring) !important; color: var(--pl-on-ring) !important; }
+.held .btnface, .held .keyface { stroke: var(--pl-ring) !important; }
+.latched .btnface, .latched .keyface { stroke: var(--pl-ring2) !important; }
+.hit:focus-visible { outline-color: var(--pl-ring2) !important; box-shadow: 0 0 0 6px var(--pl-ground) !important; }
+header nav a, main a { color: var(--pl-ring2); }

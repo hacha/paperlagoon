@@ -66,6 +66,7 @@ git submodule update --init --recursive
 PL_LOG=f.log app/build/host/paperlagoon_host script.txt out/   # a log for long listens: each note, and each second's loudness, state, root, scale
 ./build.sh --web                      # browser emulator (Emscripten)
 ./serve.sh [port]                     # serve it on http://localhost:8000/
+./site.sh X.Y PKG [--push]            # the site (app/build/site) from a release's package; --push: to gh-pages
 ./build.sh                            # device package (JieLi toolchain + AC79 SDK)
 ./install.sh [--build]                # install it on an FM-1 over USB (needs mido, python-rtmidi)
 ```
