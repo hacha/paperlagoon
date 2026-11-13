@@ -1,0 +1,9 @@
+{
+  "what": "A generative ambient firmware. FM voices through a tape echo and a plate play by themselves in seven worlds that exist nowhere. You steer from outside: a key offers something to a hidden state, the knobs change the weather, and the music answers slowly.",
+  "author": "hacha",
+  "kinds": ["synth"],
+  "play": "https://hacha.github.io/paperlagoon/emu/",
+  "cheat": "https://hacha.github.io/paperlagoon/manual/",
+  "image": "app/docs/img/screen-rings.png",
+  "color": "#39b6ee"
+}
