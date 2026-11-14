@@ -73,3 +73,5 @@ PL_LOG=f.log app/build/host/paperlagoon_host script.txt out/   # a log for long 
 
 GPL-3.0-only (see LICENSE). Built on [fm1-base](https://github.com/charlesvestal/fm1-base) (MPL-2.0) and
 felucca-bsp. The plate and the echo come from AMB-1 (MPL-2.0); see LICENSING.md.
+
+You can also try PaperLagoon in the browser, no flashing needed, in the free community [FM-1 Emulator](https://fm1-emulator.atst.tools/).
