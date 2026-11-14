@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAPERLAGOON: PaperLagoon</title>
+<meta name="description" content="PaperLagoon for PAPERLAGOON, a firmware for the M-VAVE FM-1.">
+<style>
+/* paper and ink: warm white paper, ink-blue type, vermilion for what is played, mustard for asides; a shade of the
+   paper for code and callouts (CTL-1's; a firmware may restyle its site) */
+:root {
+  --paper: #fbf8f1; --sheet: #efe9dc; --rule: #ddd4c2; --ink: #1e2b5a; --muted: #5d6585;
+  --hot: #e5482e; --hot-t: #f8d3c9; --cool: #d9a21b; --cool-t: #f5e4b8;
+  --hot-ink: #c23a22;                                 /* the vermilion as text: 4.5:1 on the paper */
+  color-scheme: light;
+}
+body {
+  background: var(--paper); color: var(--ink); margin: 0;
+  font: 400 17px/1.6 "Helvetica Neue", Helvetica, Arial, sans-serif;
+  padding-inline: 16px; padding-block: 32px 64px;
+}
+main { max-width: 46rem; margin: 0 auto; }
+.page > .site { max-width: 46rem; margin-inline: auto; }
+main:focus { outline: none; }
+h1, h2, h3 { font-family: inherit; text-wrap: balance; line-height: 1.2; }
+h1 { font-size: 2.2rem; font-weight: 700; margin: 0 0 .4rem; letter-spacing: .02em; }
+h2 { font-size: 1.3rem; font-weight: 700; margin: 3rem 0 .8rem; padding-top: .8rem; border-top: 2px solid var(--ink); }
+h2 .num { color: var(--hot); margin-right: .5em; font-variant-numeric: tabular-nums; }
+h3 { font-size: 1.1rem; font-weight: 700; margin: 2rem 0 .5rem; }
+p, li { max-width: 65ch; }
+p { margin: 0 0 1rem; }
+ul, ol { padding-left: 1.3rem; margin: 0 0 1rem; }
+li { margin: .2rem 0; }
+li::marker { color: var(--hot); }
+strong { font-weight: 700; }
+a { color: var(--ink); text-decoration-color: var(--hot); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+a:hover { background: var(--hot-t); }
+:focus-visible { outline: 3px solid var(--hot-ink); outline-offset: 2px; }
+.skip { position: absolute; left: 16px; top: -100px; background: var(--ink); color: var(--paper); padding: 8px 14px; border-radius: 0 0 6px 6px; z-index: 1; }
+.skip:focus { top: 0; }
+code, pre { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .86em; }
+code { background: var(--sheet); padding: .08em .35em; border-radius: 3px; }
+pre { background: var(--sheet); border-radius: 6px; padding: 14px 16px; overflow-x: auto; line-height: 1.45; margin: 0 0 1.2rem; }
+pre code { background: none; padding: 0; font-size: inherit; }
+hr { display: none; }
+.table { overflow-x: auto; margin: 0 0 1.3rem; }
+table { border-collapse: collapse; width: 100%; font-size: .95rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; vertical-align: top; padding: .45rem .7rem .45rem 0; border-bottom: 1px solid var(--rule); }
+th { font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: .78rem; color: var(--muted); border-bottom: 2px solid var(--ink); }
+td:first-child { white-space: nowrap; }
+.lede { margin-bottom: 1.6rem; }
+.status { background: var(--sheet); border-radius: 6px; padding: 12px 16px; }
+.status p { margin: 0; }
+.site { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem 1.2rem; margin: 0 0 1.6rem; padding-bottom: .5rem; border-bottom: 2px solid var(--ink); }
+.site .home { font-size: 1.1rem; font-weight: 700; letter-spacing: .04em; color: var(--ink); text-decoration: none; }
+.site .home:hover { color: var(--hot-ink); background: none; }
+.site nav { margin-left: auto; display: flex; flex-wrap: wrap; gap: .2rem 1rem; font-size: .92rem; }
+.site nav a { color: var(--ink); text-underline-offset: 3px; }
+.site nav a[aria-current] { text-decoration: none; color: var(--hot-ink); }
+a.home { color: inherit; text-decoration: none; }
+a.home:hover { background: none; color: var(--hot-ink); }
+main > a.home { display: inline-block; font-size: .9rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 .4rem; }
+.callout { border-left: 4px solid var(--cool); background: var(--cool-t); padding: 10px 16px; margin: 0 0 1.2rem; max-width: 65ch; border-radius: 0 6px 6px 0; }
+.callout p { margin: 0; }
+details { background: var(--sheet); border-radius: 6px; padding: 0 16px; margin: 0 0 1.2rem; }
+details > summary { cursor: pointer; padding: 10px 0; }
+details[open] > summary { margin-bottom: .4rem; }
+details > :last-child { margin-bottom: 1rem; }
+.swatch { display: inline-block; width: .7em; height: .7em; margin-right: .4em; vertical-align: .02em; }
+nav.contents ol { columns: 2 14rem; column-gap: 2rem; padding-left: 1.3rem; }
+.figs { display: flex; flex-wrap: wrap; gap: 20px; margin: .4rem 0 1.6rem; }
+figure { margin: 0; flex: 0 1 auto; }
+figure img { display: block; max-width: 100%; height: auto; }
+figure.shot img { width: 300px; image-rendering: pixelated; border-radius: 4px; box-shadow: 0 0 0 1px var(--rule); }
+figure.wide { flex-basis: 100%; }
+figure.wide img { width: 100%; }
+figcaption { color: var(--muted); font-size: .88rem; margin-top: .4rem; max-width: 300px; }
+figure.wide figcaption { max-width: none; }
+nav.contents li { break-inside: avoid; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+<!-- paperlagoon theme -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Semi+Condensed:wght@600;700&display=swap">
+<style>
+/* SPDX-License-Identifier: GPL-3.0-only
+ * Copyright (C) 2026 hacha
+ * PaperLagoon's site, as its screen: black, pale type, grey for asides, the great ring's blue for what can be touched.
+ * Put last in every page's <head> by app/site/theme.py, over fm1-base's paper (whatever the system's light or dark). */
+:root, :root:not([data-theme="light"]), :root[data-theme="dark"], :root[data-theme="light"] {
+  --pl-ground: #07080a; --pl-sheet: #121417; --pl-rule: #262a2f; --pl-ink: #e6eae6; --pl-muted: #9a9ca3;
+  --pl-ring: #39b6ee; --pl-ring2: #94e2ff; --pl-ring-t: rgba(57, 182, 238, .16); --pl-on-ring: #03121a;
+  /* the manual and the front page */
+  --paper: var(--pl-ground) !important; --sheet: var(--pl-sheet) !important; --rule: var(--pl-rule) !important;
+  --ink: var(--pl-ink) !important; --muted: var(--pl-muted) !important;
+  --hot: var(--pl-ring) !important; --hot-t: var(--pl-ring-t) !important; --hot-ink: var(--pl-ring2) !important;
+  --cool: var(--pl-muted) !important; --cool-t: var(--pl-sheet) !important;
+  /* the installer */
+  --bg: var(--pl-ground) !important; --fg: var(--pl-ink) !important; --dim: var(--pl-muted) !important;
+  --accent: var(--pl-ring) !important; --on-accent: var(--pl-on-ring) !important; --focus: var(--pl-ring2) !important;
+  --bad: #ff8a73 !important;
+  /* the emulator */
+  --ground: var(--pl-ground) !important; --card: var(--pl-sheet) !important; --teal: var(--pl-ring2) !important;
+  color-scheme: dark !important;
+}
+html { background: var(--pl-ground); }
+h1, h2, h3, .site .home { font-family: "Barlow Semi Condensed", "Barlow", "Helvetica Neue", Arial, sans-serif; letter-spacing: .03em; }
+h2 { border-top-color: var(--pl-rule) !important; }
+.site, th { border-bottom-color: var(--pl-rule) !important; }
+a { color: var(--pl-ink); }
+img { max-width: 100%; height: auto; }
+/* the emulator's own colours */
+.start button { background: var(--pl-ring) !important; color: var(--pl-on-ring) !important; }
+.held .btnface, .held .keyface { stroke: var(--pl-ring) !important; }
+.latched .btnface, .latched .keyface { stroke: var(--pl-ring2) !important; }
+.hit:focus-visible { outline-color: var(--pl-ring2) !important; box-shadow: 0 0 0 6px var(--pl-ground) !important; }
+header nav a, main a { color: var(--pl-ring2); }
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<div class="page">
+<main id="content" tabindex="-1">
+<a class="home" href="../">PAPERLAGOON</a>
+<h1>PaperLagoon</h1>
+<p><a href="https://github.com/hacha/paperlagoon/blob/main/app/docs/MANUAL.ja.md">日本語</a></p>
+<p>PaperLagoon is a generative environmental-music firmware for the M-VAVE FM-1. It plays by itself. You don't play it; you steer it from outside, the way you might change the light in a room. FM voices go through a tape echo and a plate reverb, and a generator of phrases plays them, leaning on a hidden state that you can only touch from the side.</p>
+<div class="figs"><figure class="shot"><img src="img/screen-lagoon.png" alt="The lagoon: SHALLOWS OF MEMORY in the header, the kit TIN HARBOR below it, a thin line of water across the middle, and the four knobs Density, Bright, Space and Echo at the bottom" loading="lazy"><figcaption>The lagoon, at rest</figcaption></figure></div>
+<hr>
+<nav class="contents" aria-label="Contents"><h2 id="contents">Contents</h2>
+<ol><li><a href="#s1">Install</a></li><li><a href="#s2">The screen</a></li><li><a href="#s3">Controls</a></li><li><a href="#s4">The pages</a></li><li><a href="#s5">The keys and offerings</a></li><li><a href="#s6">Worlds and kits</a></li><li><a href="#s7">The edges</a></li><li><a href="#s8">Saving</a></li><li><a href="#s9">USB audio</a></li><li><a href="#s10">Troubleshooting</a></li><li><a href="#s11">Licence</a></li></ol>
+</nav>
+<hr>
+<h2 id="s1"><span class="num">1</span>Install</h2>
+<p>To try it first, open the emulator. It runs the same code in your browser, with sound.</p>
+<p>To install it from the browser, use Chrome or Edge. Connect the FM-1 by USB, open the installer and press Install. The browser asks once to allow MIDI, so allow it. Don't unplug the cable while it writes.</p>
+<p>To install it from a terminal, run <code>python3 tools/fm1_install.py paperlagoon-VERSION.fwsc</code>, with the package that goes with the version you downloaded.</p>
+<p>PaperLagoon keeps only its own settings. It doesn't read what another firmware saved (projects, presets, samples), and that may not be there when you go back to it, so back it up first.</p>
+<p>You install it at your own risk. To go back to the stock firmware, use the installer's last section, which writes M-VAVE's own firmware back.</p>
+<hr>
+<h2 id="s2"><span class="num">2</span>The screen</h2>
+<p>At the top is the header. It holds the name of the world (on the lagoon and the voices' pages, the kit's name is near it). While the world is changing, CROSSING shows at its right and on the rule (see The edges).</p>
+<p>At the bottom are the four knobs, each with its name and its value. Above them runs a rule, and on the rule sits a short strip: the name of the page you are on, and a row of small bars, one for each page, with the shown one lit. It tells you where you are among the twelve pages. Turn SELECT to walk through them one by one, or press a button to jump straight to its page.</p>
+<p>Between the two is the page itself: water, an envelope, a ring, a path. It is a picture of what the page is about and it moves as the music moves. When the music rests, the world's name is greyed, and the PLAY button shows whether it is playing.</p>
+<p>Every button glows dim. The one whose page is shown is lit. PLAY is lit while it plays, SAVE when something is not saved, SEQ while it is held, ARP while the chords or the pulse sound, and OCT when the register has been moved. Lights, on the global page, sets how bright they all are.</p>
+<hr>
+<h2 id="s3"><span class="num">3</span>Controls</h2>
+<div class="table" tabindex="0" role="region" aria-label="Table: Controls (Control, What it does)"><table><thead><tr><th>Control</th><th>What it does</th></tr></thead><tbody><tr><td>SELECT</td><td>Turns through the twelve pages, in order.</td></tr><tr><td>HOME</td><td>Goes to the lagoon. Lit there.</td></tr><tr><td>EDIT</td><td>Goes to the voices. Press again for the next voice. Hold it to put the voice back as the kit has it.</td></tr><tr><td>FX</td><td>Goes to the effects. Press again for the age. Press again to go back.</td></tr><tr><td>ENV</td><td>Goes to the environment: the world, its root, its beat, its scale.</td></tr><tr><td>LFO</td><td>Goes to the cycles.</td></tr><tr><td>GLO</td><td>Goes to the global page.</td></tr><tr><td>ARP</td><td>Goes to the chords. Press again for the pulse. Press again to go back.</td></tr><tr><td>SEQ</td><td>Goes to the memory. Hold it to hold the music still, hold it again to let go.</td></tr><tr><td>OCT− · OCT+</td><td>Move the register of the music, two octaves either way. While REC is held they move the keys' octave instead.</td></tr><tr><td>REC</td><td>Hold it and the keys play, and the music waits. Let go, and what you played is taken in as the music's own, in whatever way the world holds it.</td></tr><tr><td>SEL</td><td>Hold it and K1 to K4 are the lagoon's four knobs, on any page. On the lagoon itself, they turn in finer steps.</td></tr><tr><td>PRESETS</td><td>Picks the kit. Ten kits, each three voices. Edits to the voices are kept per kit.</td></tr><tr><td>ALGORITHM</td><td>Picks the world. Seven worlds. The change is a crossing.</td></tr><tr><td>K1 to K4</td><td>The four knobs of the page that is shown.</td></tr><tr><td>PLAY</td><td>Plays, or rests.</td></tr><tr><td>SAVE</td><td>Keeps everything. Lit when something is not saved.</td></tr><tr><td>Keys</td><td>Play no notes. A press offers something to the music.</td></tr></tbody></table></div>
+<hr>
+<h2 id="s4"><span class="num">4</span>The pages</h2>
+<p>There are twelve. The four knobs always belong to the page you are on, and they do what they say, plainly. The music's hidden state leans how the music goes, but it never turns the knobs.</p>
+<h3 id="s4">4.1 The lagoon</h3>
+<div class="figs"><figure class="shot"><img src="img/screen-lagoon.png" alt="The lagoon with a thin line of water" loading="lazy"><figcaption>The lagoon</figcaption></figure></div>
+<p>The first page, and the one to come home to. The line across the middle is the water. It is the state of the music, drawn slowly: higher when there is light in it, rougher when it is folded.</p>
+<ul><li>Density: how much there is in the music. At the bottom, few notes and long silences; higher, more.</li><li>Bright: how clear and open it sounds, from dark to bright.</li><li>Space: how much of the plate's room is around it.</li><li>Echo: how much of the tape's echo comes back.</li></ul>
+<h3 id="s4">4.2 The voices</h3>
+<div class="figs"><figure class="shot"><img src="img/screen-voice.png" alt="A voice page: CARRIER : MODULATOR 1 : 1.00, a decaying envelope, a ring, and Color 1.00, Bright 50, Decay 50, Soft 14" loading="lazy"><figcaption>A voice, TIN HARBOR's lead</figcaption></figure></div>
+<p>Three pages, one for each voice of the kit: the lead, the answer and the low voice. EDIT goes to the lead, and again to the next. The page shows the voice's make-up (CARRIER : MODULATOR, the two tones the voice is built from), its envelope, and a ring that opens and closes with the voice.</p>
+<ul><li>Color: the voice's character, from plain and round to hollow, bell-like or strange.</li><li>Bright: how much of the voice shines.</li><li>Decay: how long the voice rings after it is struck.</li><li>Soft: how gently the voice begins. Low is a tap, high is a slow swell.</li></ul>
+<p>Some voices have breath: air beside the tone, a rough wobble, a pitch that wanders a little, as if worn or hazy. The kit fixes it. There is a little in SLOW BREATH and HAZE ARCHIVE and much in DUST PIPES, FOG LANTERN and CHALK GARDEN. Air, on the age page, scales it, and the voice's page shows it. Edits to a voice are kept for that kit. Hold EDIT to put the voice back as the kit has it.</p>
+<h3 id="s4">4.3 The effects</h3>
+<div class="figs"><figure class="shot"><img src="img/screen-effects.png" alt="The effects page: TAPE and PLATE, with Time, Feedback, Size and Wear" loading="lazy"><figcaption>TAPE and PLATE</figcaption></figure></div>
+<p>The tape echo and the plate.</p>
+<ul><li>Time: the length of the tape's loop.</li><li>Feedback: how long the echoes go on.</li><li>Size: how large the plate's room is.</li><li>Wear: how old the tape is. It also blurs the whole sound a little: a late, wandering copy beside the real one.</li></ul>
+<h3 id="s4">4.4 The age</h3>
+<div class="figs"><figure class="shot"><img src="img/screen-age.png" alt="The age page: Haze, Hiss, Dropout and Air" loading="lazy"><figcaption>The age, over the whole sound</figcaption></figure></div>
+<p>Press FX again. This page lies over everything that you hear, voices, echoes and plate.</p>
+<ul><li>Haze: a veil. The band narrows and the loud parts round off.</li><li>Hiss: a floor of soft noise that seems to breathe. It is there only while the music plays.</li><li>Dropout: now and then the sound thins and darkens for a moment, as worn tape does.</li><li>Air: the breath of the voices, from none to twice what the kit gives. At 50 the kit is as it was made.</li></ul>
+<h3 id="s4">4.5 The environment</h3>
+<div class="figs"><figure class="shot"><img src="img/screen-environment.png" alt="The environment page: the world, its root, beat, scale and octave, with Drift, Offer, Tempo and Transpose" loading="lazy"><figcaption>The environment</figcaption></figure></div>
+<p>The page shows the world, its root note, its beat, its scale and the octave. It is where you set how the room lies, and how far the music is allowed to be moved.</p>
+<ul><li>Drift: how far the cycles and the offerings (what a key gives; see 5. The keys and offerings) sway the music. At 0 nothing sways it, and the keys stir nothing.</li><li>Offer: how great the stir of an offering from the keys is.</li><li>Tempo: how fast it goes.</li><li>Transpose: the music's key, moved up or down.</li></ul>
+<h3 id="s4">4.6 The cycles</h3>
+<div class="figs"><figure class="shot"><img src="img/screen-cycles.png" alt="The cycles page: three orbits, Breath, Tide and Turn, and Pace" loading="lazy"><figcaption>Three slow cycles</figcaption></figure></div>
+<p>Three slow cycles of unequal length turn all the time, and so the music is never quite the same twice. They are the breath (the shortest, about 50 to 100 seconds), the tide (about 120 to 230 seconds) and the long turn (about 300 to 600 seconds). Their lengths wander too. The page draws each as an orbit with a small mark going round it.</p>
+<ul><li>Breath, Tide, Turn (K1 to K3): how deeply each cycle sways the music.</li><li>Pace: how fast all three go round. Under each orbit the page shows the length its cycle has at the moment, in seconds.</li></ul>
+<h3 id="s4">4.7 The chords</h3>
+<div class="figs"><figure class="shot"><img src="img/screen-chords.png" alt="The chords page: a walk over the chord, with Level, Stir, Spread and Wander" loading="lazy"><figcaption>The chords</figcaption></figure></div>
+<p>Press ARP. Broken chords under the music, played in the colour of the kit's low voice. Each world walks its chord in its own way: up and down, falling, scattered, rising and falling back, like a pendulum, swaying, or a step and its shadow.</p>
+<ul><li>Level: how loud. At 0 there are none.</li><li>Stir: the grain of the notes. As the world leans it; a sparse world rings long.</li><li>Spread: how wide the chord reaches. Light lifts it higher, and a fold draws it in.</li><li>Wander: how far the walk and its grain move with the music. At 0 it is the world's own.</li></ul>
+<h3 id="s4">4.8 The pulse</h3>
+<div class="figs"><figure class="shot"><img src="img/screen-pulse.png" alt="The pulse page: THUMP, CLICK and BRUSH as rings, with Level, Stir, Wander and Weight" loading="lazy"><figcaption>The pulse</figcaption></figure></div>
+<p>Press ARP again. A muffled beat: a low thump, a small click and a brush, laid on each world's own patterns. Some worlds leave one or two of these out. It stays a hazy pulse, and never goes to a dance. The thump stays on the beats, at most one to a beat.</p>
+<ul><li>Level: how loud. At 0 there is none.</li><li>Stir: how many hits are taken away or added.</li><li>Wander: how far the patterns move with the music. At 0 they keep still.</li><li>Weight: how much the thump counts against the click and the brush.</li></ul>
+<p>The chords and the pulse both keep the silences of the music. In a long rest they fade, in some worlds wholly. They never cut off a note that is sounding.</p>
+<h3 id="s4">4.9 The memory</h3>
+<div class="figs"><figure class="shot"><img src="img/screen-memory.png" alt="The memory page: THE MOTIF above and REMEMBERED below, with Repeat, Change, Length and Memory" loading="lazy"><figcaption>THE MOTIF, REMEMBERED</figcaption></figure></div>
+<p>What the music holds: a motif, a chord, a line, a figure, whatever the world plays from. What it is, and so what each knob touches, depends on the world, and on some the page has its own heading. 6. Worlds and kits tells what each world holds.</p>
+<ul><li>Repeat: how many times it is played before it may change.</li><li>Change: how much changes when it does.</li><li>Length: how long it is.</li><li>Memory: how often an older one comes back.</li></ul>
+<p>Hold SEQ to hold the music: nothing new is taken up, and the scale stays. The changes already moving go on. Hold SEQ again to let go.</p>
+<h3 id="s4">4.10 The global page</h3>
+<div class="figs"><figure class="shot"><img src="img/screen-global.png" alt="The global page: PAPERLAGOON, A4 440.0 HZ, SLEEP OFF, with Tune 0, Level 70, Lights LOW and Sleep OFF" loading="lazy"><figcaption>Global</figcaption></figure></div>
+<ul><li>Tune: the tuning of the whole; the page shows it as the pitch of A4.</li><li>Level: the volume of everything.</li><li>Lights: the glow of the buttons.</li><li>Sleep: minutes until it rests; the page says OFF when it is not set. Its last minute is a dusk (see The edges).</li></ul>
+<hr>
+<h2 id="s5"><span class="num">5</span>The keys and offerings</h2>
+<p>The keys play no notes. Only under REC do they play. Otherwise a press offers something, and a held key offers a little more, again and again.</p>
+<p>The offering goes to the hidden state. It has four quantities, named for paper: light, bleed, fold and margin. You never see them on the device. They lean the music, and three slow cycles keep turning them. Which one a key touches, and how, depends on its pitch and its place on the keyboard, a part of it fixed and a part of it left to chance. No key does one fixed thing.</p>
+<p>The screen answers at once: a drop falls toward the water.</p>
+<div class="figs"><figure class="shot"><img src="img/screen-drop.png" alt="A key is pressed: a small drop falls toward the water above the lagoon" loading="lazy"><figcaption>A drop falls</figcaption></figure></div>
+<p>About 0.4 seconds later the drop meets the water, and the rings spread.</p>
+<div class="figs"><figure class="shot"><img src="img/screen-rings.png" alt="The rings spreading over the water" loading="lazy"><figcaption>The rings</figcaption></figure></div>
+<p>At that moment the sound stirs too, at once. It smears, turns darker or clearer, the echoes and the plate swell, the whole is a little hushed or a little swollen. The music answers soon after, and in a second or two the stir is gone. Then the offering seeps in over some seconds, and it fades over minutes. What it changes is the scale, the register, the length of the rests, how long a motif is, how often the answer and the low voice come, an older motif folding back, and now and then a motif built on the pitch you offered. In some worlds an offering does something of its own as well (see 6. Worlds and kits).</p>
+<p>With Drift at 0 nothing stirs. Offer sets how great the stir is.</p>
+<hr>
+<h2 id="s6"><span class="num">6</span>Worlds and kits</h2>
+<h3 id="the-worlds">The worlds</h3>
+<p>ALGORITHM picks the world. Each is a place that exists nowhere, and each makes music in its own way. They never touch the knobs or the kit. The screen changes with the world, and so does its colour. Each has its own scales too, from a darker to a brighter, and the hidden state chooses among them. And each has its own room: near or far, long or short, dark or bright. Space, Echo and the other knobs do what they always do, inside it.</p>
+<ul><li>SHALLOWS OF MEMORY: a motif is written in a note or two each pass, until it is whole. It is heard whole a few times: the low voice under a pass now and then, the answer while it is whole. Then it fades from memory a note or two each pass, until nothing is left. After a silence another is written. Light lifts it and bleed lets it ring. An offering is written in next; while a motif fades, it puts a note back. In the margin the washing away is faster and the silences longer, and a fold writes the motif out of order.</li><li>BEHIND THE HORIZON: a drone. Chords swell and fall back, a low tone lies under them, and now and then one note of a melody comes.</li><li>THE UNREAD LETTER: single points, far apart. A few pitches, the letter's words, each a leap from the last, at uneven distances. A long silence follows each line. In the margin some stay unread, written but not sounded. Now and then a word is read again, lower, as if half remembered; under a line's first word the low voice may sound that word, deep.</li><li>THE FOUNTAIN AFTER CLOSING: one figure that rises and falls back, round and round in soft eighths, changing a little now and then. At its height the answer falls an octave below, into the basin.</li></ul>
+<p>![The fountain: THE FOUNTAIN AFTER CLOSING in the header, a small ring on the water, points of light above it](img/screen-fountain.png "THE FOUNTAIN AFTER CLOSING")</p>
+<ul><li>WHERE LIGHT BECOMES MOSS: four loops of unequal length, drifting in and out of step.</li><li>THE ATTIC OF LOOSE KEYS: five keys hanging close together, high, struck in gusts. A gust strikes two to ten times, quickly, neighbour knocking neighbour (now and then one further off), rising and dying away. Between gusts there is a stillness of some seconds. No beat. After a spell of gusts comes a longer calm; then a key is changed, or a new set hangs. A strong gust may bring one deep tone under it. An offering hangs a key of its pitch, and its splash brings a gust soon. Light lifts the keys and bleed lets them ring. The page of the memory is called THE KEYS. In the margin the attic is still for longer, and a fold makes the gusts wilder.</li></ul>
+<p>![The attic: a beam, five threads, a key at the end of each, one swinging lit after a strike](img/screen-attic.png "THE ATTIC OF LOOSE KEYS")</p>
+<ul><li>A STAIR AND ITS SHADOW: two voices, slowly. The stair walks by steps away from a centre and back, each phrase one step longer than the last (one note, two, three, up to the longest, three to seven), each note long. With every note its shadow sounds: the nearest tone of the root's chord, under it (after a change, over it; in a fold it alternates). The two never sound the same pitch, nor a semitone apart. A rest comes between phrases, a long one after the longest; then the stair turns the other way. The root, low and long, lies under each walk. An offering becomes the next centre, and light lifts the centre; bleed lets the notes ring. The page of the memory is called THE STAIR. In the margin the rests grow longer.</li></ul>
+<p>![The stair: steps by the walk's notes, the sounding one lit, its dotted shadow beside each](img/screen-stair.png "A STAIR AND ITS SHADOW")</p>
+<h3 id="the-kits">The kits</h3>
+<p>PRESETS picks the kit, a set of three voices: a lead, an answer and a low voice. There are ten: TIN HARBOR, WOODEN RAIN, GLASS ORCHARD, SLOW BREATH, IRON SNOW, HAZE ARCHIVE, DUST PIPES, FOG LANTERN, CHALK GARDEN and BRASS EVENING. The chords take the colour of the kit's low voice.</p>
+<hr>
+<h2 id="s7"><span class="num">7</span>The edges</h2>
+<p>Music of this kind should not start or stop with a click.</p>
+<h3 id="crossing">Crossing</h3>
+<p>When you pick a new world, the screen changes at once, but the music does not. It finishes its phrase where it is, which takes a few seconds. The rule over the knobs and the header both say CROSSING, the name of the world breathes, and a small wake runs under the header. The colour goes halfway to the new world's. The chords and the pulse fade. Then a breath, and the new world opens, sparse, and fills out over some seconds.</p>
+<div class="figs"><figure class="shot"><img src="img/screen-crossing.png" alt="A crossing: THE FOUNTAIN AFTER CLOSING in the header with CROSSING at its right, a wake under it, and wide rings on the water" loading="lazy"><figcaption>A crossing to THE FOUNTAIN AFTER CLOSING</figcaption></figure></div>
+<p>If you pick again during a crossing the way changes. If you go back to the world you left, the crossing is cancelled.</p>
+<h3 id="opening">Opening</h3>
+<p>When you press PLAY, the music begins sparse and is full in about 25 seconds. The chords and the pulse come in a few bars after.</p>
+<h3 id="resting-and-sleep-s-dusk">Resting, and Sleep's dusk</h3>
+<p>Press PLAY again and it rests at once. The echoes and the plate ring on. While it rests the world's name is greyed, and PLAY's light shows whether it is playing.</p>
+<p>When Sleep is set, its last minute is a dusk: sparser, quieter, a little slower, and more so as it goes. Then it rests.</p>
+<hr>
+<h2 id="s8"><span class="num">8</span>Saving</h2>
+<p>Press SAVE to keep everything: the world, the kit, the knobs, the pages' settings. They come back the next time the FM-1 starts. SAVE stays lit while something is not saved. Edits to a voice are kept for the kit they were made in.</p>
+<hr>
+<h2 id="s9"><span class="num">9</span>USB audio</h2>
+<p>Over the USB cable the FM-1 appears as an audio input on your computer. You can record the music from it, with any recorder.</p>
+<hr>
+<h2 id="s10"><span class="num">10</span>Troubleshooting</h2>
+<p>If you hear nothing, check the Level on the global page, that PLAY is lit, and the Sleep time: it may have rested. The music also keeps long silences, so wait a little.</p>
+<p>If the installer doesn't find the FM-1, use Chrome or Edge, allow MIDI when the browser asks, and close any other programs that use the FM-1's MIDI port.</p>
+<p>To go back to M-VAVE's own firmware, use the installer's last section, which writes it back. If the FM-1 doesn't start after an install, it starts in a safe mode after two failed starts, and the installer can reach it from there.</p>
+<hr>
+<h2 id="s11"><span class="num">11</span>Licence</h2>
+<p>PaperLagoon is GPL-3.0-only. It is built on fm1-base (MPL-2.0) and felucca-bsp, which come from Felucca by Leo Kuroshita, Hügelton Instruments. The plate and the echo come from AMB-1 (MPL-2.0). The source is at https://github.com/hacha/paperlagoon.</p>
+<p>M-VAVE and FM-1 are trademarks of their owners. PaperLagoon is not affiliated with M-VAVE.</p>
+</main>
+</div>
+</body>
+</html>

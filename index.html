@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAPERLAGOON · Generative environmental music for the FM-1</title>
+<meta name="description" content="PAPERLAGOON, Generative environmental music for the FM-1 for PAPERLAGOON, a firmware for the M-VAVE FM-1.">
+<style>
+/* paper and ink: warm white paper, ink-blue type, vermilion for what is played, mustard for asides; a shade of the
+   paper for code and callouts (CTL-1's; a firmware may restyle its site) */
+:root {
+  --paper: #fbf8f1; --sheet: #efe9dc; --rule: #ddd4c2; --ink: #1e2b5a; --muted: #5d6585;
+  --hot: #e5482e; --hot-t: #f8d3c9; --cool: #d9a21b; --cool-t: #f5e4b8;
+  --hot-ink: #c23a22;                                 /* the vermilion as text: 4.5:1 on the paper */
+  color-scheme: light;
+}
+body {
+  background: var(--paper); color: var(--ink); margin: 0;
+  font: 400 17px/1.6 "Helvetica Neue", Helvetica, Arial, sans-serif;
+  padding-inline: 16px; padding-block: 32px 64px;
+}
+main { max-width: 46rem; margin: 0 auto; }
+.page > .site { max-width: 46rem; margin-inline: auto; }
+main:focus { outline: none; }
+h1, h2, h3 { font-family: inherit; text-wrap: balance; line-height: 1.2; }
+h1 { font-size: 2.2rem; font-weight: 700; margin: 0 0 .4rem; letter-spacing: .02em; }
+h2 { font-size: 1.3rem; font-weight: 700; margin: 3rem 0 .8rem; padding-top: .8rem; border-top: 2px solid var(--ink); }
+h2 .num { color: var(--hot); margin-right: .5em; font-variant-numeric: tabular-nums; }
+h3 { font-size: 1.1rem; font-weight: 700; margin: 2rem 0 .5rem; }
+p, li { max-width: 65ch; }
+p { margin: 0 0 1rem; }
+ul, ol { padding-left: 1.3rem; margin: 0 0 1rem; }
+li { margin: .2rem 0; }
+li::marker { color: var(--hot); }
+strong { font-weight: 700; }
+a { color: var(--ink); text-decoration-color: var(--hot); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+a:hover { background: var(--hot-t); }
+:focus-visible { outline: 3px solid var(--hot-ink); outline-offset: 2px; }
+.skip { position: absolute; left: 16px; top: -100px; background: var(--ink); color: var(--paper); padding: 8px 14px; border-radius: 0 0 6px 6px; z-index: 1; }
+.skip:focus { top: 0; }
+code, pre { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .86em; }
+code { background: var(--sheet); padding: .08em .35em; border-radius: 3px; }
+pre { background: var(--sheet); border-radius: 6px; padding: 14px 16px; overflow-x: auto; line-height: 1.45; margin: 0 0 1.2rem; }
+pre code { background: none; padding: 0; font-size: inherit; }
+hr { display: none; }
+.table { overflow-x: auto; margin: 0 0 1.3rem; }
+table { border-collapse: collapse; width: 100%; font-size: .95rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; vertical-align: top; padding: .45rem .7rem .45rem 0; border-bottom: 1px solid var(--rule); }
+th { font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: .78rem; color: var(--muted); border-bottom: 2px solid var(--ink); }
+td:first-child { white-space: nowrap; }
+.lede { margin-bottom: 1.6rem; }
+.status { background: var(--sheet); border-radius: 6px; padding: 12px 16px; }
+.status p { margin: 0; }
+.site { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem 1.2rem; margin: 0 0 1.6rem; padding-bottom: .5rem; border-bottom: 2px solid var(--ink); }
+.site .home { font-size: 1.1rem; font-weight: 700; letter-spacing: .04em; color: var(--ink); text-decoration: none; }
+.site .home:hover { color: var(--hot-ink); background: none; }
+.site nav { margin-left: auto; display: flex; flex-wrap: wrap; gap: .2rem 1rem; font-size: .92rem; }
+.site nav a { color: var(--ink); text-underline-offset: 3px; }
+.site nav a[aria-current] { text-decoration: none; color: var(--hot-ink); }
+a.home { color: inherit; text-decoration: none; }
+a.home:hover { background: none; color: var(--hot-ink); }
+main > a.home { display: inline-block; font-size: .9rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 .4rem; }
+.callout { border-left: 4px solid var(--cool); background: var(--cool-t); padding: 10px 16px; margin: 0 0 1.2rem; max-width: 65ch; border-radius: 0 6px 6px 0; }
+.callout p { margin: 0; }
+details { background: var(--sheet); border-radius: 6px; padding: 0 16px; margin: 0 0 1.2rem; }
+details > summary { cursor: pointer; padding: 10px 0; }
+details[open] > summary { margin-bottom: .4rem; }
+details > :last-child { margin-bottom: 1rem; }
+.swatch { display: inline-block; width: .7em; height: .7em; margin-right: .4em; vertical-align: .02em; }
+nav.contents ol { columns: 2 14rem; column-gap: 2rem; padding-left: 1.3rem; }
+.figs { display: flex; flex-wrap: wrap; gap: 20px; margin: .4rem 0 1.6rem; }
+figure { margin: 0; flex: 0 1 auto; }
+figure img { display: block; max-width: 100%; height: auto; }
+figure.shot img { width: 300px; image-rendering: pixelated; border-radius: 4px; box-shadow: 0 0 0 1px var(--rule); }
+figure.wide { flex-basis: 100%; }
+figure.wide img { width: 100%; }
+figcaption { color: var(--muted); font-size: .88rem; margin-top: .4rem; max-width: 300px; }
+figure.wide figcaption { max-width: none; }
+nav.contents li { break-inside: avoid; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+<!-- paperlagoon theme -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Semi+Condensed:wght@600;700&display=swap">
+<style>
+/* SPDX-License-Identifier: GPL-3.0-only
+ * Copyright (C) 2026 hacha
+ * PaperLagoon's site, as its screen: black, pale type, grey for asides, the great ring's blue for what can be touched.
+ * Put last in every page's <head> by app/site/theme.py, over fm1-base's paper (whatever the system's light or dark). */
+:root, :root:not([data-theme="light"]), :root[data-theme="dark"], :root[data-theme="light"] {
+  --pl-ground: #07080a; --pl-sheet: #121417; --pl-rule: #262a2f; --pl-ink: #e6eae6; --pl-muted: #9a9ca3;
+  --pl-ring: #39b6ee; --pl-ring2: #94e2ff; --pl-ring-t: rgba(57, 182, 238, .16); --pl-on-ring: #03121a;
+  /* the manual and the front page */
+  --paper: var(--pl-ground) !important; --sheet: var(--pl-sheet) !important; --rule: var(--pl-rule) !important;
+  --ink: var(--pl-ink) !important; --muted: var(--pl-muted) !important;
+  --hot: var(--pl-ring) !important; --hot-t: var(--pl-ring-t) !important; --hot-ink: var(--pl-ring2) !important;
+  --cool: var(--pl-muted) !important; --cool-t: var(--pl-sheet) !important;
+  /* the installer */
+  --bg: var(--pl-ground) !important; --fg: var(--pl-ink) !important; --dim: var(--pl-muted) !important;
+  --accent: var(--pl-ring) !important; --on-accent: var(--pl-on-ring) !important; --focus: var(--pl-ring2) !important;
+  --bad: #ff8a73 !important;
+  /* the emulator */
+  --ground: var(--pl-ground) !important; --card: var(--pl-sheet) !important; --teal: var(--pl-ring2) !important;
+  color-scheme: dark !important;
+}
+html { background: var(--pl-ground); }
+h1, h2, h3, .site .home { font-family: "Barlow Semi Condensed", "Barlow", "Helvetica Neue", Arial, sans-serif; letter-spacing: .03em; }
+h2 { border-top-color: var(--pl-rule) !important; }
+.site, th { border-bottom-color: var(--pl-rule) !important; }
+a { color: var(--pl-ink); }
+img { max-width: 100%; height: auto; }
+/* the emulator's own colours */
+.start button { background: var(--pl-ring) !important; color: var(--pl-on-ring) !important; }
+.held .btnface, .held .keyface { stroke: var(--pl-ring) !important; }
+.latched .btnface, .latched .keyface { stroke: var(--pl-ring2) !important; }
+.hit:focus-visible { outline-color: var(--pl-ring2) !important; box-shadow: 0 0 0 6px var(--pl-ground) !important; }
+header nav a, main a { color: var(--pl-ring2); }
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<div class="page">
+<main id="content" tabindex="-1">
+<a class="home" href="../">PAPERLAGOON</a>
+<h1>PaperLagoon</h1>
+<div class="figs"><figure class="shot"><img src="img/title.png" alt="PaperLagoon: a drop over the water, its rings and the great ring" loading="lazy"><figcaption>PaperLagoon: a drop over the water, its rings and the great ring</figcaption></figure></div>
+<p>PaperLagoon is a generative environmental-music firmware for the M-VAVE FM-1. It plays by itself, and you steer it from outside. The keys play no notes: a press offers something to a hidden state, a drop falls to the water, and the music answers, loosely, and then more slowly. Seven worlds that exist nowhere, ten kits of FM voices, a tape echo and a plate, and a few slow cycles that keep it turning.</p>
+<div class="figs"><figure class="shot"><img src="manual/img/screen-drop.png" alt="The lagoon: a drop falls toward the water under SHALLOWS OF MEMORY" loading="lazy"><figcaption>PaperLagoon on the FM-1's screen</figcaption></figure></div>
+<p>This is version 1.1. You install it at your own risk, and the installer can put M-VAVE's own firmware back.</p>
+<ul><li><a href="emu/">Try it in the browser</a>. Play it right here, with sound. It runs the same code as the FM-1, so you don't need one.</li><li><a href="install/">Install</a> it from Chrome or Edge, with the FM-1 connected by USB.</li><li>The <a href="manual/">Manual</a> explains the screen, the pages, the keys and offerings, the worlds and the kits.</li><li><a href="firmware/paperlagoon-1.1.fwsc">Download paperlagoon-1.1.fwsc</a> to use the command-line installer: <code>python3 tools/fm1_install.py paperlagoon-1.1.fwsc</code>.</li><li>The <a href="https://github.com/hacha/paperlagoon">Source</a> is under GPL-3.0-only. It's built on fm1-base (MPL-2.0) and felucca-bsp, which come from Felucca by Leo Kuroshita, Hügelton Instruments. The plate and the echo come from AMB-1 (MPL-2.0).</li></ul>
+<p>M-VAVE and FM-1 are trademarks of their owners. PaperLagoon is not affiliated with M-VAVE.</p>
+<p>日本語: FM-1 のための、自動生成の環境音楽ファームウェアです。鍵盤は音を鳴らさず、 押すと音楽に何かを捧げます。使い方は<a href="https://github.com/hacha/paperlagoon/blob/main/app/docs/MANUAL.ja.md">日本語のマニュアル</a>をご覧ください。</p>
+</main>
+</div>
+</body>
+</html>
