@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 hacha
+# the world's colour (the values', the curves', on every page): it follows the music, not the knob. Through a crossing
+# it is between the world the music is in and the one chosen, never there at once; it is there some seconds after the
+# music is. tint: the colour as the screen has it (5-6-5 bits); tintr: its red (0..31)
+wait 600
+expect world 0
+expect here 0
+expect tint 38687
+# to the horizon (a little violet: its red 22, the shallows' 18)
+turn ALGO 1
+wait 100
+expect world 1
+expect here 0
+expect tintr <20
+wait 900
+expect tintr >18
+expect tintr <22
+wait 9000
+expect crossing 0
+expect here 1
+wait 8000
+expect tint 46399
+# the same on every page
+tap ENV
+wait 300
+expect tint 46399
+tap HOME
+# chosen and chosen back (called off, or there and back: as the phrase falls): the colour back with the music
+turn ALGO 1
+turn ALGO -1
+wait 16000
+expect crossing 0
+expect here 1
+expect tint 46399
+# at rest there is no crossing: the world at once, its colour in some seconds, not at once
+tap PLAY
+wait 300
+expect playing 0
+turn ALGO 4
+wait 100
+expect world 5
+expect here 5
+expect tintr >22
+expect tintr <31
+wait 8000
+expect tintr 31

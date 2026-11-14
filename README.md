@@ -28,7 +28,7 @@ it: back it up first.
 | SEL | held: K1..K4 are the lagoon's four from any page (on the lagoon itself, in finer steps) |
 | SEQ | the memory: what the music holds (a motif, a chord, a line, a figure: as the world has it); K1..K4 Repeat (the times before it may change), Change (how much), Length, Memory (how often an older one comes back). Held: hold it (nothing new taken up, the scale kept), held again: let go |
 | PRESETS | the kit: ten sets of three voices (lead, answer, low); edits are kept per kit |
-| ALGORITHM | the world: seven places that exist nowhere, each its own way of making music (never the knobs nor the kit). Chosen at once, reached by a crossing: the music finishes its phrase where it is (a few seconds; the header says CROSSING, the name breathing, a wake running under it), the chords and the pulse fading, then a breath, and the new world opens |
+| ALGORITHM | the world: seven places that exist nowhere, each its own way of making music (never the knobs nor the kit). Chosen at once, reached by a crossing: the music finishes its phrase where it is (a few seconds; the header says CROSSING, the name breathing, a wake running under it, the colour halfway there), the chords and the pulse fading, then a breath, and the new world opens |
 | K1..K4 | the lagoon: Density, Bright, Space, Echo. A voice: Color, Bright, Decay, Soft |
 | PLAY | plays or rests. It opens: sparse at first, full in some 25 s, the chords and the pulse coming in a few bars later. A rest is at once (the echoes and the plate ring on) |
 | SAVE | keeps all of it (lit when something is not saved) |
@@ -42,7 +42,7 @@ Some voices have breath (air beside the tone, a rough modulation, a pitch that w
 (a little in SLOW BREATH and HAZE ARCHIVE, much in DUST PIPES, FOG LANTERN and CHALK GARDEN), scaled by Air (FX, again); a voice's
 page shows it.
 
-Worlds, each its own way of making music and its own scales, a darker to a brighter (heard at once; the screen changes with it):
+Worlds, each its own way of making music and its own scales, a darker to a brighter (heard at once; the screen changes with it, and its colour):
 SHALLOWS OF MEMORY (a motif written in a note or two each pass until whole, heard whole, then faded a note or two each pass until nothing is left; a silence, another), BEHIND THE HORIZON (a drone: chords that swell and fall
 back, a low tone under them, now and then one note of a melody), THE UNREAD LETTER (single points, far apart: a few
 pitches, the letter's words, each a leap from the last, at uneven distances; a long silence after each line; in the

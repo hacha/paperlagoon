@@ -1373,9 +1373,11 @@ static void gen_event(void)
 }
 
 static void pulse_begin(void);
+volatile uint8_t en_here;                        /* (UI) the world the music is in */
 static void world_begin(void)                    /* a new world, at once: its root, its beat, its algorithm */
 {
     const world_t *w = &WORLDS[world];
+    en_here = world;
     root = w->roots[0];
     root_due = ROOT_STAY[world] * (0.5f + 0.5f * frand());
     beat_len = w->beat * tempo * EN_SR;

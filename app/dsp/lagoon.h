@@ -64,6 +64,7 @@ const char *en_world_name(int world);
 void en_set_world(int world);
 void en_set_world_now(int world);       /* there at once, no crossing (at boot) */
 void en_dusk(int amount);              /* sleep's last minute: 0..100, sparser, quieter, a little slower */
+extern volatile uint8_t en_here;        /* the world the music is in now (a crossing under way: not yet the chosen) */
 extern volatile uint8_t en_crossing;    /* a crossing to the chosen world under way (the music finishing its phrase) */           /* there at once; only the state's lean glides */  /* key 0..26 (F3..G5); strength 100 a press, less while it is held */
 extern volatile float en_splash;               /* a splash (a drop meeting the water), 0..1, gone in a second or two */
 extern volatile uint8_t en_arp_beat;           /* a count of the chords' notes (the screen's tick) */

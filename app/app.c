@@ -681,6 +681,38 @@ void app_input_only(void)
     input();
 }
 
+/* the world's colour: the palette's two brightest steps (C_AMB, C_HI: the values, the curves, the page shown) are
+ * the world's own on every page; the three greys and the white are every world's. It follows
+ * the music, not the knob: through a crossing halfway between the world it is in and the one chosen, and the rest of
+ * the way as it arrives (a second or so each, never at once) */
+static const uint8_t TINT[EN_NWORLD][6] = {      /* each world's two accents (r, g, b): the mid, the high. Far enough
+                                                  * apart to tell on the device's screen, where pale tints all look white */
+    {60, 180, 235, 150, 225, 255},               /* the palette's own cyan */
+    {125, 105, 240, 180, 165, 255},              /* violet */
+    {205, 185, 110, 245, 232, 170},              /* paper, yellowed */
+    {30, 200, 155, 115, 245, 205},               /* a green-blue */
+    {120, 200, 70, 185, 240, 125},               /* moss */
+    {235, 125, 50, 255, 178, 100},               /* dusty, warm: amber */
+    {150, 158, 178, 212, 218, 232},              /* cold, grey: no colour */
+};
+
+static void tint_step(uint32_t now)
+{
+    static float is[6];
+    static uint32_t at;
+    static uint8_t begun;
+    int here = en_here % EN_NWORLD, to = en_crossing ? set.world % EN_NWORLD : here, i;
+    float k = begun ? fm_clampf((float)(now - at) * (1.0f / 1100.0f), 0.0f, 1.0f) : 1.0f;
+    for (i = 0; i < 6; i++) {
+        float want = 0.5f * ((float)TINT[here][i] + (float)TINT[to][i]), d = want - is[i];
+        is[i] = d > -1.0f && d < 1.0f ? want : is[i] + k * d;   /* (the last step: there) */
+    }
+    at = now;
+    begun = 1;
+    pal[3] = RGB((int)is[0], (int)is[1], (int)is[2]);
+    pal[4] = RGB((int)is[3], (int)is[4], (int)is[5]);
+}
+
 /* a ring: the midpoint circle, clipped by the canvas */
 static void draw_ring(int32_t cx, int32_t cy, int32_t r, uint16_t c)
 {
@@ -694,6 +726,30 @@ static void draw_ring(int32_t cx, int32_t cy, int32_t r, uint16_t c)
         cv_pset(cx - y, cy - x, c);
         cv_pset(cx + y, cy - x, c);
         cv_pset(cx + x, cy - y, c);
+        y++;
+        if (err < 0) {
+            err += 2 * y + 1;
+        } else {
+            x--;
+            err += 2 * (y - x) + 1;
+        }
+    }
+}
+
+/* a ring lying on the water: the same, three tenths as tall (as the offerings' rings: draw_ellipse, dotted) */
+static void draw_oval(int32_t cx, int32_t cy, int32_t rx, uint16_t c)
+{
+    int32_t x = rx, y = 0, err = 1 - rx;
+    while (x >= y) {
+        int32_t fx = x * 77 >> 8, fy = y * 77 >> 8;
+        cv_pset(cx + x, cy + fy, c);
+        cv_pset(cx + y, cy + fx, c);
+        cv_pset(cx - y, cy + fx, c);
+        cv_pset(cx - x, cy + fy, c);
+        cv_pset(cx - x, cy - fy, c);
+        cv_pset(cx - y, cy - fx, c);
+        cv_pset(cx + y, cy - fx, c);
+        cv_pset(cx + x, cy - fy, c);
         y++;
         if (err < 0) {
             err += 2 * y + 1;
@@ -773,7 +829,7 @@ static void draw_ellipse(int32_t cx, int32_t cy, int32_t rx, uint16_t c)
     }
 }
 
-/* the lagoon, as each world has it: its own ground and its own tint (a little off the cyan), under the same rule.
+/* the lagoon, as each world has it: its own ground, in its own colour (tint_step), under the same rule.
  * The water's line (where there is water) is the hidden state, slowly: higher in light, rougher when folded, its dots
  * closer when it bleeds, its waves slower in the margin. Each sounding voice a ripple, wider as it fades; a slow
  * breath at the centre. An offering: a drop falls at once, and rings spread where it lands.
@@ -784,16 +840,6 @@ static void draw_ellipse(int32_t cx, int32_t cy, int32_t rx, uint16_t c)
  *   MOSS      the water thick, furred; four buoys
  *   ATTIC     no water: a beam, five threads, a key on each, swinging when struck; a draught after a gust
  *   STAIR     a stair by the walk's notes, the step sounding lit; its shadow beside it, under or over */
-static const uint8_t TINT[EN_NWORLD][6] = {      /* each world's two accents (r, g, b): the mid, the high */
-    {60, 180, 235, 150, 225, 255},               /* the palette's own cyan */
-    {100, 150, 240, 180, 200, 255},              /* a little violet */
-    {185, 180, 160, 232, 226, 210},              /* paper */
-    {50, 190, 190, 140, 235, 228},               /* a green-blue */
-    {80, 185, 150, 165, 232, 200},               /* toward moss */
-    {190, 160, 110, 232, 212, 172},              /* dusty, warm */
-    {150, 168, 186, 214, 224, 234},              /* cold, grey */
-};
-
 static uint32_t mix32(uint32_t h)
 {
     h ^= h >> 16;
@@ -811,8 +857,7 @@ static void dotted_hline(int32_t x0, int32_t x1, int32_t y, int32_t gap, uint16_
 static void draw_lagoon(uint32_t now)
 {
     uint32_t i;
-    int w = set.world % EN_NWORLD;
-    uint16_t tm = RGB(TINT[w][0], TINT[w][1], TINT[w][2]), th = RGB(TINT[w][3], TINT[w][4], TINT[w][5]);
+    uint16_t tm = C_AMB, th = C_HI;              /* the world's two accents */
     float light = en_state[S_LIGHT], bleed = en_state[S_BLEED], fold = en_state[S_FOLD], margin = en_state[S_MARGIN];
     float b = 0.5f + 0.5f * fm_sinf(en_cycle * FM_TWO_PI), t = (float)now * 0.001f;
     float amp = 1.5f + 3.5f * (fold + 1.0f), speed = 0.9f - 0.6f * margin;
@@ -884,7 +929,7 @@ static void draw_lagoon(uint32_t now)
                 cv_pset(120 - (int32_t)(fm_cosf(a) * 70.0f), hy + 4 + (int32_t)(fm_sinf(a) * 24.0f), C_LINE);
             }
         if (en_alg != EN_ALG_DRONE)
-            draw_ring(120, hy, 3 + (int32_t)(4.0f * b), C_LINE);   /* the breath */
+            draw_oval(120, hy, 5 + (int32_t)(9.0f * b), C_LINE);   /* the breath */
     }
 
     /* the voices */
@@ -913,13 +958,13 @@ static void draw_lagoon(uint32_t now)
         }
         if (en_alg == EN_ALG_FOUNTAIN) {         /* the fountain: small rings where its drops fall */
             if (x > wx0 && x < wx1)
-                draw_ellipse(x, hy, 3 + (int32_t)((1.0f - g) * 18.0f), g > 0.3f ? C_GRAY : C_DIM);
+                draw_oval(x, hy, 3 + (int32_t)((1.0f - g) * 18.0f), g > 0.3f ? tm : C_DIM);
             continue;
         }
-        r = 4 + (int32_t)((1.0f - g) * 56.0f);
-        draw_ring(x, hy, r, g > 0.5f ? th : g > 0.2f ? tm : C_DIM);
+        r = 4 + (int32_t)((1.0f - g) * 56.0f);   /* a ripple on the water, lying as the water lies */
+        draw_oval(x, hy, r, g > 0.5f ? th : g > 0.2f ? tm : C_DIM);
         if (g > 0.6f)
-            draw_ring(x, hy, r / 2, tm);
+            draw_oval(x, hy, r / 2, tm);
     }
 
     /* what each world holds */
@@ -1413,6 +1458,7 @@ static void draw_knobs(uint32_t now)
 static void draw(void)
 {
     uint32_t now = plat_ms();
+    tint_step(now);
     draw_header(now);
     if (ui.page == PG_LAGOON)
         draw_lagoon(now);
@@ -1650,6 +1696,12 @@ int app_expect(const char *what, int *got)
         *got = en_held;
     else if (!strcmp(what, "world"))
         *got = set.world;
+    else if (!strcmp(what, "here"))              /* the world the music is in (a crossing: not yet the chosen) */
+        *got = en_here;
+    else if (!strcmp(what, "tint"))              /* the screen's colour now (the values', as the screen has it) */
+        *got = C_HI;
+    else if (!strcmp(what, "tintr"))             /* its red alone, 0..31 */
+        *got = C_HI >> 11;
     else if (!strcmp(what, "kit"))
         *got = set.kit;
     else if (!strcmp(what, "offers"))            /* offerings since boot (presses) */

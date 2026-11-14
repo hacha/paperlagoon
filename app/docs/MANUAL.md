@@ -258,7 +258,7 @@ With Drift at 0 nothing stirs. Offer sets how great the stir is.
 ### The worlds
 
 ALGORITHM picks the world. Each is a place that exists nowhere, and each makes music in its own way. They never
-touch the knobs or the kit. The screen changes with the world. Each has its own scales too, from a darker to a
+touch the knobs or the kit. The screen changes with the world, and so does its colour. Each has its own scales too, from a darker to a
 brighter, and the hidden state chooses among them.
 
 - SHALLOWS OF MEMORY: a motif is written in a note or two each pass, until it is whole. It is heard whole a few times:
@@ -309,8 +309,8 @@ Music of this kind should not start or stop with a click.
 
 When you pick a new world, the screen changes at once, but the music does not. It finishes its phrase where it is,
 which takes a few seconds. The rule over the knobs and the header both say CROSSING, the name of the world breathes,
-and a small wake runs under the header. The chords and the pulse fade. Then a breath, and the new world opens,
-sparse, and fills out over some seconds.
+and a small wake runs under the header. The colour goes halfway to the new world's. The chords and the pulse fade.
+Then a breath, and the new world opens, sparse, and fills out over some seconds.
 
 ![A crossing: THE FOUNTAIN AFTER CLOSING in the header with CROSSING at its right, a wake under it, and wide rings on the water](img/screen-crossing.png "A crossing to THE FOUNTAIN AFTER CLOSING")
 
