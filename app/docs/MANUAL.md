@@ -270,9 +270,11 @@ bright. Space, Echo and the other knobs do what they always do, inside it.
 - BEHIND THE HORIZON: a drone. Chords swell and fall back, a low tone lies under them, and now and then one note of a
   melody comes.
 - THE UNREAD LETTER: single points, far apart. A few pitches, the letter's words, each a leap from the last, at
-  uneven distances. A long silence follows each line. In the margin some stay unread, written but not sounded.
+  uneven distances. A long silence follows each line. In the margin some stay unread, written but not sounded. Now and
+  then a word is read again, lower, as if half remembered; under a line's first word the low voice may sound that
+  word, deep.
 - THE FOUNTAIN AFTER CLOSING: one figure that rises and falls back, round and round in soft eighths, changing a little now and
-  then.
+  then. At its height the answer falls an octave below, into the basin.
 
   ![The fountain: THE FOUNTAIN AFTER CLOSING in the header, a small ring on the water, points of light above it](img/screen-fountain.png "THE FOUNTAIN AFTER CLOSING")
 - WHERE LIGHT BECOMES MOSS: four loops of unequal length, drifting in and out of step.

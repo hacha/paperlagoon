@@ -246,14 +246,14 @@ typedef struct {
     float beat;                                  /* seconds */
     int8_t roots[4];                             /* the first is where it starts */
     float cycles;                                /* the cycles' lengths, times this */
-    int8_t answer;                               /* the answer, this far over the lead (semitones) */
+    int8_t answer;                               /* the answer, this far over the lead (semitones; under, less than 0) */
     uint8_t alg;                                 /* ALG_* */
 } world_t;
 static const world_t WORLDS[] = {
     {"SHALLOWS OF MEMORY", {0.0f, 0.0f, 0.0f, 0.0f}, 0.80f, {65, 60, 70, 67}, 1.0f, 12, ALG_MOTIF},        /* 記憶の浅瀬 */
     {"BEHIND THE HORIZON", {-0.35f, 0.2f, 0.0f, 0.3f}, 0.95f, {58, 60, 63, 55}, 1.4f, 7, ALG_DRONE},        /* 水平線の裏側 */
     {"THE UNREAD LETTER", {0.0f, -0.2f, 0.55f, 0.6f}, 0.85f, {60, 65, 67, 62}, 1.0f, 12, ALG_LETTER},       /* 誰も読まない手紙 */
-    {"THE FOUNTAIN AFTER CLOSING", {0.35f, 0.35f, 0.0f, -0.3f}, 0.68f, {67, 72, 65, 70}, 0.65f, 19, ALG_FOUNTAIN},       /* 閉園後の噴水 */
+    {"THE FOUNTAIN AFTER CLOSING", {0.35f, 0.35f, 0.0f, -0.3f}, 0.68f, {67, 72, 65, 70}, 0.65f, -12, ALG_FOUNTAIN},       /* 閉園後の噴水 */
     {"WHERE LIGHT BECOMES MOSS", {0.2f, 0.4f, -0.3f, 0.1f}, 0.90f, {64, 69, 62, 67}, 2.0f, 12, ALG_LOOPS}, /* 光が苔になるところ */
     {"THE ATTIC OF LOOSE KEYS", {0.3f, -0.1f, 0.1f, 0.4f}, 0.70f, {69, 64, 71, 66}, 0.8f, 12, ALG_WIND},   /* 緩んだ鍵の屋根裏 */
     {"A STAIR AND ITS SHADOW", {-0.2f, 0.4f, -0.3f, 0.1f}, 1.00f, {60, 55, 62, 57}, 1.5f, 12, ALG_TWO},       /* 階段とその影 */
@@ -535,6 +535,62 @@ static int deg_note(int d)                       /* scale degree (0 the root) to
 {
     int n = SCALE[scale_i][0], o = d >= 0 ? d / n : -((n - 1 - d) / n);
     return root + 12 * o + SCALE[scale_i][1 + d - n * o];
+}
+
+/* Each world's low voice and answer, where it gives them its own way (the rest: as the world's way of making music
+ * has them, and as before):
+ *   low   0 the root, two octaves down; 1 the music's own note (the line's first word), low
+ *         (so the low voice moves with the music, and never rubs against the note it is under; the root where that
+ *         note is a semitone from the root's chord, which the chords play)
+ *   ans   0 the answer WORLDS[].answer semitones over the lead; else this many steps of the scale from the lead
+ *         (always in the scale; a step further where that is a tritone or a semitone from the lead) */
+typedef struct {
+    int8_t low, ans;
+} roles_t;
+static const roles_t ROLES[] = {
+    {0, 0},                                      /* the shallows: as ever */
+    {0, 0},                                      /* the horizon: (its chord's tones: the drone's own) */
+    {1, -2},                                     /* the letter: the low voice the line's first word; a word read again
+                                                  * lower, as half remembered */
+    {0, 0},                                      /* the fountain: (the answer an octave under: WORLDS[]) */
+    {0, 0},                                      /* the moss: (a loop of its own) */
+    {0, 0},                                      /* the attic: (a chime struck in another voice) */
+    {0, 0},                                      /* the stair: (its shadow, on every note) */
+};
+PER_WORLD(ROLES);
+static int scale_has(int semis);
+static int low_note(int deg)                     /* the low voice, under a note of degree deg */
+{
+    static const int8_t CT[3] = {0, 0, 7};       /* the root's chord (its third: the scale's) */
+    int n, rel, i;
+    if (!ROLES[world].low)
+        return root - 24;
+    n = deg_note(deg);
+    rel = ((n - root) % 12 + 12) % 12;
+    for (i = 0; i < 3; i++) {                    /* a semitone from the root's chord (the chords play it): the root */
+        int c = i == 1 ? (scale_has(3) ? 3 : 4) : CT[i], dd = rel - c < 0 ? c - rel : rel - c;
+        if (dd == 1 || dd == 11)
+            return root - 24;
+    }
+    while (n > 47)
+        n -= 12;
+    while (n < 36)
+        n += 12;
+    return n;
+}
+static int answer_note(int deg, int note)        /* the answer to the lead's note (degree deg) */
+{
+    int a = ROLES[world].ans ? deg_note(deg + ROLES[world].ans) : note + WORLDS[world].answer;
+    if (ROLES[world].ans) {                      /* (a tritone or a semitone from the lead: one step further) */
+        int pc = ((a - note) % 12 + 12) % 12;
+        if (pc == 6 || pc == 1 || pc == 11)
+            a = deg_note(deg + ROLES[world].ans + (ROLES[world].ans < 0 ? -1 : 1));
+    }
+    while (a > 93)
+        a -= 12;
+    while (a < 48)
+        a += 12;
+    return a;
 }
 
 static int pc_degree(int pc)                     /* a pitch class to the nearest degree of the scale, low octave */
@@ -862,13 +918,11 @@ static void letter_event(void)
         if (mot_i == 0 || frand() >= 0.35f * fm_maxf(st[S_MARGIN], 0.0f)) {   /* (the margin: unread) */
             float vel = 0.35f + 0.3f * frand();
             if (mot_i == 0 && frand() < 0.3f - 0.2f * st[S_LIGHT])   /* under a line's first word: the root, low */
-                play_shaped(R_LOW, root - 24, 0.4f, 0.0f, 0, 1.6f, 0.0f);
+                play_shaped(R_LOW, low_note(mot_deg[mot_i]), 0.4f, 0.0f, 0, 1.6f, 0.0f);
             play_shaped(R_LEAD, note, vel, 0.8f * (frand() * 2.0f - 1.0f), 0, 1.4f + 0.8f * fm_maxf(st[S_BLEED], 0.0f),
                         0.0f);
             if (frand() < 0.06f + 0.15f * density + 0.15f * fm_maxf(st[S_BLEED], 0.0f)) {   /* read again, later */
-                int ans = note + 12;
-                while (ans > 93)
-                    ans -= 12;
+                int ans = answer_note(mot_deg[mot_i], note);
                 play_shaped(R_ANSWER, ans, vel * 0.45f, 0.8f * (frand() * 2.0f - 1.0f),
                             (int32_t)(beat_len * (1.5f + 2.0f * frand())), 1.2f, 0.0f);
             }
@@ -995,9 +1049,7 @@ static void fountain_event(void)
         play_shaped(R_LEAD, note, vel, -0.5f + (float)mot_i / (float)mot_len, irand(400),
                     0.35f + 0.4f * fm_maxf(st[S_BLEED], 0.0f), 0.0f);
         if (mot_i == top && frand() < 0.1f + 0.3f * density) {   /* the answer at its height */
-            int ans = note + WORLDS[world].answer;
-            while (ans > 93)
-                ans -= 12;
+            int ans = answer_note(mot_deg[mot_i], note);
             play_shaped(R_ANSWER, ans, vel * 0.5f, 0.6f * (frand() * 2.0f - 1.0f), (int32_t)(beat_len * 0.25f), 0.6f,
                         0.0f);
         }
@@ -1149,9 +1201,7 @@ static void motif_event(void)
             play_shaped(R_LEAD, note, vel, -0.6f + 1.2f * (float)mot_i / (float)(mot_len - 1), irand(1200),
                         1.0f + 0.7f * fm_maxf(st[S_BLEED], 0.0f), 0.0f);
             if (sb_phase == SB_WHOLE && frand() < 0.06f + 0.2f * density + 0.1f * fm_maxf(st[S_BLEED], 0.0f)) {
-                int ans = note + WORLDS[world].answer;
-                while (ans > 93)
-                    ans -= 12;
+                int ans = answer_note(mot_deg[mot_i], note);
                 play_shaped(R_ANSWER, ans, vel * 0.45f, 0.6f * (frand() * 2.0f - 1.0f),
                             (int32_t)(beat_len * (1.0f + frand())), 1.1f, 0.0f);
             }
@@ -1370,7 +1420,7 @@ static void two_event(void)
         t = two_chord_tone(note, over);
         en_two_over = (uint8_t)over;
         if (mot_i == 0 && two_k == 0)            /* the root, low and long, under each walk */
-            play_shaped(R_LOW, root - 24, 0.38f, 0.0f, 0, 2.2f, 0.0f);
+            play_shaped(R_LOW, low_note(mot_deg[0]), 0.38f, 0.0f, 0, 2.2f, 0.0f);
         play_shaped(R_LEAD, note, vel, -0.25f, irand(600), 1.3f + 0.6f * fm_maxf(st[S_BLEED], 0.0f), 0.0f);
         play_shaped(R_ANSWER, t, vel * 0.8f, 0.25f, irand(600), 1.3f + 0.6f * fm_maxf(st[S_BLEED], 0.0f), 0.0f);
         gen_left += beat_len * (float)mot_dur[mot_i];
