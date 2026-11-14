@@ -558,6 +558,31 @@ static const roles_t ROLES[] = {
     {0, 0},                                      /* the stair: (its shadow, on every note) */
 };
 PER_WORLD(ROLES);
+/* A phrase's shape: its notes not all as strong, but rising to a crest and easing off after it, the last the softest,
+ * as a phrase is played by hand. The strike's strength is the voice's loudness and its brightness both (play_shaped),
+ * so the crest is a little brighter too. Where each world's crest falls (PHRASE_CREST, the phrase's way through, 0..1;
+ * less than 0: none, as before; the attic's gusts, the fountain's height, the drone's swells and the loops have their
+ * own):
+ *   the shallows  past the middle, as a sentence
+ *   the letter    at the first word, as a line's capital, falling after it
+ *   the stair     at the far step, the walk's end (and each walk a little stronger than the last, to the longest) */
+static const float PHRASE_CREST[] = {0.6f, -1.0f, 0.0f, -1.0f, -1.0f, -1.0f, 1.0f};
+PER_WORLD(PHRASE_CREST);
+#define CREST_LO 0.78f                           /* the first note's (the crest not at the start) */
+#define CREST_HI 1.14f                           /* the crest's */
+#define CREST_END 0.66f                          /* the last note's (the crest not at the end) */
+static float phrase_shape(int i, int len)        /* note i of len: its strength, times (on the whole as strong as
+                                                  * before: the shape over its mean) */
+{
+    float c = PHRASE_CREST[world], x, mean = c * 0.5f * (CREST_LO + CREST_HI) + (1.0f - c) * 0.5f * (CREST_HI + CREST_END);
+    if (c < 0.0f || len < 2)
+        return 1.0f;
+    x = (float)i / (float)(len - 1);
+    if (x <= c)
+        return (c > 0.0f ? CREST_LO + (CREST_HI - CREST_LO) * x / c : CREST_HI) / mean;
+    return (CREST_HI + (CREST_END - CREST_HI) * (x - c) / (1.0f - c)) / mean;
+}
+
 static int scale_has(int semis);
 static int low_note(int deg)                     /* the low voice, under a note of degree deg */
 {
@@ -916,7 +941,7 @@ static void letter_event(void)
         while (note > 89)
             note -= 12;
         if (mot_i == 0 || frand() >= 0.35f * fm_maxf(st[S_MARGIN], 0.0f)) {   /* (the margin: unread) */
-            float vel = 0.35f + 0.3f * frand();
+            float vel = (0.35f + 0.3f * frand()) * phrase_shape(mot_i, mot_len);
             if (mot_i == 0 && frand() < 0.3f - 0.2f * st[S_LIGHT])   /* under a line's first word: the root, low */
                 play_shaped(R_LOW, low_note(mot_deg[mot_i]), 0.4f, 0.0f, 0, 1.6f, 0.0f);
             play_shaped(R_LEAD, note, vel, 0.8f * (frand() * 2.0f - 1.0f), 0, 1.4f + 0.8f * fm_maxf(st[S_BLEED], 0.0f),
@@ -1194,6 +1219,7 @@ static void motif_event(void)
         if (sb_mask >> mot_i & 1u) {
             int note = deg_note(mot_deg[mot_i]), c = sb_count();
             float vel = (0.3f + 0.25f * (float)c / (float)mot_len) * (0.85f + 0.3f * frand());
+            vel *= phrase_shape(mot_i, mot_len);
             while (note > 89)
                 note -= 12;
             if (mot_i == 0 && frand() < (sb_phase == SB_WHOLE ? 0.6f : 0.2f) - 0.15f * st[S_LIGHT])
@@ -1412,7 +1438,8 @@ static void two_event(void)
         two_begin();
     if (mot_i < mot_len) {
         int note = deg_note(mot_deg[mot_i]), over = two_over ^ (st[S_FOLD] > 0.4f ? (mot_i & 1) : 0), t;
-        float vel = 0.3f + 0.12f * frand();
+        float walk = PHRASE_CREST[world] < 0.0f ? 1.0f : 0.85f + 0.3f * (float)two_k / (float)(two_kmax > 0 ? two_kmax : 1);
+        float vel = (0.3f + 0.12f * frand()) * phrase_shape(mot_i, mot_len) * walk;
         while (note > 86)
             note -= 12;
         while (note < 55)
