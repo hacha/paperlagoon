@@ -192,6 +192,7 @@ void en_voice_shape(int k, int role, float *ratio, float *att_ms, float *t60)
     *t60 = pt.t60;
 }
 
+#define IDX_TOP 19000.0f                         /* Hz: no partial that counts over this (the band ends at 22050) */
 /* a note of the kit's voice; t60x and att_min reshape it (a drone stretches any kit's voice into a swell) */
 static void play_shaped(int role, int note, float vel, float pan, int32_t wait, float t60x, float att_min)
 {
@@ -209,6 +210,11 @@ static void play_shaped(int role, int note, float vel, float pan, int32_t wait, 
     pt.att_ms = fm_maxf(pt.att_ms, att_min);
     pt.t60 *= fm_clampf(1.0f - (float)(note - 66) * 0.012f, 0.6f, 1.5f);   /* low notes ring longer */
     pt.idx *= (0.3f + 1.4f * bright) * (0.6f + 0.4f * vel);               /* Bright, and a harder strike */
+    /* high notes rounder (over C5, a quarter less an octave): the same index up there is thin and hard. And never so
+     * much that the partials fold back from the top of the band (the widest that counts, at the carrier plus the
+     * modulator times the index and one, kept under IDX_TOP: only the high ratios' high notes, turned up bright) */
+    pt.idx *= fm_clampf(1.0f - (float)(note - 72) * 0.02f, 0.6f, 1.0f);
+    pt.idx = fm_minf(pt.idx, fm_maxf((IDX_TOP / mtof((float)note) - 1.0f) / pt.ratio - 1.0f, 0.1f));
     v = fm_start(&pt, note, vel * KITS[kit].gain, pan, wait);
     en_voice_note[v] = (uint8_t)note;
     en_voice_role[v] = (uint8_t)role;

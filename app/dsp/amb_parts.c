@@ -5,7 +5,8 @@
  * queue's post(), the random numbers, the sine table, the slow random modulators, the two-operator FM voice (AMB-1's
  * bell, its settings now given by the caller rather than read from AMB-1's parameters and loops) and the output
  * stage (the voices' sends through the echo and the plate, AMB-1's render_chunk() mix). PaperLagoon gave the voice a
- * breath (fm_patch_t.breath: air through it, a rough modulation, a wandering pitch).
+ * breath (fm_patch_t.breath: air through it, a rough modulation, a wandering pitch), and made no two notes the same
+ * (fm_start: the modulator a little off its ratio and anywhere in its turn, the pitch and the index a little off).
  * #included by lagoon.c (one -O2 unit), after fastmath.h, EN_SR, EN_POOL and BARRIER(); it #includes plate.c and
  * echo.c itself (and, PaperLagoon, age.c: the age over the whole mix, before the soft clip). */
 
@@ -152,6 +153,16 @@ static int fm_start(const fm_patch_t *pt, int note, float vel, float pan, int32_
     v->es = pt->esend;
     v->rs = pt->rsend;
     v->wait = wait;
+    {   /* (PaperLagoon) no note twice the same: the pitch a cent or two off; the modulator a fraction of a hertz off
+         * its ratio, so the partials it shares with the carrier beat slowly against each other (a turn in one to four
+         * seconds, each note its own: the shimmer of an FM piano), and starting anywhere in its turn; the strike a
+         * little brighter or duller. The breath's chance (fm_noise): the music's own is untouched */
+        float d = fm_noise();
+        v->cinc *= 1.0f + 0.0012f * fm_noise();
+        v->minc = v->cinc * pt->ratio + (d < 0.0f ? -1.0f : 1.0f) * (0.12f + 0.3f * fm_fabsf(d)) * (1.0f / EN_SR);
+        v->mph = fm_noise_ph();
+        v->idx *= 1.0f + 0.07f * fm_noise();
+    }
     {   /* (PaperLagoon) the breath: the air a band of noise round the note (an octave up for a high one's sake: under
          * 6 kHz), its level steadied against the band's width; a rough modulation; a pitch that wanders a little */
         float fc = fm_minf(mtof((float)note) * 1.5f, 6000.0f), sf = 2.0f * fm_sinf(FM_PI * fc * (1.0f / EN_SR));
