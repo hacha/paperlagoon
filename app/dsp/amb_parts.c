@@ -6,7 +6,9 @@
  * bell, its settings now given by the caller rather than read from AMB-1's parameters and loops) and the output
  * stage (the voices' sends through the echo and the plate, AMB-1's render_chunk() mix). PaperLagoon gave the voice a
  * breath (fm_patch_t.breath: air through it, a rough modulation, a wandering pitch), and made no two notes the same
- * (fm_start: the modulator a little off its ratio and anywhere in its turn, the pitch and the index a little off).
+ * (fm_start: the modulator a little off its ratio and anywhere in its turn, the pitch and the index a little off),
+ * and made three of the mix's shares given (mix_dry, mix_wash, mix_slap: a world's room, lagoon.c) where they were
+ * fixed.
  * #included by lagoon.c (one -O2 unit), after fastmath.h, EN_SR, EN_POOL and BARRIER(); it #includes plate.c and
  * echo.c itself (and, PaperLagoon, age.c: the age over the whole mix, before the soft clip). */
 
@@ -253,6 +255,9 @@ static void mix_clear(uint32_t n)
     for (j = 0; j < n; j++)
         mixl[j] = mixr[j] = esend[j] = rsend[j] = 0.0f;
 }
+static float mix_dry = 1.0f;                     /* (PaperLagoon) the voices themselves: less, they stand further off */
+static float mix_wash = 0.35f;                  /* (PaperLagoon) the echoes into the plate: more, they sink into the room */
+static float mix_slap = 0.3f;                    /* (PaperLagoon) the Echoplex's return: more, a wall near by */
 static void mix_out(int32_t *out, uint32_t n, float gain, float eg, float rg, float wet)   /* (PaperLagoon) wet: the
                                                   * echoes' and the plate's return, swollen by a splash */
 {
@@ -260,9 +265,9 @@ static void mix_out(int32_t *out, uint32_t n, float gain, float eg, float rg, fl
     for (j = 0; j < n; j++) {
         float wl, wr, l, r, el, er, xl, xr;
         echoes(esend[j] * eg, &el, &er, &xl, &xr);
-        reverb((rsend[j] * rg + (el + er + xl + xr) * 0.35f * rg) * 0.8f, &wl, &wr);
-        l = (mixl[j] + wet * (0.75f * el + 0.3f * xl + 1.3f * wl)) * 0.36f * gain;
-        r = (mixr[j] + wet * (0.75f * er + 0.3f * xr + 1.3f * wr)) * 0.36f * gain;
+        reverb((rsend[j] * rg + (el + er + xl + xr) * mix_wash * rg) * 0.8f, &wl, &wr);
+        l = (mixl[j] * mix_dry + wet * (0.75f * el + mix_slap * xl + 1.3f * wl)) * 0.36f * gain;
+        r = (mixr[j] * mix_dry + wet * (0.75f * er + mix_slap * xr + 1.3f * wr)) * 0.36f * gain;
         age_px(&l, &r);                          /* (PaperLagoon) the age: haze, hiss, dropout, blur */
         out[2 * j] = (int32_t)(fm_tanhf(l) * 8300000.0f);
         out[2 * j + 1] = (int32_t)(fm_tanhf(r) * 8300000.0f);

@@ -4,7 +4,8 @@
 /* The tape echo and the Echoplex, taken from AMB-1 (charlesvestal/fm1-amb, app/dsp/amb.c, MPL-2.0). Changed where
  * it reached into AMB-1's engine: the echo's length, feedback, Motion and slow modulators are now given
  * (echo_time(), echo_fb, echo_control()'s arguments), not read from AMB-1's parameters. PaperLagoon added the
- * tape's wear (echo_wear: a deeper wow, a flutter, a darker loop). #included by lagoon.c
+ * tape's wear (echo_wear: a deeper wow, a flutter, a darker loop) and made the loop's darkening and the heads' places
+ * in the field given (echo_tone, echo_width: a world's room, lagoon.c) where they were fixed. #included by lagoon.c
  * (one -O2 unit): it needs fastmath.h, EN_SR, EN_POOL and frand() before it.
  *
  * AMB-1's note: after Discreet Music's chain, an Echoplex (a short, smearing echo, ~160 ms, fed back) and a tape
@@ -30,6 +31,8 @@ static int plex_w;
 static float plex_lp, plex_lp2;
 static float echo_len, echo_len_t, echo_fb = 0.55f, echo_motion, echo_wow;
 static float echo_wear = 0.2f, flut_ph;               /* (PaperLagoon) the tape's age, 0..1; a flutter's phase */
+static float echo_tone = 0.55f;                  /* (PaperLagoon) the loop's highs kept each repeat: less, darker */
+static float echo_width = 0.7f;                  /* (PaperLagoon) how far apart the two heads sit: 0 both in the middle */
 
 static inline float tape_read(float d)           /* d quarter-rate samples ago */
 {
@@ -87,7 +90,7 @@ static void echo_control(uint32_t n, float motion, const float *m, int moving)
     echo_motion = motion;
     echo_wow = m[0];
     for (i = 0; i < 2; i++) {
-        p = fm_clampf((i ? 0.7f : -0.7f) + 0.9f * motion * m[1 + i], -1.0f, 1.0f);
+        p = fm_clampf((i ? echo_width : -echo_width) + 0.9f * motion * m[1 + i], -1.0f, 1.0f);
         p = (p + 1.0f) * (FM_PI / 4.0f);
         hg[2 * i] = fm_cosf(p);
         hg[2 * i + 1] = fm_sinf(p);
@@ -95,7 +98,8 @@ static void echo_control(uint32_t n, float motion, const float *m, int moving)
     fb_lean = 0.25f * motion * (1.0f + m[3]);
     if (head_left <= n) {
         head_left = (uint32_t)((20.0f + 40.0f * frand()) * EN_SR);
-        if (moving && frand() < motion)
+        if (moving && frand() < 0.5f)            /* (PaperLagoon) as often in any room: the room's motion never
+                                                  * changes what the music's chance gives next */
             head2_t = HEAD2[(int)(frand() * 4.999f)];
     } else {
         head_left -= n;
@@ -133,7 +137,7 @@ static inline void echoes(float in, float *el, float *er, float *xl, float *xr)
             d = (float)(TAPE_N - 4);
         h1 = tape_read(d);
         h2 = tape_read(d * head2);
-        tape_lp += (0.55f - 0.35f * echo_wear) * (h1 + fb_lean * (h2 - h1) - tape_lp);   /* each time round: darker,
+        tape_lp += echo_tone * (1.0f - 0.636f * echo_wear) * (h1 + fb_lean * (h2 - h1) - tape_lp);   /* each time round: darker,
                                                  * thinner (and, worn, darker still: PaperLagoon) */
         tape_hp += 0.03f * (tape_lp - tape_hp);
         fb = tape_lp - tape_hp;

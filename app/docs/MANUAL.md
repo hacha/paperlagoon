@@ -259,7 +259,8 @@ With Drift at 0 nothing stirs. Offer sets how great the stir is.
 
 ALGORITHM picks the world. Each is a place that exists nowhere, and each makes music in its own way. They never
 touch the knobs or the kit. The screen changes with the world, and so does its colour. Each has its own scales too, from a darker to a
-brighter, and the hidden state chooses among them.
+brighter, and the hidden state chooses among them. And each has its own room: near or far, long or short, dark or
+bright. Space, Echo and the other knobs do what they always do, inside it.
 
 - SHALLOWS OF MEMORY: a motif is written in a note or two each pass, until it is whole. It is heard whole a few times:
   the low voice under a pass now and then, the answer while it is whole. Then it fades from memory a note or two each

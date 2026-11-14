@@ -263,6 +263,65 @@ static const world_t WORLDS[] = {
 PER_WORLD(WORLDS);
 #define WORLD_GLIDE_S 20.0f
 static volatile uint8_t world;
+
+/* Each world's room: where the sound is heard, not what is played. The knobs keep their meaning and their whole
+ * travel (Space, Echo, Size, Time, Feedback, Wear, Hiss: each as plain as ever, more is more); the room is what they
+ * act in.
+ *   dry          the voices themselves: less, they stand further off
+ *   space, echo  the sends, times the knobs'
+ *   len          what the plate loses each time round, times Size's: less, a longer room
+ *   tone         the plate's highs kept each time round (plate.c): less, a darker, softer room
+ *   pre          the plate's predelay (ms, to 30): short, the walls near
+ *   wash         the echoes into the plate (amb_parts.c): more, the repeats sink into the room; less, they stand apart
+ *   slap         the short echo's return: more, a hard wall near by
+ *   tape         the loop's highs kept each repeat (echo.c): less, the repeats darken sooner
+ *   width        how far apart the tape's two heads sit in the field
+ *   motion       how far they wander
+ *   hiss         the hiss's colour (age.c): less, darker; as loud either way
+ *   gain         the whole, so that no world is louder for its room
+ * World 0's is the sound as it was before the worlds had rooms. It glides to the next world's as the music arrives
+ * there (ROOM_GLIDE_S: no step, the tails of the last room ringing through it). */
+typedef struct {
+    float dry, space, echo, len, tone, pre, wash, slap, tape, width, motion, hiss, gain;
+} room_t;
+enum { ROOM_N = sizeof(room_t) / sizeof(float) };
+#define ROOM_0 {1.00f, 1.00f, 1.00f, 1.00f, 0.45f, 30.0f, 0.35f, 0.30f, 0.55f, 0.70f, 0.50f, 0.40f, 1.00f}
+static const room_t ROOMS[] = {
+    ROOM_0,                                      /* the shallows: as it was */
+    /* the horizon: far, vast, dark; the echoes sunk in it */
+    {0.70f, 1.50f, 0.80f, 0.55f, 0.28f, 30.0f, 0.70f, 0.10f, 0.42f, 1.00f, 0.30f, 0.22f, 0.60f},
+    /* the letter: a small still room, near; a wall close by */
+    {1.10f, 0.50f, 0.70f, 1.80f, 0.60f, 5.0f, 0.15f, 0.45f, 0.60f, 0.30f, 0.20f, 0.55f, 1.30f},
+    /* the fountain: stone, open to the night, bright; the walls answer */
+    {1.00f, 0.90f, 0.60f, 1.20f, 0.75f, 22.0f, 0.20f, 1.00f, 0.68f, 0.90f, 0.60f, 0.70f, 1.05f},
+    /* the moss: thick, damp, long; all of it blurs */
+    {0.80f, 1.25f, 1.15f, 0.75f, 0.24f, 25.0f, 0.70f, 0.15f, 0.36f, 0.80f, 0.90f, 0.18f, 0.90f},
+    /* the attic: wood, close, narrow, dusty; over at once */
+    {1.10f, 0.55f, 0.60f, 2.20f, 0.40f, 3.0f, 0.20f, 0.80f, 0.50f, 0.25f, 0.40f, 0.60f, 1.30f},
+    /* the stair: a well; the echo clear and wide, apart from the room */
+    {0.95f, 0.80f, 1.60f, 0.80f, 0.62f, 30.0f, 0.08f, 0.30f, 0.70f, 1.00f, 0.15f, 0.35f, 1.10f},
+};
+PER_WORLD(ROOMS);
+#define ROOM_GLIDE_S 5.0f
+static room_t room = ROOM_0;                     /* the room now */
+volatile float en_room_ms;                       /* (tests) its predelay now, ms: where the room is on its way */
+static void room_step(uint32_t n, int at_once)   /* once a chunk (at_once: there, as at boot) */
+{
+    const float *to = (const float *)&ROOMS[world];
+    float *is = (float *)&room, k = at_once ? 1.0f : fm_minf((float)n * (1.0f / (ROOM_GLIDE_S * EN_SR)), 1.0f);
+    int i;
+    for (i = 0; i < ROOM_N; i++)
+        is[i] += k * (to[i] - is[i]);
+    pl_tone = room.tone;
+    pl_pre = fm_clampf(room.pre * (0.001f * EN_SR), 1.0f, (float)PRE_N);
+    mix_dry = room.dry;
+    mix_wash = room.wash;
+    echo_width = room.width;
+    mix_slap = room.slap;
+    echo_tone = room.tape;
+    age_hiss_tone = room.hiss;
+    en_room_ms = room.pre;
+}
 volatile uint8_t en_alg;
 static float wbias[EN_NSTATE], wcycles = 1.0f;   /* the lean and the cycles' scale, gliding to the world's */
 const char *en_world_name(int w) { return WORLDS[(unsigned)w % EN_NWORLD].name; }
@@ -1472,6 +1531,8 @@ static void cross_to(int w, int now)             /* (C_WORLD; now: no crossing, 
         world = world_to;
         world_begin();
         en_crossing = 0;
+        if (now)
+            room_step(0, 1);                     /* (at boot: in its room already) */
         return;
     }
     if (en_crossing)
@@ -1957,8 +2018,9 @@ static void control(uint32_t n)                  /* once a chunk: the slow thing
 {
     int i;
     mods_step(n);
-    echo_control(n, 0.5f, modv, en_playing);   /* (and echo_wear: P_WEAR) */
-    plate_tick(pl_target);
+    room_step(n, 0);
+    echo_control(n, room.motion, modv, en_playing);   /* (and echo_wear: P_WEAR) */
+    plate_tick(fm_maxf(1.0f - (1.0f - pl_target) * room.len, 0.2f));   /* (Size, in the world's room) */
     if (spl_e > 0.001f) {                        /* the splash stirs the sound itself */
         float d = drift > 1.0f ? 1.0f : drift;
         age_spl_blur = d * spl_e * (0.35f + 0.8f * fm_fabsf(spl[S_FOLD]));
@@ -2022,7 +2084,7 @@ void en_render(int32_t *out, uint32_t n, uint32_t gain_q12)
         mix_clear(k);
         fm_render(k, 1.6f);
         pulse_render(k);
-        mix_out(out, k, gain * spl_gain * (1.0f - 0.45f * dusk), echo_send * spl_echo, rev_send, spl_wet);
+        mix_out(out, k, gain * room.gain * spl_gain * (1.0f - 0.45f * dusk), echo_send * room.echo * spl_echo, rev_send * room.space, spl_wet);
 #if defined PLAT_HOST && !defined __EMSCRIPTEN__
         if (log_file()) {                        /* once a second: the loudness (RMS, peak), the state, where it is */
             static double sq;

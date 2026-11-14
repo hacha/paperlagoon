@@ -42,7 +42,7 @@ Some voices have breath (air beside the tone, a rough modulation, a pitch that w
 (a little in SLOW BREATH and HAZE ARCHIVE, much in DUST PIPES, FOG LANTERN and CHALK GARDEN), scaled by Air (FX, again); a voice's
 page shows it.
 
-Worlds, each its own way of making music and its own scales, a darker to a brighter (heard at once; the screen changes with it, and its colour):
+Worlds, each its own way of making music and its own scales, a darker to a brighter, and its own room (near or far, long or short, dark or bright: the knobs act in it as ever) (heard at once; the screen changes with it, and its colour):
 SHALLOWS OF MEMORY (a motif written in a note or two each pass until whole, heard whole, then faded a note or two each pass until nothing is left; a silence, another), BEHIND THE HORIZON (a drone: chords that swell and fall
 back, a low tone under them, now and then one note of a melody), THE UNREAD LETTER (single points, far apart: a few
 pitches, the letter's words, each a leap from the last, at uneven distances; a long silence after each line; in the

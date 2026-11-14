@@ -4,7 +4,8 @@
  * soft clip. Three on FX's second page (AGE; its fourth, Air, is the voices' breath: lagoon.c), one with the tape's Wear;
  * each plain, each 0 for none:
  *   Haze     the band narrows (the highs go first, then the lows) and the loud parts round off
- *   Hiss     a floor of noise under it, breathing slowly; only while the music plays (it fades in and out with it)
+ *   Hiss     a floor of noise under it, breathing slowly; only while the music plays (it fades in and out with it).
+ *            Its colour is the world's room's (age_hiss_tone: lagoon.c), as loud whatever the colour
  *   Dropout  now and then the sound thins for a moment, darker, one side more than the other, as worn tape loses
  *            its coat; the more, the more often and the deeper
  *   blur     (with Wear, FX) the sound smears: a copy of it a little late, its lateness wandering, fed back a
@@ -29,6 +30,7 @@ static float hz_a = 1.0f, hz_h, hz_round;
 static float hz_l1[2], hz_l2[2], hz_hp[2];
 /* hiss: its colour, its level (gliding to the music's playing), its breath */
 static float hs_lp[2], hs_level, hs_ph;
+static float age_hiss_tone = 0.4f, hs_gain = 1.0f;   /* its highs kept (less: a darker hiss); the level that keeps it as loud */
 /* dropout: where one is, how deep, how long; the dark it brings */
 static float dr_ph = 1.0f, dr_inc, dr_depth[2], dr_dark[2];
 static uint32_t dr_wait = 44100u * 8u;
@@ -62,6 +64,7 @@ static void age_control(uint32_t n, int playing)
     hz_round = 0.9f * hz;
     age_bl = fm_minf(age_blur + age_spl_blur, 1.0f);
     hs_level += ((playing ? 0.019f * age_hiss * age_hiss : 0.0f) - hs_level) * fm_minf(t * 0.7f, 1.0f);
+    hs_gain = fm_sqrtf(0.25f * (2.0f - age_hiss_tone) / age_hiss_tone);   /* (a one-pole's noise: its power k / (2 - k)) */
     hs_ph += t * 0.071f;                         /* the breath: ~14 s */
     if (hs_ph >= 1.0f)
         hs_ph -= 1.0f;
@@ -119,8 +122,8 @@ static inline void age_px(float *l, float *r)
     }
     for (c = 0; c < 2; c++) {
         if (hs_level > 1e-6f) {                  /* the hiss, its highs softened */
-            hs_lp[c] += 0.4f * ((age_rnd() * 2.0f - 1.0f) - hs_lp[c]);
-            x[c] += hs_level * (0.75f + 0.25f * sine(hs_ph + 0.5f * (float)c)) * hs_lp[c];
+            hs_lp[c] += age_hiss_tone * ((age_rnd() * 2.0f - 1.0f) - hs_lp[c]);
+            x[c] += hs_level * hs_gain * (0.75f + 0.25f * sine(hs_ph + 0.5f * (float)c)) * hs_lp[c];
         }
         if (hz_a < 1.0f) {
             hz_l1[c] += hz_a * (x[c] - hz_l1[c]);

@@ -126,5 +126,6 @@ extern volatile uint32_t en_offers;
 extern volatile float en_age_drop;             /* a dropout now (the age), 0..1 */
 extern volatile uint32_t en_recalls;           /* motifs folded back from the memory, since boot */            /* offerings since boot (presses) */
 extern volatile uint8_t en_scale;              /* the scale now: which of them all (a rung of the world's ladder) */
+extern volatile float en_room_ms;              /* the room's predelay now (ms): the world's room, gliding there */
 const char *en_scale_name(int scale);          /* its name, for the screen */
 int en_scale_len(int scale);                   /* its notes to the octave (5..7) */

@@ -1,8 +1,10 @@
 /* SPDX-License-Identifier: MPL-2.0
- * Copyright (C) 2026 Charles Vestal */
+ * Copyright (C) 2026 Charles Vestal
+ * Changes Copyright (C) 2026 hacha */
 /* Dattorro's plate reverb, taken from AMB-1 (charlesvestal/fm1-amb, app/dsp/amb.c, MPL-2.0; its plate is after
- * FoMni's). Unchanged but for plate_tick(), which gathers the decay's smoothing AMB-1 did in its control(), and
- * this note. #included by lagoon.c (one -O2 unit): it needs fastmath.h and EN_POOL before it. */
+ * FoMni's). Changed: plate_tick() gathers the decay's smoothing AMB-1 did in its control(); and PaperLagoon made the
+ * predelay's length and the tank's damping given (pl_pre, pl_tone: a world's room, lagoon.c) where they were fixed
+ * (30 ms, 0.45). #included by lagoon.c (one -O2 unit): it needs fastmath.h and EN_POOL before it. */
 
 /* ------------------------------------------------- reverb: Dattorro's plate --- */
 /* J. Dattorro, "Effect Design, Part 1", JAES 1997 (as in FoMni): a predelay, four input diffusers,
@@ -24,6 +26,8 @@ typedef struct {
 } dl_t;
 static dl_t dl[L_N];
 static float pl_bw, pl_damp_l, pl_damp_r, pl_decay = 0.5f, pl_decay_t = 0.5f, pl_dd2 = 0.5f, lfo_s, lfo_c = 1.0f;
+static float pl_pre = (float)PRE_N;              /* (PaperLagoon) the predelay now, samples: 1 .. PRE_N; it glides */
+static float pl_tone = 0.45f;                    /* (PaperLagoon) the tank's highs kept each time round: less, darker */
 
 static inline float tap(const dl_t *d, int k)
 {
@@ -54,7 +58,13 @@ static inline void reverb(float in, float *ol, float *or_)
 {
     float x, a, b, fb_l = tap(&dl[L_D2R], DS(3163)), fb_r = tap(&dl[L_D2L], DS(3720));
     push(&dl[L_PRE], in);
-    x = tap(&dl[L_PRE], PRE_N);
+    {   /* (PaperLagoon) the predelay, between two samples where it is not a whole one (it glides without a step) */
+        int k = (int)pl_pre;
+        float f = pl_pre - (float)k;
+        x = tap(&dl[L_PRE], k);
+        if (f > 0.0f)
+            x += (tap(&dl[L_PRE], k + 1) - x) * f;
+    }
     pl_bw += 0.6f * (x - pl_bw);
     x = allpass(&dl[L_IN1], DS(142), pl_bw, 0.75f);
     x = allpass(&dl[L_IN2], DS(107), x, 0.75f);
@@ -68,13 +78,13 @@ static inline void reverb(float in, float *ol, float *or_)
     a = allpass_mod(&dl[L_APL], (float)DS(672) + (float)EXC * lfo_s, x + pl_decay * fb_l, -0.7f);
     push(&dl[L_D1L], a);
     b = tap(&dl[L_D1L], DS(4453));
-    pl_damp_l += 0.45f * (b - pl_damp_l);
+    pl_damp_l += pl_tone * (b - pl_damp_l);
     b = allpass(&dl[L_AP2L], DS(1800), pl_damp_l * pl_decay, pl_dd2);
     push(&dl[L_D2L], b);
     a = allpass_mod(&dl[L_APR], (float)DS(908) + (float)EXC * lfo_c, x + pl_decay * fb_r, -0.7f);
     push(&dl[L_D1R], a);
     b = tap(&dl[L_D1R], DS(4217));
-    pl_damp_r += 0.45f * (b - pl_damp_r);
+    pl_damp_r += pl_tone * (b - pl_damp_r);
     b = allpass(&dl[L_AP2R], DS(2656), pl_damp_r * pl_decay, pl_dd2);
     push(&dl[L_D2R], b);
     *ol = 0.6f * (tap(&dl[L_D1R], DS(266)) + tap(&dl[L_D1R], DS(2974)) - tap(&dl[L_AP2R], DS(1913)) +

@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 hacha
+# the worlds' rooms: each world is heard in its own (lagoon.c ROOMS), and the room glides to the next world's, never
+# there at once. room: where it is on its way (its predelay, ms times 10: the shallows' 300, the attic's 30)
+wait 600
+expect world 0
+expect room 300
+# at rest the world is there at once; its room in some seconds
+tap PLAY
+wait 300
+expect playing 0
+turn ALGO 5
+wait 200
+expect world 5
+expect here 5
+expect room >250
+expect room <300
+wait 30000
+expect room <35
+# it plays there
+tap PLAY
+wait 12000
+expect playing 1
+expect notes >0
+# a crossing: the room stays the world's the music is in, then follows it
+turn ALGO 2
+wait 30
+expect world 0
+expect room <35
+wait 9000
+expect here 0
+wait 30000
+expect room >295

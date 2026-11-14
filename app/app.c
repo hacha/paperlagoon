@@ -1700,6 +1700,8 @@ int app_expect(const char *what, int *got)
         *got = en_here;
     else if (!strcmp(what, "tint"))              /* the screen's colour now (the values', as the screen has it) */
         *got = C_HI;
+    else if (!strcmp(what, "room"))              /* the room now: its predelay, ms times 10 (it glides to the world's) */
+        *got = (int)(en_room_ms * 10.0f + 0.5f);
     else if (!strcmp(what, "tintr"))             /* its red alone, 0..31 */
         *got = C_HI >> 11;
     else if (!strcmp(what, "kit"))
