@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 hacha
+# the worlds' ladders: each world takes its scale from its own five (lagoon.c LADDER), so the worlds differ in harmony
+# too. Told here by the notes to the octave: the letter's scales all have five, the moss's six or seven (the
+# hexachords, lydian), the stair's seven (the modes: a step of the stair is a step of a scale); the horizon and the
+# attic never seven
+wait 600
+expect world 0
+expect scalelen <8
+expect scalelen >4
+turn ALGO 2
+wait 9000
+expect alg 3
+expect scalelen 5
+wait 60000
+expect scalelen 5
+turn ALGO 2
+wait 9000
+expect alg 2
+expect scalelen >5
+wait 60000
+expect scalelen >5
+turn ALGO 2
+wait 9000
+expect alg 6
+expect scalelen 7
+wait 90000
+expect scalelen 7
+turn ALGO -1
+wait 9000
+expect alg 5
+expect scalelen <7
+turn ALGO -4
+wait 9000
+expect alg 1
+expect scalelen <7

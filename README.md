@@ -42,12 +42,12 @@ Some voices have breath (air beside the tone, a rough modulation, a pitch that w
 (a little in SLOW BREATH and HAZE ARCHIVE, much in DUST PIPES, FOG LANTERN and CHALK GARDEN), scaled by Air (FX, again); a voice's
 page shows it.
 
-Worlds, each its own way of making music (heard at once; the screen changes with it):
+Worlds, each its own way of making music and its own scales, a darker to a brighter (heard at once; the screen changes with it):
 SHALLOWS OF MEMORY (a motif written in a note or two each pass until whole, heard whole, then faded a note or two each pass until nothing is left; a silence, another), BEHIND THE HORIZON (a drone: chords that swell and fall
 back, a low tone under them, now and then one note of a melody), THE UNREAD LETTER (single points, far apart: a few
 pitches, the letter's words, each a leap from the last, at uneven distances; a long silence after each line; in the
 margin some stay unread), THE FOUNTAIN AFTER CLOSING (one figure that rises and falls back, round and round in soft eighths,
-changing a little now and then), WHERE LIGHT BECOMES MOSS (four loops of unequal length, drifting in and out of step), THE ATTIC OF LOOSE KEYS (five keys close together, high, struck in gusts of 2–10, neighbour knocking neighbour, rising and dying away; stillness between gusts, no beat; after a spell a longer calm, then a key changed or a new set hung; a strong gust may bring one deep tone), A STAIR AND ITS SHADOW (two voices, slowly: a walk by steps from a centre and back, each phrase one step longer, each note long; with every note its shadow, the nearest tone of the root's chord, under it or over, never the same pitch; rests between, a long one after the longest, then the stair turns; the root low and long under each walk).
+changing a little now and then), WHERE LIGHT BECOMES MOSS (four loops of unequal length, drifting in and out of step), THE ATTIC OF LOOSE KEYS (five keys close together, high, struck in gusts of 2–10, neighbour knocking neighbour, rising and dying away; stillness between gusts, no beat; after a spell a longer calm, then a key changed or a new set hung; a strong gust may bring one deep tone), A STAIR AND ITS SHADOW (two voices, slowly: a walk by steps from a centre and back, each phrase one step longer, each note long; with every note its shadow, the nearest tone of the root's chord, under it or over, never the same pitch nor a semitone off; rests between, a long one after the longest, then the stair turns; the root low and long under each walk).
 
 The music leans on four hidden quantities, named for paper (light, bleed, fold, margin; never shown), which three slow cycles of unequal length
 (their lengths wander, about 50–100, 120–230 and 300–600 s) keep turning. An offering seeps into them over some seconds and fades over minutes; what it

@@ -1300,8 +1300,6 @@ static void draw_seq(void)
 static void draw_env(void)
 {
     static const char *const NOTE[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
-    static const char *const SCALE_NAME[5] = {"MINOR PENTATONIC", "YO", "MAJOR PENTATONIC", "WITH THE SEVENTH",
-                                              "LYDIAN"};
     char t[24];
     uint32_t k;
     int32_t bpm = (int32_t)(60.0f / (en_beat_s > 0.05f ? en_beat_s : 0.8f) + 0.5f);
@@ -1316,7 +1314,7 @@ static void draw_env(void)
     str_put(t + 6 + k, 12, " A MINUTE");
     cv_text(70, 65, &FONT_B, t + 6, C_HI);
     cv_text(10, 86, &FONT_XS, "SCALE", C_GRAY);
-    cv_text(70, 86, &FONT_XS, SCALE_NAME[en_scale % 5], C_HI);
+    cv_text(70, 86, &FONT_XS, en_scale_name(en_scale), C_HI);
     cv_text(10, 106, &FONT_XS, "OCTAVE", C_GRAY);
     int_text(set.oct, t);
     cv_text(70, 105, &FONT_B, t, C_HI);
@@ -1662,8 +1660,10 @@ int app_expect(const char *what, int *got)
         *got = (int)en_period[atoi(what + 6) % 3];
     else if (!strcmp(what, "recalls"))           /* motifs folded back from the memory */
         *got = (int)en_recalls;
-    else if (!strcmp(what, "scale"))
+    else if (!strcmp(what, "scale"))             /* the scale now, of them all (lagoon.c SC_*) */
         *got = en_scale;
+    else if (!strcmp(what, "scalelen"))          /* its notes to the octave */
+        *got = en_scale_len(en_scale);
     else if (!strncmp(what, "state", 5))         /* stateN: the hidden state N (lagoon.h S_*), times 100 */
         *got = (int)(en_state[atoi(what + 5) % EN_NSTATE] * 100.0f);
     else if (!strcmp(what, "offsetsum")) {       /* how far the offerings moved the state, all four, times 100 */

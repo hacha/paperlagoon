@@ -389,21 +389,72 @@ static void state_step(uint32_t n)
 }
 
 /* -------------------------------------------------- the generator --- */
-/* The scales, the roots and the memory every world shares; the motifs themselves (written in, washed away) are below.
- * A rest after each pass (Density shortens it, S_MARGIN lengthens it). A new motif takes its scale from the state (S_LIGHT: darker .. brighter; S_FOLD
- * lets in the fourth and seventh), and sometimes the pitch of the last offering, changed into the scale; or, the
- * deeper the fold, one of the last few motifs comes back (its degrees read in the scale of now). */
-#define NSCALE 5
+/* The scales, the roots and the memory; the motifs themselves (written in, washed away) are below.
+ * A rest after each pass (Density shortens it, S_MARGIN lengthens it). A new motif takes its scale from the state
+ * (S_LIGHT: a darker rung of the world's ladder .. a brighter; S_FOLD: a rung up), and sometimes the pitch of the last
+ * offering, changed into the scale; or, the deeper the fold, one of the last few motifs comes back (its degrees read in
+ * the scale of now).
+ * Each world has its own ladder (LADDER): five scales, the darkest first, a rung differing from the next by a note or
+ * two, so the light turns the colour without a jolt. The ladders are what tell the worlds' harmony apart:
+ *   SHALLOWS  the plain pentatonics, as the music was before there were worlds
+ *   HORIZON   no third where it rests (fourths and fifths, open); the third comes only when the light is high
+ *   LETTER    five notes with a semitone among them: a line in shade (a minor third, a major sixth), a line in light
+ *             (a major ninth's notes)
+ *   FOUNTAIN  bright figures: a major ninth's notes where it rests, a flat seventh when the light is low
+ *   MOSS      six notes, one soft semitone, no tritone (the hexachords): thicker than the pentatonics
+ *   ATTIC     the fifth gives way to the sharp fourth: keys that hang a little loose
+ *   STAIR     seven notes, the modes: a step of the stair is a step of a scale; the third (and so the shadow's
+ *             chord) minor in shade, major in light */
+enum { SC_MINOR5, SC_YO, SC_MAJOR5, SC_SEVENTH, SC_LYDIAN, SC_SUS, SC_SUS_DARK, SC_HIRA, SC_MIN9, SC_KUMOI, SC_MAJ9,
+       SC_LYD7, SC_MIXO5, SC_LYD9, SC_HEX_MIN, SC_HEX_OPEN, SC_HEX_MAJ, SC_LYD5, SC_LYD_NO5, SC_AEOLIAN, SC_DORIAN,
+       SC_MIXO, SC_IONIAN, NSCALE };
 static const int8_t SCALE[NSCALE][8] = {         /* the length first, then the steps over the root */
-    {5, 0, 3, 5, 7, 10},                         /* minor pentatonic: the coolest */
+    {5, 0, 3, 5, 7, 10},                         /* minor pentatonic */
     {5, 0, 2, 5, 7, 9},                          /* the yo scale */
     {5, 0, 2, 4, 7, 9},                          /* major pentatonic */
     {6, 0, 2, 4, 7, 9, 11},                      /* with the seventh */
-    {7, 0, 2, 4, 6, 7, 9, 11},                   /* lydian: the brightest, the most folded */
+    {7, 0, 2, 4, 6, 7, 9, 11},                   /* lydian */
+    {5, 0, 2, 5, 7, 10},                         /* suspended: no third, a flat seventh */
+    {5, 0, 5, 7, 8, 10},                         /* its darker side: the second gives way to a flat sixth */
+    {5, 0, 2, 3, 7, 8},                          /* hirajoshi: a minor third and a flat sixth, two semitones */
+    {5, 0, 2, 3, 7, 10},                         /* a minor ninth's notes */
+    {5, 0, 2, 3, 7, 9},                          /* kumoi: a minor third, a major sixth */
+    {5, 0, 2, 4, 7, 11},                         /* a major ninth's notes */
+    {5, 0, 4, 6, 7, 11},                         /* a major seventh's, with the sharp fourth */
+    {5, 0, 2, 4, 7, 10},                         /* a major third and a flat seventh */
+    {6, 0, 2, 4, 6, 7, 11},                      /* a major ninth's, with the sharp fourth */
+    {6, 0, 2, 3, 5, 7, 10},                      /* the hexachords: minor .. */
+    {6, 0, 2, 5, 7, 9, 10},                      /* .. open (no third) .. */
+    {6, 0, 2, 4, 5, 7, 9},                       /* .. major (the fourth is with the seventh, above) */
+    {5, 0, 2, 4, 6, 9},                          /* major pentatonic, its fifth turned to the sharp fourth */
+    {6, 0, 2, 4, 6, 9, 11},                      /* and with the seventh */
+    {7, 0, 2, 3, 5, 7, 8, 10},                   /* the modes: aeolian .. */
+    {7, 0, 2, 3, 5, 7, 9, 10},                   /* .. dorian .. */
+    {7, 0, 2, 4, 5, 7, 9, 10},                   /* .. mixolydian .. */
+    {7, 0, 2, 4, 5, 7, 9, 11},                   /* .. ionian (lydian above) */
 };
+static const char *const SCALE_NAME[NSCALE] = {
+    "MINOR PENTATONIC", "YO", "MAJOR PENTATONIC", "WITH THE SEVENTH", "LYDIAN", "SUSPENDED", "DARK SUSPENDED",
+    "HIRAJOSHI", "MINOR NINTH", "KUMOI", "MAJOR NINTH", "LYDIAN SEVENTH", "MIXOLYDIAN PENTATONIC", "LYDIAN NINTH",
+    "MINOR HEXACHORD", "OPEN HEXACHORD", "MAJOR HEXACHORD", "LYDIAN PENTATONIC", "LYDIAN, NO FIFTH", "AEOLIAN",
+    "DORIAN", "MIXOLYDIAN", "IONIAN",
+};
+#define NRUNG 5
+static const uint8_t LADDER[][NRUNG] = {         /* each world's, the darkest first */
+    {SC_MINOR5, SC_YO, SC_MAJOR5, SC_SEVENTH, SC_LYDIAN},            /* SHALLOWS OF MEMORY */
+    {SC_SUS_DARK, SC_SUS, SC_YO, SC_MAJOR5, SC_SEVENTH},             /* BEHIND THE HORIZON */
+    {SC_HIRA, SC_MIN9, SC_KUMOI, SC_MAJ9, SC_LYD7},                  /* THE UNREAD LETTER */
+    {SC_SUS, SC_MIXO5, SC_MAJOR5, SC_MAJ9, SC_LYD9},                 /* THE FOUNTAIN AFTER CLOSING */
+    {SC_HEX_MIN, SC_HEX_OPEN, SC_HEX_MAJ, SC_SEVENTH, SC_LYDIAN},    /* WHERE LIGHT BECOMES MOSS */
+    {SC_SUS, SC_YO, SC_MAJOR5, SC_LYD5, SC_LYD_NO5},                 /* THE ATTIC OF LOOSE KEYS */
+    {SC_AEOLIAN, SC_DORIAN, SC_MIXO, SC_IONIAN, SC_LYDIAN},          /* A STAIR AND ITS SHADOW */
+};
+PER_WORLD(LADDER);
+const char *en_scale_name(int s) { return SCALE_NAME[(unsigned)s % NSCALE]; }
+int en_scale_len(int s) { return SCALE[(unsigned)s % NSCALE][0]; }
 #define MOT_MAX 7
 static int8_t mot_deg[MOT_MAX], mot_dur[MOT_MAX];
-static int mot_len, mot_i, mot_reps, scale_i = 2, root = 65;
+static int mot_len, mot_i, mot_reps, scale_i = SC_MAJOR5, root = 65;
 static float root_due = 60.0f;                   /* seconds before the root may move (at a phrase's edge) */
 /* each world's root stays this long on average (s); a fold hastens it; held: it stays */
 static const float ROOT_STAY[] = {150.0f, 210.0f, 150.0f, 180.0f, 200.0f, 160.0f, 240.0f};
@@ -485,11 +536,21 @@ static int margin_cut(void)                      /* notes a motif loses to the m
     return st[S_MARGIN] > 0.2f && frand() < st[S_MARGIN] ? 1 + irand(2) : 0;
 }
 
-static void scale_pick(void)                     /* the scale from the state: S_LIGHT darker .. brighter */
+static void scale_pick(void)                     /* the scale from the state: a rung of the world's ladder, S_LIGHT
+                                                  * darker .. brighter */
 {
     float x = 2.0f + 2.4f * st[S_LIGHT] + (st[S_FOLD] > 0.4f ? 0.7f : 0.0f) + 0.6f * (frand() - 0.5f);
-    scale_i = x < 0.0f ? 0 : x > (float)(NSCALE - 1) ? NSCALE - 1 : (int)(x + 0.5f);
+    scale_i = LADDER[world][x < 0.0f ? 0 : x > (float)(NRUNG - 1) ? NRUNG - 1 : (int)(x + 0.5f)];
     en_scale = (uint8_t)scale_i;
+}
+
+static int scale_has(int semis)                  /* a step over the root, in the scale of now */
+{
+    int i;
+    for (i = 1; i <= SCALE[scale_i][0]; i++)
+        if (SCALE[scale_i][i] == semis)
+            return 1;
+    return 0;
 }
 
 static void root_wander(void)                    /* (at a phrase's edge) the root moves, when it is due: to another
@@ -587,7 +648,7 @@ static float loop_len(int i)
 
 static void loops_begin(void)
 {
-    static const int8_t DEG[NLOOP] = {0, 2, 4, 0};
+    static const int8_t DEG[NLOOP] = {0, 2, 5, 0};   /* (of six notes: the root, the third, the sixth or seventh) */
     int i, n = SCALE[scale_i][0];
     for (i = 0; i < NLOOP; i++) {
         loop[i].len = loop_len(i);
@@ -1185,19 +1246,21 @@ static void wind_event(void)
 /* ------------------------------------------------------------ two lines --- */
 /* ALG_TWO: two voices, slowly. One walks by steps away from a centre and back (a phrase a step longer each time:
  * one note, two, three ..), the other always sounds with it the nearest tone of the root's chord, under it (or, after
- * a change, over it; in a fold it alternates). Each note long, a rest between phrases, a long one after the longest;
+ * a change, over it; in a fold it alternates; a semitone is too near: then the next). Each note long, a rest between phrases, a long one after the longest;
  * then the walk turns the other way, or the centre moves (Change), or an older centre comes back (Memory). Repeat: the
  * walks before the centre may move; Length: the longest phrase (2..6). Light lifts the centre, bleed lets the notes
  * ring, the margin lengthens the rests. An offering becomes the next centre. The phrase is the motif's arrays (mot_*). */
 static int two_c, two_dir = -1, two_k, two_kmax, two_walks, two_over;
 volatile uint8_t en_two_over;
 
-static int two_chord_tone(int note, int over)    /* the root's chord tone nearest the note, strictly under (or over) */
+static int two_chord_tone(int note, int over)    /* the root's chord tone nearest the note, under (or over): never
+                                                  * the note itself, nor a semitone from it (the modes have semitones:
+                                                  * a step and its shadow would grind) */
 {
-    int third = SCALE[scale_i][2] == 3 || SCALE[scale_i][3] == 3 ? 3 : 4, i, best = note + (over ? 12 : -12);
+    int third = scale_has(3) ? 3 : 4, i, best = note + (over ? 12 : -12);
     for (i = -24; i <= 24; i++) {
         int t = note + i, rel = ((t - root) % 12 + 12) % 12;
-        if ((rel == 0 || rel == third || rel == 7) && (over ? t > note : t < note) &&
+        if ((rel == 0 || rel == third || rel == 7) && (over ? t > note + 1 : t < note - 1) &&
             (over ? t < best : t > best))
             best = t;
     }

@@ -258,7 +258,8 @@ With Drift at 0 nothing stirs. Offer sets how great the stir is.
 ### The worlds
 
 ALGORITHM picks the world. Each is a place that exists nowhere, and each makes music in its own way. They never
-touch the knobs or the kit. The screen changes with the world.
+touch the knobs or the kit. The screen changes with the world. Each has its own scales too, from a darker to a
+brighter, and the hidden state chooses among them.
 
 - SHALLOWS OF MEMORY: a motif is written in a note or two each pass, until it is whole. It is heard whole a few times:
   the low voice under a pass now and then, the answer while it is whole. Then it fades from memory a note or two each
@@ -285,7 +286,7 @@ touch the knobs or the kit. The screen changes with the world.
 - A STAIR AND ITS SHADOW: two voices, slowly. The stair walks by steps away from a centre and back, each phrase one
   step longer than the last (one note, two, three, up to the longest, three to seven), each note long. With every
   note its shadow sounds: the nearest tone of the root's chord, under it (after a change, over it; in a fold it
-  alternates). The two never sound the same pitch. A rest comes between phrases, a long one after the longest; then
+  alternates). The two never sound the same pitch, nor a semitone apart. A rest comes between phrases, a long one after the longest; then
   the stair turns the other way. The root, low and long, lies under each walk. An offering becomes the next centre,
   and light lifts the centre; bleed lets the notes ring. The page of the memory is called THE STAIR. In the margin the rests grow longer.
 
